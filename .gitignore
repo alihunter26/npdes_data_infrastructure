@@ -1,0 +1,15 @@
+# Raw data — too large for version control
+data/raw/
+
+# R artifacts
+.Rhistory
+.RData
+.Rproj.user/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large processed files (add exceptions below as needed)
+data/processed/*.csv
+data/crosswalks/*.csv
