@@ -1,10 +1,8 @@
-# CWA — Clean Water Act / NPDES Compliance Data
+# NPDES Data Infrastructure
 
 Research project exploring facility-level compliance, enforcement, and water-quality
-outcomes using NPDES data from EPA's Enforcement and Compliance History Online (ECHO)
-system. The current phase is **data understanding and quality assurance**: building
-per-dataset summaries, decoding ECHO's fields and conventions, and flagging suspicious
-or malformed records before any analysis.
+outcomes using National Pollutant Discharge Elimination System (NPDES) data under the 
+Clean Water Act (CWA) from EPA's Enforcement and Compliance History Online (ECHO) system.
 
 ## Data Sources
 
