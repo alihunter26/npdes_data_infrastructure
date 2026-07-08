@@ -14,11 +14,10 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 
 steps <- c(
   "01_build_npdes_panel.R",                     # base facility-year panel from raw ECHO
-  "02_facility_uin_multiple_npdes.R",           # FRS lookup: facilities with >1 NPDES ID
-  "03_filter_major_individual_facilities.R",    # major+individual filter of the base panel
-  "04_build_facility_panel_major_individual.R", # FRS-facility panel (never-minor, entry/exit)
-  "05_build_permit_panel_major_continuous.R",   # permit panel: major every year (balanced)
-  "06_build_permit_panel_major_entryexit.R"     # permit panel: never-minor (entry/exit)
+  "02_filter_major_individual_facilities.R",    # major+individual filter of the base panel
+  "03_build_facility_panel_major_individual.R", # FRS-facility panel (never-minor, entry/exit)
+  "04_build_permit_panel_major_continuous.R",   # permit panel: major every year (balanced)
+  "05_build_permit_panel_major_entryexit.R"     # permit panel: never-minor (entry/exit)
 )
 
 for (s in steps) {
