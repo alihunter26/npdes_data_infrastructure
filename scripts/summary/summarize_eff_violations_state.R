@@ -1,9 +1,10 @@
 # Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
-# summarize_eff_violations_va.R
-# Reads NPDES_EFF_VIOLATIONS.csv from its zip in chunks, keeps only rows
-# where NPDES_ID starts with "VA", then produces the standard summary sheet.
+# summarize_eff_violations_state.R
+# Reads NPDES_EFF_VIOLATIONS.csv from its zip in chunks, keeps only rows whose
+# NPDES_ID starts with the two-letter STATE code set in the config block below,
+# then produces the standard summary sheet.
 #
 # Reading in chunks avoids loading the full ~16 GB file into memory.
 
@@ -16,20 +17,21 @@ options(openxlsx.dateFormat = "mm/dd/yyyy")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
+# STATE to summarize — set the two-letter NPDES/state code (e.g. "NY", "VA", "PR").
+STATE      <- "NY"
+state_lc   <- tolower(STATE)
+state_name <- if (STATE %in% state.abb) state.name[match(STATE, state.abb)] else STATE
+
 ZIP_PATH   <- list.files(
   file.path(CWA_ROOT, "data/raw/"),
   pattern    = "eff.*zip",
   full.names = TRUE
 )[1]
 CSV_IN_ZIP <- "NPDES_EFF_VIOLATIONS.csv"
-OUT_FILE   <- sprintf(
-  file.path(CWA_ROOT, "output/eff_violations_va_summary_%s.xlsx"),
-  format(Sys.time(), "%Y-%m-%d_%H%M")
-)
-OUT_CSV    <- sprintf(
-  file.path(CWA_ROOT, "output/eff_violations_va_%s.csv"),
-  format(Sys.time(), "%Y-%m-%d_%H%M")
-)
+OUT_FILE   <- file.path(CWA_ROOT, sprintf("output/eff_violations_%s_summary_%s.xlsx",
+                    state_lc, format(Sys.time(), "%Y-%m-%d_%H%M")))
+OUT_CSV    <- file.path(CWA_ROOT, sprintf("output/eff_violations_%s_%s.csv",
+                    state_lc, format(Sys.time(), "%Y-%m-%d_%H%M")))
 
 CHUNK_SIZE <- 1000000   # rows per chunk — adjust down if memory is tight
 
@@ -41,7 +43,8 @@ ID_COLS <- c(
 
 NUM_COLS <- c(
   "DMR_VALUE_NMBR", "LIMIT_VALUE_STANDARD_UNITS", "EXCEEDENCE_PCT", "DAYS_LATE", "DMR_VALUE_STANDARD_UNITS"
-  # Add more column names here (comma-separate from the line above)
+  # Add column names here for quantitative variables to summarize (mean/median)
+  # that may not be auto-detected as numeric (e.g. arrive as character in CSV)
 )
 
 DATE_COLS <- c(
@@ -49,8 +52,8 @@ DATE_COLS <- c(
   "RNC_DETECTION_DATE", "RNC_RESOLUTION_DATE"
 )
 
-DESCRIPTION   <- "description of effluent (DMR) violations for Virginia facilities (NPDES_ID starting with 'VA')"
-SHEET_SUMMARY <- "One row per parameter/limit violation reported on a Virginia facility's DMR. Filtered from the full national NPDES_EFF_VIOLATIONS file to NPDES_IDs beginning with 'VA'. Includes the parameter, violation type, reported vs. limit value, exceedance %, and noncompliance detection/resolution dates."
+DESCRIPTION   <- sprintf("description of effluent (DMR) violations for %s facilities (NPDES_ID starting with '%s')", state_name, STATE)
+SHEET_SUMMARY <- sprintf("One row per parameter/limit violation reported on a %s facility's DMR. Filtered from the full national NPDES_EFF_VIOLATIONS file to NPDES_IDs beginning with '%s'. Includes the parameter, violation type, reported vs. limit value, exceedance %%, and noncompliance detection/resolution dates.", state_name, STATE)
 
 # ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -155,9 +158,9 @@ date_summary_row <- function(x, var_name) {
              check.names = FALSE, stringsAsFactors = FALSE)
 }
 
-# ── Read zip in chunks, keep only VA rows ────────────────────────────────────
+# ── Read zip in chunks, keep only the selected state's rows ────────────────────────────────────
 
-read_va_rows <- function(zip_path, csv_name, chunk_size) {
+read_state_rows <- function(zip_path, csv_name, chunk_size) {
 
   # Stream directly from the zip — no extraction to disk
   read_cmd <- sprintf("unzip -p %s %s", shQuote(zip_path), shQuote(csv_name))
@@ -165,7 +168,7 @@ read_va_rows <- function(zip_path, csv_name, chunk_size) {
   col_names <- names(fread(cmd = read_cmd, nrows = 0))
   cat("Columns:", paste(col_names, collapse = ", "), "\n\n")
 
-  va_chunks <- list()
+  state_chunks <- list()
   chunk_num  <- 0
   skip_rows  <- 0   # rows already consumed (excluding header)
   total_read <- 0
@@ -190,10 +193,10 @@ read_va_rows <- function(zip_path, csv_name, chunk_size) {
     total_read <- total_read + n_read
     cat(sprintf("  Read %s rows; ", format(n_read, big.mark = ",")))
 
-    va <- chunk[startsWith(as.character(chunk$NPDES_ID), "VA")]
-    cat(sprintf("kept %s VA rows.\n", format(nrow(va), big.mark = ",")))
+    va <- chunk[startsWith(as.character(chunk$NPDES_ID), STATE)]
+    cat(sprintf("kept %s rows.\n", format(nrow(va), big.mark = ",")))
 
-    if (nrow(va) > 0) va_chunks[[length(va_chunks) + 1]] <- va
+    if (nrow(va) > 0) state_chunks[[length(state_chunks) + 1]] <- va
     rm(chunk); gc()
 
     if (n_read < chunk_size) break   # last chunk — we're done
@@ -202,14 +205,14 @@ read_va_rows <- function(zip_path, csv_name, chunk_size) {
 
   cat(sprintf("\nTotal rows read: %s\n", format(total_read, big.mark = ",")))
 
-  if (length(va_chunks) == 0) stop("No Virginia rows found.")
+  if (length(state_chunks) == 0) stop(sprintf("No rows found for state '%s'.", STATE))
 
-  df <- rbindlist(va_chunks)
-  cat(sprintf("Total VA rows: %s\n\n", format(nrow(df), big.mark = ",")))
+  df <- rbindlist(state_chunks)
+  cat(sprintf("Total rows: %s\n\n", format(nrow(df), big.mark = ",")))
   as.data.frame(df)
 }
 
-# ── Build the summary from the filtered VA data ───────────────────────────────
+# ── Build the summary from the filtered state data ───────────────────────────────
 
 build_summary <- function(df) {
 
@@ -245,12 +248,12 @@ build_summary <- function(df) {
   n_dup     <- sum(duplicated(df))
 
   meta <- list(
-    title     = paste0(CSV_IN_ZIP, " (Virginia only): ", DESCRIPTION),
+    title     = paste0(CSV_IN_ZIP, sprintf(" (%s only): ", state_name), DESCRIPTION),
     highlevel = SHEET_SUMMARY,
     summary   = sprintf(
-      "Observations: %s, Distinct VA Permits: %s, Temporal Range: %s, Duplicate Rows: %s",
+      "Observations: %s, Distinct %s Permits: %s, Temporal Range: %s, Duplicate Rows: %s",
       format(n_rows, big.mark = ",", trim = TRUE),
-      n_permits, year_range,
+      STATE, n_permits, year_range,
       format(n_dup, big.mark = ",", trim = TRUE)
     ),
     columns = paste(names(df), collapse = ", ")
@@ -403,13 +406,13 @@ if (!file.exists(ZIP_PATH)) stop("Zip not found: ", ZIP_PATH)
 
 dir.create(dirname(OUT_FILE), showWarnings = FALSE, recursive = TRUE)
 
-df           <- read_va_rows(ZIP_PATH, CSV_IN_ZIP, CHUNK_SIZE)
+df           <- read_state_rows(ZIP_PATH, CSV_IN_ZIP, CHUNK_SIZE)
 fwrite(df, OUT_CSV)
 cat("CSV saved to:", OUT_CSV, "\n")
 summary_list <- build_summary(df)
 
 wb <- createWorkbook()
-write_sheet(wb, "EFF_VIOLATIONS_VA", summary_list)
+write_sheet(wb, paste0("EFF_VIOLATIONS_", STATE), summary_list)
 saveWorkbook(wb, OUT_FILE, overwrite = TRUE)
 
 cat("\nDone! Output saved to:", OUT_FILE, "\n")

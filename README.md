@@ -74,8 +74,7 @@ numeric/date five-number summaries. Output is a timestamped `.xlsx` in `output/`
 | `summarize_npdes.R` | every CSV in `npdes_downloads/` | `npdes_summary_*.xlsx` (one sheet per table) |
 | `summarize_dmrs.R` | `npdes_dmrs_fy2025.zip` (read via `unzip -p`) | `dmrs_summary_*.xlsx` |
 | `summarize_eff_violations.R` | full `NPDES_EFF_VIOLATIONS.csv`, streamed from its zip (chunked, ~16 GB) | `eff_violations_summary_*.xlsx` |
-| `summarize_eff_violations_ny.R` | effluent violations, `NPDES_ID` starts with `NY` | `eff_violations_ny_*.csv` + `_summary_*.xlsx` |
-| `summarize_eff_violations_va.R` | effluent violations, `NPDES_ID` starts with `VA` | `eff_violations_va_*.csv` + `_summary_*.xlsx` |
+| `summarize_eff_violations_state.R` | effluent violations for one state — set `STATE` at the top (e.g. `"NY"`, `"VA"`, `"PR"`) | `eff_violations_<state>_*.csv` + `_summary_*.xlsx` |
 | `summarize_master_general_permits.R` | `ICIS_MASTER_GENERAL_PERMITS.csv` | `master_general_permits_summary_*.xlsx` |
 | `summarize_outfalls_layer.R` | `npdes_outfalls_layer.csv` | `outfalls_layer_summary_*.xlsx` |
 | `summarize_attains.R` | CSVs in `Attains/` | `attains_summary_*.xlsx` |
