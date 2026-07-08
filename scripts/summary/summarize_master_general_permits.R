@@ -1,3 +1,6 @@
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
+
 # summarize_master_general_permits.R
 # Produces the same summary-sheet format as summarize_npdes.R for the
 # ICIS_MASTER_GENERAL_PERMITS.csv file.
@@ -12,8 +15,8 @@ options(openxlsx.dateFormat = "mm/dd/yyyy")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-CSV_PATH <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/data/raw/Master General Permits/ICIS_MASTER_GENERAL_PERMITS.csv"
-OUT_FILE <- sprintf("/Users/alihunter/Library/CloudStorage/Dropbox/CWA/output/master_general_permits_summary_%s.xlsx",
+CSV_PATH <- file.path(CWA_ROOT, "data/raw/Master General Permits/ICIS_MASTER_GENERAL_PERMITS.csv")
+OUT_FILE <- sprintf(file.path(CWA_ROOT, "output/master_general_permits_summary_%s.xlsx"),
                     format(Sys.time(), "%Y-%m-%d_%H%M"))
 
 NROWS_LIMIT <- NULL   # Set to e.g. 100000 to test on a subset first

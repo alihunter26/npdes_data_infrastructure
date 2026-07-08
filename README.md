@@ -25,6 +25,8 @@ Raw data is excluded from version control (see `.gitignore`) due to size.
 
 ```
 CWA/
+├── _paths.R          # central path config (anchors to repo root; no absolute paths)
+├── run_all.R         # one-command rebuild of every panel:  Rscript run_all.R
 ├── data/
 │   ├── raw/          # original ECHO downloads — never modified
 │   │   ├── npdes_downloads/        # 15 core ICIS-NPDES tables
@@ -33,8 +35,9 @@ CWA/
 │   ├── processed/    # cleaned / analysis-ready files (built from code)
 │   └── crosswalks/   # reference tables (parameter, NAICS/SIC, state codes)
 ├── scripts/
-│   ├── summary/      # build per-dataset Excel summary sheets
-│   └── misc./        # data-quality diagnostics and one-off analyses
+│   ├── build/        # numbered panel pipeline (01_… → 07_…), orchestrated by run_all.R
+│   ├── summary/      # per-dataset Excel summary sheets
+│   └── diagnostics/  # data-quality checks and one-off analyses
 ├── output/           # generated summaries (.xlsx) and flagged/extract CSVs
 │   ├── tables/       # diagnostic CSV extracts
 │   └── figures/
@@ -45,6 +48,22 @@ CWA/
 ```
 
 ## Scripts
+
+### `scripts/build/` — panel pipeline
+
+Numbered build steps that turn the raw ECHO tables into the analysis panels in
+`data/processed/`. Rebuild everything with **`Rscript run_all.R`** (sources each step in
+order in an isolated environment; steps pass data via CSVs on disk), or run any step alone.
+
+| Step | Output |
+|---|---|
+| `01_build_npdes_panel.R` | base facility-year enforcement panel |
+| `02_build_crosswalk_npdesid_externalpermit.R` | NPDES_ID ↔ external permit crosswalk |
+| `03_facility_uin_multiple_npdes.R` | FRS lookup: facilities holding >1 NPDES ID |
+| `04_filter_major_individual_facilities.R` | major + individual filter of the base panel |
+| `05_build_facility_panel_major_individual.R` | FRS-facility panel (never-minor, entry/exit) |
+| `06_build_permit_panel_major_continuous.R` | permit panel: major every year (balanced) |
+| `07_build_permit_panel_major_entryexit.R` | permit panel: never-minor (entry/exit) |
 
 ### `scripts/summary/` — dataset summaries
 
@@ -57,7 +76,7 @@ numeric/date five-number summaries. Output is a timestamped `.xlsx` in `output/`
 | `summarize_npdes.R` | every CSV in `npdes_downloads/` | `npdes_summary_*.xlsx` (one sheet per table) |
 | `summarize_dmrs.R` | `npdes_dmrs_fy2025.zip` (read via `unzip -p`) | `dmrs_summary_*.xlsx` |
 | `summarize_eff_violations.R` | full `NPDES_EFF_VIOLATIONS.csv`, streamed from its zip (chunked, ~16 GB) | `eff_violations_summary_*.xlsx` |
-| `summarize_eff_violations_ny` | effluent violations, `NPDES_ID` starts with `NY` | `eff_violations_ny_*.csv` + `_summary_*.xlsx` |
+| `summarize_eff_violations_ny.R` | effluent violations, `NPDES_ID` starts with `NY` | `eff_violations_ny_*.csv` + `_summary_*.xlsx` |
 | `summarize_eff_violations_va.R` | effluent violations, `NPDES_ID` starts with `VA` | `eff_violations_va_*.csv` + `_summary_*.xlsx` |
 | `summarize_master_general_permits.R` | `ICIS_MASTER_GENERAL_PERMITS.csv` | `master_general_permits_summary_*.xlsx` |
 | `summarize_outfalls_layer.R` | `npdes_outfalls_layer.csv` | `outfalls_layer_summary_*.xlsx` |
@@ -68,7 +87,7 @@ cells (e.g. the literal space ECHO uses for "blank" in QNCR `HLRNC`) to `NA`, so
 `% Missing` column and the frequent-values list stay consistent. Set its `ONLY_FILE`
 variable to summarize a single table instead of all of them.
 
-### `scripts/misc./` — diagnostics & checks
+### `scripts/diagnostics/` — diagnostics & checks
 
 | Script | Purpose |
 |---|---|
@@ -80,7 +99,7 @@ variable to summarize a single table instead of all of them.
 | `scheduled_difference.r` | Days between scheduled and actual milestone dates in compliance-schedule violations |
 | `read_in_file.r` | Scratch helper to read a flagged-output CSV |
 
-`scripts/misc./preview_dmr2025.R` is a one-off snippet to peek at the DMR zip.
+`scripts/diagnostics/preview_dmr2025.R` is a one-off snippet to peek at the DMR zip.
 
 ## Conventions
 
@@ -94,12 +113,12 @@ variable to summarize a single table instead of all of them.
   literal space rather than an empty string. Don't treat blanks as missing-at-random.
   See `docs/notes.md`.
 
-## Housekeeping / known issues
+## Housekeeping
 
-- All scripts use the current Dropbox path (`~/Library/CloudStorage/Dropbox/CWA/`) and
-  write their outputs to `output/`.
-- The `scripts/misc.` folder name has a trailing dot (likely unintended) — left as-is
-  for now since renaming it would change every reference.
+- **Portable paths.** Scripts no longer hardcode absolute paths — each sources `_paths.R`,
+  which anchors to the repo root (the folder containing `.git`) and defines `CWA_ROOT`,
+  `RAW_DIR`, `DMR_DIR`, `PROC_DIR`, and `OUT_DIR`. The repo runs unchanged on any clone or
+  machine; run scripts from inside the repo (e.g. `Rscript run_all.R`).
 
 ## Context
 

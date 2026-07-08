@@ -1,3 +1,6 @@
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
+
 # eff_flagged.R
 # --------------------------------------------------------------------------
 # Reads a state's effluent-violation CSV and writes out only the SUSPICIOUS
@@ -22,7 +25,7 @@ args  <- commandArgs(trailingOnly = TRUE)
 if (length(args) >= 1) STATE <- args[1]
 STATE <- tolower(STATE)
 
-out_dir <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/output"
+out_dir <- file.path(CWA_ROOT, "output")
 
 # ---- Find the newest effluent-violation file for that state -----------------
 pattern <- sprintf("^eff_violations_%s_.*\\.csv$", STATE)

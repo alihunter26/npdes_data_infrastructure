@@ -1,3 +1,6 @@
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
+
 # summarize_attains.R
 # Produces the same summary-sheet format as summarize_npdes.R for the
 # CSV files in the Attains folder.
@@ -12,8 +15,8 @@ options(openxlsx.dateFormat = "mm/dd/yyyy")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-DATA_DIR <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/data/raw/Attains"
-OUT_FILE <- sprintf("/Users/alihunter/Library/CloudStorage/Dropbox/CWA/output/attains_summary_%s.xlsx",
+DATA_DIR <- file.path(CWA_ROOT, "data/raw/Attains")
+OUT_FILE <- sprintf(file.path(CWA_ROOT, "output/attains_summary_%s.xlsx"),
                     format(Sys.time(), "%Y-%m-%d_%H%M"))
 
 # Columns that are identifiers or free-text — skip them

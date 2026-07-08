@@ -1,3 +1,6 @@
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
+
 # Count exact duplicate rows (every column identical) in
 # NPDES_INFORMAL_ENFORCEMENT_ACTIONS. Read-only.
 #
@@ -5,8 +8,8 @@
 #   total rows        = unique rows + redundant copies
 #   redundant copies  = sum(duplicated(x))   <- the "exact duplicate" count
 
-data_dir <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/data/raw/npdes_downloads"
-out_dir  <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/output/tables"
+data_dir <- file.path(CWA_ROOT, "data/raw/npdes_downloads")
+out_dir  <- file.path(CWA_ROOT, "output/tables")
 f <- file.path(data_dir, "NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv")
 
 x <- read.csv(f, colClasses = "character")  # no coercion, so every column compares as-is

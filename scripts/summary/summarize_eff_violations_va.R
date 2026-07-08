@@ -1,3 +1,6 @@
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
+
 # summarize_eff_violations_va.R
 # Reads NPDES_EFF_VIOLATIONS.csv from its zip in chunks, keeps only rows
 # where NPDES_ID starts with "VA", then produces the standard summary sheet.
@@ -14,17 +17,17 @@ options(openxlsx.dateFormat = "mm/dd/yyyy")
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 ZIP_PATH   <- list.files(
-  "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/data/raw/",
+  file.path(CWA_ROOT, "data/raw/"),
   pattern    = "eff.*zip",
   full.names = TRUE
 )[1]
 CSV_IN_ZIP <- "NPDES_EFF_VIOLATIONS.csv"
 OUT_FILE   <- sprintf(
-  "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/output/eff_violations_va_summary_%s.xlsx",
+  file.path(CWA_ROOT, "output/eff_violations_va_summary_%s.xlsx"),
   format(Sys.time(), "%Y-%m-%d_%H%M")
 )
 OUT_CSV    <- sprintf(
-  "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/output/eff_violations_va_%s.csv",
+  file.path(CWA_ROOT, "output/eff_violations_va_%s.csv"),
   format(Sys.time(), "%Y-%m-%d_%H%M")
 )
 

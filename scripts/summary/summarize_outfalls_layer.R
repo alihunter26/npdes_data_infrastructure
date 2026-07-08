@@ -1,3 +1,6 @@
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
+
 # summarize_outfalls_layer.R
 # Produces the same summary-sheet format as summarize_npdes.R for the
 # npdes_outfalls_layer.csv file.
@@ -12,8 +15,8 @@ options(openxlsx.dateFormat = "mm/dd/yyyy")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-CSV_PATH <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/data/raw/npdes_outfalls_layer.csv"
-OUT_FILE <- sprintf("/Users/alihunter/Library/CloudStorage/Dropbox/CWA/output/outfalls_layer_summary_%s.xlsx",
+CSV_PATH <- file.path(CWA_ROOT, "data/raw/npdes_outfalls_layer.csv")
+OUT_FILE <- sprintf(file.path(CWA_ROOT, "output/outfalls_layer_summary_%s.xlsx"),
                     format(Sys.time(), "%Y-%m-%d_%H%M"))
 
 # Columns that are identifiers or free-text — skip them

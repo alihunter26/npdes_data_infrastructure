@@ -1,7 +1,10 @@
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
+
 # Why are RNC fields ~61% blank in NPDES_CS_VIOLATIONS?
 # Test whether RNC population tracks permit-level RNC tracking / major-minor.
 # Read-only.
-d <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/data/raw/npdes_downloads"
+d <- file.path(CWA_ROOT, "data/raw/npdes_downloads")
 v <- read.csv(file.path(d, "NPDES_CS_VIOLATIONS.csv"), colClasses = "character")
 p <- read.csv(file.path(d, "ICIS_PERMITS.csv"), colClasses = "character")
 bl <- function(x) is.na(x) | trimws(x) == ""

@@ -1,3 +1,6 @@
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
+
 # Show duplicate rows in NPDES_FORMAL_ENFORCEMENT_ACTIONS that are identical on
 # every column EXCEPT ENF_TYPE_CODE and ENF_TYPE_DESC.
 #
@@ -5,8 +8,8 @@
 # recorded once per statutory authority cited -> the multi-statute repeats.
 # Read-only on raw data. Writes a timestamped CSV to output/tables/.
 
-data_dir <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/data/raw/npdes_downloads"
-out_dir  <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/output/tables"
+data_dir <- file.path(CWA_ROOT, "data/raw/npdes_downloads")
+out_dir  <- file.path(CWA_ROOT, "output/tables")
 f <- file.path(data_dir, "NPDES_FORMAL_ENFORCEMENT_ACTIONS.csv")
 
 x <- read.csv(f, colClasses = "character")  # no coercion of IDs/codes/amounts

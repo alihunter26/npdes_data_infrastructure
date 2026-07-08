@@ -14,10 +14,12 @@ Thumbs.db
 data/processed/*.csv
 data/crosswalks/*.csv
 
-# Generated summary / flag outputs (rebuilt from scripts)
+# Generated summary / flag outputs (rebuilt from scripts) — incl. nested subfolders
 output/*.xlsx
 output/*.csv
 output/tables/*.csv
+output/**/*.csv
+output/**/*.xlsx
 
 # Excel temporary lock files
 ~$*

@@ -1,7 +1,10 @@
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
+
 # Diagnostic: why do (NPDES_ID, ENF_IDENTIFIER) pairs repeat in
 # NPDES_FORMAL_ENFORCEMENT_ACTIONS? Read-only on raw data.
 
-data_dir <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/data/raw/npdes_downloads"
+data_dir <- file.path(CWA_ROOT, "data/raw/npdes_downloads")
 f <- file.path(data_dir, "NPDES_FORMAL_ENFORCEMENT_ACTIONS.csv")
 
 x <- read.csv(f, colClasses = "character")  # keep IDs/codes as-is, no coercion
@@ -45,3 +48,5 @@ for (k in head(dup_keys, 4)) {
   cat("\n---", k, "---\n")
   print(dups[dups$pair == k, cols], row.names = FALSE)
 }
+
+duplicates <- read.csv(file.path(CWA_ROOT, "output/tables/dup_rows_by_enf_type_2026-06-22_1217.csv"))

@@ -1,3 +1,6 @@
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
+
 # summarize_dmrs.R
 # Produces the same summary-sheet format as summarize_npdes.R for the
 # NPDES_DMRS_FY2025.csv file, which lives inside a zip on disk.
@@ -16,9 +19,9 @@ options(openxlsx.dateFormat = "mm/dd/yyyy")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-ZIP_PATH   <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/data/raw/npdes_dmrs_fy2025.zip"
+ZIP_PATH   <- file.path(CWA_ROOT, "data/raw/npdes_dmrs_fy2025.zip")
 CSV_IN_ZIP <- "NPDES_DMRS_FY2025.csv"
-OUT_FILE   <- sprintf("/Users/alihunter/Library/CloudStorage/Dropbox/CWA/output/dmrs_summary_%s.xlsx",
+OUT_FILE   <- sprintf(file.path(CWA_ROOT, "output/dmrs_summary_%s.xlsx"),
                       format(Sys.time(), "%Y-%m-%d_%H%M"))
 
 # Set to a number (e.g. 500000) to read only that many rows while testing.

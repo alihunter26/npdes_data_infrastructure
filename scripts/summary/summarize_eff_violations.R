@@ -1,3 +1,6 @@
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
+
 # summarize_eff_violations.R
 # Produces the same summary-sheet format as summarize_npdes.R, but for the
 # (very large) NPDES_EFF_VIOLATIONS.csv file.
@@ -22,12 +25,12 @@ options(openxlsx.dateFormat = "mm/dd/yyyy")
 # Effluent violations live inside a zip in data/raw/ — stream straight from it
 # (via `unzip -p`) rather than extracting the ~16 GB CSV to disk first.
 ZIP_PATH    <- list.files(
-  "/Users/alihunter/Library/CloudStorage/Dropbox/CWA/data/raw/",
+  file.path(CWA_ROOT, "data/raw/"),
   pattern    = "eff.*zip",
   full.names = TRUE
 )[1]
 CSV_IN_ZIP  <- "NPDES_EFF_VIOLATIONS.csv"
-OUT_FILE    <- sprintf("/Users/alihunter/Library/CloudStorage/Dropbox/CWA/output/eff_violations_summary_%s.xlsx",
+OUT_FILE    <- sprintf(file.path(CWA_ROOT, "output/eff_violations_summary_%s.xlsx"),
                        format(Sys.time(), "%Y-%m-%d_%H%M"))
 
 # Set to a number (e.g. 1000000) to only read that many rows while testing.
