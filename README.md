@@ -93,8 +93,6 @@ variable to summarize a single table instead of all of them.
 | `dup_enforcement_pairs.R` | Diagnoses why `(NPDES_ID, ENF_IDENTIFIER)` pairs repeat in formal enforcement |
 | `dup_rows_by_enf_type.R` | Extracts formal-enforcement rows identical except `ENF_TYPE_CODE`/`DESC` (one action recorded once per statute) → `output/tables/` |
 | `cs_rnc_missingness.R` | Tests why RNC fields are ~61% blank in compliance-schedule violations (joins permit major/minor + RNC-tracking flags) |
-| `scheduled_difference.r` | Days between scheduled and actual milestone dates in compliance-schedule violations |
-| `read_in_file.r` | Scratch helper to read a flagged-output CSV |
 
 `scripts/diagnostics/preview_dmr2025.R` is a one-off snippet to peek at the DMR zip.
 
