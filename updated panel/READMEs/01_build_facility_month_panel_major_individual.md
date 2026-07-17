@@ -1,5 +1,7 @@
 # README — `01_build_facility_month_panel_major_individual.R`
 
+** verified by Ali 7/17 **
+
 *Step 1 of the facility-by-month panel build. Input: raw ICIS-NPDES permit &
 facility files. Output: the base facility × month spine with facility attributes.*
 
@@ -64,12 +66,11 @@ domain. `TODO:` record download date / ECHO refresh version.
 
 ## Decisions and Assumptions
 
-The script states eight numbered assumptions (PI-guided). Verbatim intent:
+The script states eight numbered assumptions:
 
 1. **Ever-major, not always-major.** A facility qualifies if *any* linked individual
    permit bore the `M` (major) flag in *any* version — not a requirement that it was
-   always major. (This differs from `scripts/build/03_build_facility_panel_major_individual.R`,
-   which requires *always* major.)
+   always major. (875 facilities shift beween major and minor at some point in time period -- they are all included)
 2. **Permit window = earliest open × latest close.** Opening date = earliest
    non-missing of {`EFFECTIVE_DATE`, `ISSUE_DATE`, `ORIGINAL_ISSUE_DATE`}; closing
    date = latest non-missing of {`EXPIRATION_DATE`, `TERMINATION_DATE`,
@@ -79,7 +80,7 @@ The script states eight numbered assumptions (PI-guided). Verbatim intent:
 4. **Facility window = union across *all* its individual permits** (not just the major
    ones): earliest opening to latest closing across every linked individual permit.
 5. **Blank `FACILITY_UIN` ⇒ use `NPDES_ID`** as the facility identifier. No rows are
-   silently dropped; such facilities appear with `FACILITY_UIN` = the `NPDES_ID` value.
+   silently dropped; such facilities appear with `FACILITY_UIN` = the `NPDES_ID` value. (all rows without FACILITY_UIN get filtered out later -- not a large issue)
 6. **Multiple permits per facility ⇒ semicolon list.** All individual `NPDES_ID`s ever
    linked to a qualifying facility are `paste(sort(unique(...)), collapse = "; ")` into
    one string; the facility-month remains a single row.
