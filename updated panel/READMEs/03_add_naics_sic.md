@@ -2,6 +2,8 @@
 
 ** verified by Ali 7/17 **
 
+question: how many have multiple NAICS or SIC? script currently just does primary code -- should it include all? 
+
 *Step 3 of the facility-by-month panel build. Input: step-02 panel + raw NAICS/SIC.
 Output: the panel with one NAICS and one SIC code per facility.*
 
