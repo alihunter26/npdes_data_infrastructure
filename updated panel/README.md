@@ -15,9 +15,9 @@ the next; step 07 is a standalone missingness diagnostic.
 | 01 | `01_build_facility_month_panel_major_individual.R` | base facility × month spine + facility attributes |
 | 02 | `02_add_inspections.R` | inspection counts by type & conductor |
 | 03 | `03_add_naics_sic.R` | NAICS / SIC industry codes |
-| 04 | `04_add_violations.R` | PS/CS/SE + TSS effluent violation counts |
+| 04 | `04_add_violations.R` | PS/CS/SE violation counts |
 | 05 | `05_add_enforcement.R` | formal/informal enforcement counts + penalty $ |
-| 06 | `06_add_effluent_violations.R` | all-parameter effluent codes D80/D90/E90 (final panel) |
+| 06 | `06_add_effluent_violations.R` | all effluent-violation counts: TSS subset + all-parameter D80/D90/E90 (final panel) |
 | 07 | `07_missingness_audit_major_individual.R` | missingness audit (diagnostic) |
 
 **Per-script documentation** — inputs, outputs, and every decision/assumption — lives in
@@ -27,6 +27,9 @@ the next; step 07 is a standalone missingness diagnostic.
 
 - `read_permits.R` — small helper for reading the permits table.
 - `summarize_violation_types.R` — tabulates violation-type frequencies → `output/tables/`.
+- `restrict_06_to_fy2025.R` — restricts the step-06 final panel to **federal FY2025**
+  (Oct 2024 – Sep 2025; set `FY_CALENDAR <- TRUE` for calendar 2025). Pure row filter,
+  all columns preserved → `data/processed/06_..._effluent_fy2025.csv`. Run after step 06.
 
 ## Run order
 

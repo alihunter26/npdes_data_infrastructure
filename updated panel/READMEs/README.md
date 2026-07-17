@@ -14,9 +14,9 @@ guidance). Each file is self-contained; export any of them to PDF from VS Code w
 | 01 | `01_build_facility_month_panel_major_individual.R` | [01](01_build_facility_month_panel_major_individual.md) | base facility×month spine + facility attributes |
 | 02 | `02_add_inspections.R` | [02](02_add_inspections.md) | inspection counts by type & conductor |
 | 03 | `03_add_naics_sic.R` | [03](03_add_naics_sic.md) | NAICS / SIC industry codes |
-| 04 | `04_add_violations.R` | [04](04_add_violations.md) | PS/CS/SE + TSS effluent violation counts |
+| 04 | `04_add_violations.R` | [04](04_add_violations.md) | PS/CS/SE violation counts |
 | 05 | `05_add_enforcement.R` | [05](05_add_enforcement.md) | formal/informal enforcement counts + penalty $ |
-| 06 | `06_add_effluent_violations.R` | [06](06_add_effluent_violations.md) | all-parameter effluent codes D80/D90/E90 |
+| 06 | `06_add_effluent_violations.R` | [06](06_add_effluent_violations.md) | all effluent-violation counts: TSS subset + all-parameter D80/D90/E90 |
 | 07 | `07_missingness_audit_major_individual.R` | [07](07_missingness_audit_major_individual.md) | missingness audit (diagnostic, not a panel step) |
 
 ## Pipeline order and conventions (shared by all steps)

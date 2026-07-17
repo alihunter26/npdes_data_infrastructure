@@ -37,17 +37,31 @@ public domain. `TODO:` download date. ☒ All data publicly available.
 
 ## Description of program
 
-Rebuild the crosswalk; for each file, date the actions, place them in a month,
-de-duplicate to one row per action, and count distinct actions per facility-month
-overall and by type/activity/agency/official-flag. De-duplicate penalties to one value
-per action, then sum per facility-month with NA-preserving aggregators. Left-join onto
-the panel; count columns get 0 where nothing occurred, penalty-dollar columns get NA.
+Rebuild the crosswalk; for each file, date the actions and place them in a month. The two
+files are counted **differently, by design**: **formal** counts are **distinct actions**
+(`uniqueN(ENF_IDENTIFIER)`), while **informal** counts are **per raw row** (`.N` /
+`sum(<flag>)`) — each informal row, including exact duplicates, counts as one action (see
+Assumptions 1 & 1a). De-duplicate penalties to one value per action, then sum per
+facility-month with NA-preserving aggregators. Left-join onto the panel; count columns get
+0 where nothing occurred, penalty-dollar columns get NA.
 
 ## Decisions and Assumptions
 
-1. **Action grain = `ENF_IDENTIFIER`.** Raw files have multiple rows per action (per
-   permit and/or per type). Every count uses **distinct `ENF_IDENTIFIER`** (formal:
-   ~112 k rows → ~104 k actions).
+1. **Formal action grain = `ENF_IDENTIFIER`.** The formal file has multiple rows per
+   action (one per permit and/or per `ENF_TYPE_CODE`): 111,816 rows → 103,989 actions,
+   with **0 exact-duplicate rows**. Formal counts use **distinct `ENF_IDENTIFIER`**, so
+   multi-permit / multi-type fan-out is never over-counted.
+
+1a. **Informal is counted PER RAW ROW — deliberate (PI decision).** Each row of the
+   informal file counts as one action (`N_INFORMAL_ACTIONS = .N`; breakouts via
+   `sum(<flag>)`). **Consequence to know:** the informal file is 821,977 rows but only
+   474,600 distinct `ENF_IDENTIFIER`s, because **345,822 rows (42%) are byte-identical
+   duplicates** (all 11 fields equal). Under per-row counting, an action recorded 3×
+   identically counts as **3**. This inflates informal totals ≈1.7× vs distinct-action
+   counting — on the current panel, **93,470** informal rows vs **56,356** distinct
+   actions — and is an **intentional choice, not an oversight**. To revert to distinct
+   actions, switch the informal `.N` / `sum(...)` back to `uniqueN(ENF_IDENTIFIER[...])`
+   in STEP 4 of the script.
 2. **Type/activity breakouts can overlap** (PI naming). An action with several
    `ENF_TYPE_CODE`s is counted in each matching column, so the type columns are **not** a
    partition and needn't sum to the total (many codes aren't broken out). `AGENCY` and
@@ -99,8 +113,8 @@ inner-join to the crosswalk drops unroutable `NPDES_ID`s.
   `N_SCWAAO`, `N_309A`, `N_STATE_FORMAL`, `N_EPA_FORMAL`.
 - **Formal penalties:** `FED_PENALTY` (sum $ or NA), `N_FED_PENALTY_ASSESSED`,
   `STATE_PENALTY` (sum $ or NA), `N_STATE_PENALTY_ASSESSED`.
-- **Informal counts:** `N_INFORMAL_ACTIONS`, `N_LOVWL`, `N_NOV`, `N_NONC`, `N_AER`,
-  `N_OFFICIAL_INFORMAL`, `N_UNOFFICIAL_INFORMAL`.
+- **Informal counts (per raw row — see Assumption 1a):** `N_INFORMAL_ACTIONS`, `N_LOVWL`,
+  `N_NOV`, `N_NONC`, `N_AER`, `N_OFFICIAL_INFORMAL`, `N_UNOFFICIAL_INFORMAL`.
 
 ## Instructions to run
 
