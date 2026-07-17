@@ -26,3 +26,6 @@ output/**/*.xlsx
 
 # R app history
 .Rapp.history
+
+# Cloned external reference material (its own git repo; refresh with `git pull`)
+lab-guide-wiki/

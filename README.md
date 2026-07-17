@@ -69,6 +69,26 @@ These all produce the **same summary-sheet format**: per variable, the percent m
 distinct-category counts, top frequent values (with code → description lookups), and
 numeric/date five-number summaries. Output is a timestamped `.xlsx` in `output/`.
 
+**`summarize.R` is the single entry point** — one script that builds any of these
+summaries from a dataset registry, so the shared styles / helpers / worksheet writer
+live in one place instead of being copy-pasted across scripts:
+
+```
+Rscript scripts/summary/summarize.R <dataset> [arg]
+#   <dataset>: npdes | dmrs | attains | eff_violations | eff_violations_state
+#              limits | master_general_permits | outfalls_layer   (or "all")
+#   [arg]:     state code for eff_violations_state (default NY);
+#              a single filename for npdes (default: NPDES_QNCR_HISTORY.csv)
+```
+
+Each dataset is a config entry in the `DATASETS` list (id/date columns, descriptions,
+distinct-count label, reader). To add or adjust a summary, edit that entry — not a
+whole script. Output verified byte-identical to the old per-dataset scripts, with one
+intentional layout change: every sheet now uses the fuller 8-column categorical /
+9-column numeric tables (a trailing, always-blank **Missing Explanation** column that
+some sheets already had) and a single "Notes" footer. No summary statistic changes
+value. The old per-dataset scripts below are kept as a reference and still run.
+
 | Script | Input | Output |
 |---|---|---|
 | `summarize_npdes.R` | every CSV in `npdes_downloads/` | `npdes_summary_*.xlsx` (one sheet per table) |

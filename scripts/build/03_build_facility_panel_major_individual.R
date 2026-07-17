@@ -34,9 +34,10 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #      facilities with >1 permit.)
 #   4. SNAPSHOT ATTRIBUTES. Location, NAICS, SIC are taken from one representative
 #      record / primary code and broadcast across the facility's years.
-#   5. ENFORCEMENT SCOPE. Only actions on the facility's individual permits are
-#      counted (not any general-permit coverage the site also holds), and only
-#      those occurring in the facility's active-major years.
+#   5. ENFORCEMENT / INSPECTION SCOPE. Only actions and inspections on the
+#      facility's individual permits are counted (not any general-permit coverage
+#      the site also holds), and only those occurring in the facility's
+#      active-major years.
 #
 # Source: EPA ECHO bulk "ICIS-NPDES" download (files already unzipped locally).
 # Output: data/processed/facility_panel_major_individual_2005_2025.csv
@@ -134,6 +135,19 @@ enf_year <- actions[, .(
   by = .(FACILITY_UIN, year)]
 enf_year[, total_penalty := fed_penalty + state_local_penalty]
 
+# ---- 4b. Inspections -> facility-year (routed like enforcement) ---------------
+# Same scope as enforcement: inspections on the facility's individual permits
+# only, routed via xwalk, dated by begin (fallback end) date, within the window.
+inspections <- rd("NPDES_INSPECTIONS.csv",
+                  c("NPDES_ID", "ACTUAL_BEGIN_DATE", "ACTUAL_END_DATE"))
+inspections <- inspections[, .(
+    NPDES_ID = trimws(NPDES_ID),
+    year = year(fcoalesce(mdy(ACTUAL_BEGIN_DATE, quiet = TRUE),
+                          mdy(ACTUAL_END_DATE,   quiet = TRUE))))]
+inspections <- inspections[!is.na(year) & year >= YEAR_MIN & year <= YEAR_MAX]
+inspections <- xwalk[inspections, on = "NPDES_ID", nomatch = 0]   # route to facility
+insp_year   <- unique(inspections[, .(FACILITY_UIN, year)])[, inspected := 1L]
+
 # ---- 5. Inclusion: >=1 action within active-major years; final spine ---------
 enf_in   <- enf_year[spine_all, on = c("FACILITY_UIN", "year"), nomatch = 0]
 included <- unique(enf_in$FACILITY_UIN)
@@ -165,6 +179,8 @@ panel <- fac_attr[panel,  on = "FACILITY_UIN"]
 panel <- n_permits[panel, on = "FACILITY_UIN"]
 panel <- naics_fac[panel, on = "FACILITY_UIN"]
 panel <- sic_fac[panel,   on = "FACILITY_UIN"]
+panel <- insp_year[panel, on = c("FACILITY_UIN", "year")]
+panel[is.na(inspected), inspected := 0L]
 for (c in c("n_formal_actions", "n_informal_actions", "n_enf_actions_total"))
   panel[is.na(get(c)), (c) := 0L]
 for (c in c("fed_penalty", "state_local_penalty", "total_penalty"))
@@ -174,7 +190,7 @@ panel[, any_enforcement := as.integer(n_enf_actions_total > 0)]
 setcolorder(panel, c("FACILITY_UIN", "year", "FACILITY_NAME", "LOCATION_ADDRESS",
                      "CITY", "STATE_CODE", "ZIP", "COUNTY_CODE", "FAC_LAT", "FAC_LONG",
                      "NAICS_CODE", "SIC_CODE", "n_individual_permits", "any_enforcement",
-                     "n_formal_actions", "n_informal_actions", "n_enf_actions_total",
+                     "inspected", "n_formal_actions", "n_informal_actions", "n_enf_actions_total",
                      "fed_penalty", "state_local_penalty", "total_penalty", "enf_type_list"))
 setorder(panel, FACILITY_UIN, year)
 fwrite(panel, OUT_PATH)
@@ -185,6 +201,7 @@ message("=== facility panel: always-major (never minor), entry/exit allowed ==="
 message("Qualifying facilities (never minor, ever major): ", length(qual_fac))
 message("Included facilities (>=1 action while active)  : ", length(included))
 message("Panel rows (unbalanced)                        : ", nrow(panel))
+message("Facility-years with >=1 inspection             : ", sum(panel$inspected))
 message("Years per facility: min ", min(yrs_per_fac), " max ", max(yrs_per_fac),
         " (entry/exit -> not all 21)")
 message("Written to: ", OUT_PATH)
