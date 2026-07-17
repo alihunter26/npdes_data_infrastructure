@@ -1,5 +1,7 @@
 # README — `02_add_inspections.R`
 
+** verified by Ali 7/17 **
+
 *Step 2 of the facility-by-month panel build. Input: step-01 spine + raw inspections.
 Output: the panel with per-facility-month inspection counts.*
 
@@ -79,6 +81,13 @@ parseable date are dropped. Empty facility-months are filled with `0L`.
 
 `N_INSPECTIONS_TOTAL`, `N_CEI`, `N_ROS`, `N_SA1`, `N_AU1`, `N_STATE_INSPECTIONS`,
 `N_EPA_INSPECTIONS` (integer counts).
+
+| Code | Description |
+|------|-------------|
+| CEI | Evaluation |
+| ROS | Reconnaissance without Sampling |
+| SA1 | Sampling |
+| AU1 | Audit |
 
 ## Instructions to run
 
