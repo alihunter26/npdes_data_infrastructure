@@ -1,5 +1,7 @@
 # README — `03_add_naics_sic.R`
 
+** verified by Ali 7/17 **
+
 *Step 3 of the facility-by-month panel build. Input: step-02 panel + raw NAICS/SIC.
 Output: the panel with one NAICS and one SIC code per facility.*
 
