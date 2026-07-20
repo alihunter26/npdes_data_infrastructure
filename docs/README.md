@@ -2,7 +2,7 @@
 
 Prose reference material: data dictionaries, codebooks, and running notes on data
 quirks, definitions, and modeling decisions. These are the human-readable companion to
-the code in `scripts/` and `updated panel/`.
+the code in `scripts/` and `scripts/build panel/`.
 
 ## Contents
 

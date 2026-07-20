@@ -79,7 +79,7 @@ merged via `Reduce(..., all = TRUE)` (full outer); NA → `0L`.
 ## Instructions to run
 
 ```bash
-Rscript "updated panel/04_add_violations.R"
+Rscript "scripts/build panel/04_add_violations.R"
 ```
 Run **after** step 03.
 

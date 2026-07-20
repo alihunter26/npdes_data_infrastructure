@@ -35,6 +35,7 @@ CWA/
 │   ├── processed/    # cleaned / analysis-ready files (built from code)
 │   └── crosswalks/   # reference tables (parameter, NAICS/SIC, state codes)
 ├── scripts/
+│   ├── build panel/  # facility-by-month panel pipeline (01–07); see its READMEs/
 │   ├── summary/      # per-dataset Excel summary sheets
 │   └── diagnostics/  # data-quality checks and one-off analyses
 │   # NOTE: the former scripts/build/ pipeline was moved OUT of this repo to the
@@ -56,7 +57,7 @@ CWA/
 > working folder (`../EIL Summer/build`), outside this repository. It holds the
 > facility-**year** / permit builders (`01–05`) plus `build_effluent_violations_npdes_month_panel.R`
 > and `filter_dmr_...R` — the latter two still produce inputs consumed by the
-> `updated panel/` pipeline (their output CSVs live in `data/processed/`), so keep that
+> `scripts/build panel/` pipeline (their output CSVs live in `data/processed/`), so keep that
 > folder available when you need to rebuild those inputs.
 
 The (relocated) numbered build steps turn the raw ECHO tables into the analysis panels

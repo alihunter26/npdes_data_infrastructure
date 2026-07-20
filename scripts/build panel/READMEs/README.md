@@ -1,6 +1,6 @@
-# READMEs — facility-by-month panel build (`updated panel/`)
+# READMEs — facility-by-month panel build (`scripts/build panel/`)
 
-This folder documents the seven numbered scripts in `updated panel/` that build the
+This folder documents the seven numbered scripts in `scripts/build panel/` that build the
 **facility-by-month panel** of major, individually-permitted NPDES facilities,
 2005–2025. There is one README per script, written to the
 [Social Science Data Editors](https://social-science-data-editors.github.io/guidance/)

@@ -103,7 +103,7 @@ crosswalk drops unroutable `NPDES_ID`s; NA → `0L`.
 ## Instructions to run
 
 ```bash
-Rscript "updated panel/06_add_effluent_violations.R"
+Rscript "scripts/build panel/06_add_effluent_violations.R"
 ```
 Run **after** step 05, **after** building the condensed source with
 `build_effluent_violations_npdes_month_panel.R` (now in `../EIL Summer/build/`), and with

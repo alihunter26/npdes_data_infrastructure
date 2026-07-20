@@ -92,7 +92,7 @@ parseable date are dropped. Empty facility-months are filled with `0L`.
 ## Instructions to run
 
 ```bash
-Rscript "updated panel/02_add_inspections.R"
+Rscript "scripts/build panel/02_add_inspections.R"
 ```
 Run **after** step 01 (and after resolving the `01_` filename mismatch).
 

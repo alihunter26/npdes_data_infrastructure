@@ -14,7 +14,7 @@ anywhere inside the repo.
 > **Moved out:** the former `build/` subfolder (facility-year / permit builders `01–05`
 > plus `build_effluent_violations_npdes_month_panel.R` and `filter_dmr_...R`) was
 > relocated to the **EIL Summer** working folder (`../EIL Summer/build`), outside this
-> repo. Its two effluent/DMR builders still produce inputs used by `updated panel/`.
+> repo. Its two effluent/DMR builders still produce inputs used by `scripts/build panel/`.
 
 ## Loose top-level scripts
 
@@ -27,7 +27,7 @@ checks that write extracts to `output/` (some names overlap with `diagnostics/` 
 ## Related pipeline (elsewhere)
 
 The facility-**month** panel (majors, individual) is built by the numbered scripts in
-the top-level **`updated panel/`** folder, documented in `updated panel/READMEs/`. That
+the top-level **`scripts/build panel/`** folder, documented in `scripts/build panel/READMEs/`. That
 is separate from `scripts/build/` (which builds the facility-year / permit panels).
 
 ## Conventions

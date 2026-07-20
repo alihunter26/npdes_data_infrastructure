@@ -1,4 +1,4 @@
-# `updated panel/` — facility-by-month panel pipeline
+# `scripts/build panel/` — facility-by-month panel pipeline
 
 The seven numbered scripts that build the **facility-by-month panel** of major,
 individually-permitted NPDES facilities, 2005–2025, from the raw ECHO/ICIS-NPDES data
@@ -34,10 +34,10 @@ the next; step 07 is a standalone missingness diagnostic.
 ## Run order
 
 ```bash
-Rscript "updated panel/01_build_facility_month_panel_major_individual.R"
-Rscript "updated panel/02_add_inspections.R"
+Rscript "scripts/build panel/01_build_facility_month_panel_major_individual.R"
+Rscript "scripts/build panel/02_add_inspections.R"
 # … 03, 04, 05, 06 in order
-Rscript "updated panel/07_missingness_audit_major_individual.R"   # diagnostic, after 06
+Rscript "scripts/build panel/07_missingness_audit_major_individual.R"   # diagnostic, after 06
 ```
 
 Step 06 needs `python3` and `unzip` on `PATH` (it streams the raw effluent file), plus

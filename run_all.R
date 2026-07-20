@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------------
 # Usage (from anywhere inside the repo):   Rscript run_all.R
 #
-# Runs the two-step facility-by-month pipeline in the "updated panel" folder:
+# Runs the two-step facility-by-month pipeline in the "scripts/build panel" folder:
 #   01  builds the base facility x month panel of major individual facilities
 #       -> data/processed/01_facility_month_panel_major_individual_2005_2025.csv
 #   02  reads that panel and attaches per-facility-month inspection counts
@@ -23,7 +23,7 @@ steps <- c(
 )
 
 for (s in steps) {
-  path <- file.path(CWA_ROOT, "updated panel", s)
+  path <- file.path(CWA_ROOT, "scripts/build panel", s)
   message("\n===== running ", s, " =====")
   source(path, local = new.env())
   message("done: ", s)

@@ -124,7 +124,7 @@ permits), `MAJOR_MINOR_FLAG` (semicolon list), `PERMIT_TYPE_FLAG`, `FACILITY_TYP
 ## Instructions to run
 
 ```bash
-Rscript "updated panel/01_build_facility_month_panel_major_individual.R"
+Rscript "scripts/build panel/01_build_facility_month_panel_major_individual.R"
 ```
 First step — has no upstream dependency. **Rename its output to add the `01_` prefix
 before running step 02** (see the mismatch note above).

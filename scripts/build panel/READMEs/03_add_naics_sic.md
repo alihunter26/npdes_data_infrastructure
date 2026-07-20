@@ -76,7 +76,7 @@ facility's permits, sorts, and pastes with `"; "` (empty string if none).
 ## Instructions to run
 
 ```bash
-Rscript "updated panel/03_add_naics_sic.R"
+Rscript "scripts/build panel/03_add_naics_sic.R"
 ```
 Run **after** step 02.
 

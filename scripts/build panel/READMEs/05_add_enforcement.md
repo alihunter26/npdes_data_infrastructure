@@ -119,7 +119,7 @@ inner-join to the crosswalk drops unroutable `NPDES_ID`s.
 ## Instructions to run
 
 ```bash
-Rscript "updated panel/05_add_enforcement.R"
+Rscript "scripts/build panel/05_add_enforcement.R"
 ```
 Run **after** step 04.
 
