@@ -35,9 +35,10 @@ CWA/
 │   ├── processed/    # cleaned / analysis-ready files (built from code)
 │   └── crosswalks/   # reference tables (parameter, NAICS/SIC, state codes)
 ├── scripts/
-│   ├── build/        # numbered panel pipeline (01_… → 07_…), orchestrated by run_all.R
 │   ├── summary/      # per-dataset Excel summary sheets
 │   └── diagnostics/  # data-quality checks and one-off analyses
+│   # NOTE: the former scripts/build/ pipeline was moved OUT of this repo to the
+│   # EIL Summer working folder (../EIL Summer/build). See the note below.
 ├── output/           # generated summaries (.xlsx) and flagged/extract CSVs
 │   ├── tables/       # diagnostic CSV extracts
 │   └── figures/
@@ -49,11 +50,17 @@ CWA/
 
 ## Scripts
 
-### `scripts/build/` — panel pipeline
+### `build/` — panel pipeline (moved out of this repo)
 
-Numbered build steps that turn the raw ECHO tables into the analysis panels in
-`data/processed/`. Rebuild everything with **`Rscript run_all.R`** (sources each step in
-order in an isolated environment; steps pass data via CSVs on disk), or run any step alone.
+> **Relocated:** the former `scripts/build/` folder now lives in the **EIL Summer**
+> working folder (`../EIL Summer/build`), outside this repository. It holds the
+> facility-**year** / permit builders (`01–05`) plus `build_effluent_violations_npdes_month_panel.R`
+> and `filter_dmr_...R` — the latter two still produce inputs consumed by the
+> `updated panel/` pipeline (their output CSVs live in `data/processed/`), so keep that
+> folder available when you need to rebuild those inputs.
+
+The (relocated) numbered build steps turn the raw ECHO tables into the analysis panels
+in `data/processed/`:
 
 | Step | Output |
 |---|---|

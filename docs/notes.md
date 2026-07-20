@@ -20,9 +20,9 @@ Running notes on data quirks, analytical decisions, and findings.
 ## Analytical Decisions
 
 ### Effluent-violations NPDES_ID × month panel (2026-07-14)
-Script: `scripts/build/build_effluent_violations_npdes_month_panel.R` →
-`data/processed/effluent_violations_npdes_month_panel_2005_2025.csv`. Standalone;
-not in `run_all.R`. Columns: `NPDES_ID, month, n_D80, n_D90, n_E90`.
+Script: `build_effluent_violations_npdes_month_panel.R` (moved to `../EIL Summer/build/`,
+outside this repo) → `data/processed/effluent_violations_npdes_month_panel_2005_2025.csv`.
+Standalone; not in `run_all.R`. Columns: `NPDES_ID, month, n_D80, n_D90, n_E90`.
 - **Month** = calendar month of `MONITORING_PERIOD_END_DATE` (the DMR reporting
   period), not detection or receipt date.
 - **Codes** live in `VIOLATION_CODE` (D80, D90, E90); one distinct-count column each.

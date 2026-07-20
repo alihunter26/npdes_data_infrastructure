@@ -10,7 +10,8 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #
 #   (A) ALL-PARAMETER codes, from the PRE-BUILT condensed month panel (fast):
 #         data/processed/effluent_violations_npdes_month_panel_2005_2025.csv
-#         (built by scripts/build/build_effluent_violations_npdes_month_panel.R)
+#         (built by build_effluent_violations_npdes_month_panel.R, which was moved to
+#          the EIL Summer folder: ../EIL Summer/build/)
 #         -- one row per NPDES_ID x month, columns: NPDES_ID, month (YYYY-MM-01),
 #            n_D80, n_D90, n_E90.
 #

@@ -33,8 +33,9 @@ the underlying effluent file. ☒ All data publicly available.
 | `ICIS_FACILITIES.csv` | `.csv` | crosswalk |
 
 > **External dependency:** the condensed panel is built by
-> `scripts/build/build_effluent_violations_npdes_month_panel.R`, which lives **outside**
-> this seven-step folder. Run that script first.
+> `build_effluent_violations_npdes_month_panel.R`, which was **moved to
+> `../EIL Summer/build/`** (outside this repository). Run it there first; its output CSV
+> lands in `data/processed/`.
 
 ## Dataset list
 
@@ -105,8 +106,8 @@ crosswalk drops unroutable `NPDES_ID`s; NA → `0L`.
 Rscript "updated panel/06_add_effluent_violations.R"
 ```
 Run **after** step 05, **after** building the condensed source with
-`scripts/build/build_effluent_violations_npdes_month_panel.R`, and with `python3`/`unzip`
-on `PATH` and the effluent zip present in `data/raw/`.
+`build_effluent_violations_npdes_month_panel.R` (now in `../EIL Summer/build/`), and with
+`python3`/`unzip` on `PATH` and the effluent zip present in `data/raw/`.
 
 ## Notes / edge cases
 

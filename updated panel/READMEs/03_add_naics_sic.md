@@ -55,7 +55,7 @@ sorted, semicolon-joined code string per facility; left-join onto the panel.
    to the facility — never from other permits at the site.
 3. **One "primary" code per permit.** Keep the row flagged `PRIMARY_INDICATOR_FLAG ==
    "Y"`, falling back to the first listed if none is flagged (same rule as
-   `scripts/build/04_build_permit_panel_major_continuous.R`).
+   `04_build_permit_panel_major_continuous.R`, now in `../EIL Summer/build/`).
 4. **Multi-permit facilities ⇒ semicolon list** of distinct codes across the facility's
    permits (matching step 01's `NPDES_ID` formatting).
 5. **"Missing" = no row in the code file** ⇒ blank code (`""`, not NA), matching the

@@ -5,8 +5,8 @@ individually-permitted NPDES facilities, 2005–2025, from the raw ECHO/ICIS-NPD
 in `data/raw/`. Each step reads the prior step's CSV from `data/processed/` and writes
 the next; step 07 is a standalone missingness diagnostic.
 
-> This is distinct from `scripts/build/`, which builds the facility-**year** and permit
-> panels.
+> This is distinct from the facility-**year** / permit builders, which live in the
+> `build/` folder that was **moved to `../EIL Summer/build/`** (outside this repo).
 
 ## Steps
 
@@ -40,8 +40,9 @@ Rscript "updated panel/02_add_inspections.R"
 Rscript "updated panel/07_missingness_audit_major_individual.R"   # diagnostic, after 06
 ```
 
-Step 04 also needs `python3` and `unzip` on `PATH`; step 06 needs the condensed
-effluent panel from `scripts/build/build_effluent_violations_npdes_month_panel.R`.
+Step 06 needs `python3` and `unzip` on `PATH` (it streams the raw effluent file), plus
+the condensed effluent panel from `build_effluent_violations_npdes_month_panel.R` — now
+in `../EIL Summer/build/` (outside this repo); its output CSV lives in `data/processed/`.
 
 > ⚠️ **Known issue:** step 01 writes `facility_month_panel_major_individual_2005_2025.csv`
 > (no prefix) but step 02 reads the `01_`-prefixed name. Rename 01's output (or change

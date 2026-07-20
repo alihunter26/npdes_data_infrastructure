@@ -8,9 +8,13 @@ anywhere inside the repo.
 
 | Folder | Role |
 |---|---|
-| `build/` | The numbered facility-**year** / permit-panel pipeline (`01…05`), plus helpers that build the effluent-month panel and the filtered DMR extract. Orchestrated by `run_all.R`. |
 | `summary/` | Per-dataset Excel summary generators. `summarize.R` is the single registry-driven entry point; the legacy `summarize_*.R` scripts are kept for reference. |
 | `diagnostics/` | Data-quality checks and one-off analyses (duplicates, missingness, coverage). Not part of the panel build. |
+
+> **Moved out:** the former `build/` subfolder (facility-year / permit builders `01–05`
+> plus `build_effluent_violations_npdes_month_panel.R` and `filter_dmr_...R`) was
+> relocated to the **EIL Summer** working folder (`../EIL Summer/build`), outside this
+> repo. Its two effluent/DMR builders still produce inputs used by `updated panel/`.
 
 ## Loose top-level scripts
 
