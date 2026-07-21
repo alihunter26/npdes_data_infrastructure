@@ -15,7 +15,9 @@ Rscript scripts/summary/summarize.R <dataset> [arg]
 #   <dataset>: npdes | dmrs | attains | eff_violations | eff_violations_state
 #              limits | master_general_permits | outfalls_layer   (or "all")
 #   [arg]:     state code for eff_violations_state (default NY);
-#              a single filename for npdes (default: NPDES_QNCR_HISTORY.csv)
+#              a single filename for npdes (default: NPDES_QNCR_HISTORY.csv),
+#              or "all" to summarize every CSV in npdes_downloads/ in one workbook
+#              (one sheet per table, incl. ICIS_FACILITIES.csv, ICIS_PERMITS.csv, ...)
 ```
 
 Each dataset is a config entry in the `DATASETS` list (id/date columns, descriptions,

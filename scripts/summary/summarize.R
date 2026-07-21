@@ -18,7 +18,10 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #                       outfalls_layer      (or "all" for the memory-safe ones)
 #   [arg]      eff_violations_state -> two-letter state code (default NY)
 #              npdes                -> a single filename to summarize (default:
-#                                      the dataset's only_file)
+#                                      the dataset's only_file), or "all" to
+#                                      summarize every CSV in npdes_downloads/
+#                                      (one sheet per table, incl. ICIS_FACILITIES,
+#                                      ICIS_PERMITS, etc.) instead of just only_file
 #
 # Output: a timestamped .xlsx in output/ (one sheet per input table), identical
 # in format to what the old per-dataset scripts produced. See "Standardized
@@ -279,6 +282,14 @@ build_summary <- function(df, cfg, fname, all_cols = NULL, id_label = NULL, note
   # Coerce explicitly-listed numeric columns that arrived as character.
   for (col in intersect(cfg$num_cols, names(dt)))
     if (!is.numeric(dt[[col]])) set(dt, j = col, value = suppressWarnings(as.numeric(dt[[col]])))
+
+  # Coerce explicitly-listed columns to character so they land in the
+  # CATEGORICAL section rather than numeric. Needed for small discrete codes
+  # that fread reads as integer (e.g. VERSION_NMBR: only ~9 values, a permit
+  # re-issuance counter) where a five-number numeric summary would be
+  # meaningless -- top-value/frequency counts are the useful view instead.
+  for (col in intersect(cfg$force_char_cols, names(dt)))
+    if (!is.character(dt[[col]])) set(dt, j = col, value = as.character(dt[[col]]))
 
   # Parse date columns. `year_cols` (e.g. attains REPORTINGCYCLE) are plain
   # integer years listed in date_cols: leave them numeric (so they're summarized
@@ -706,7 +717,10 @@ DATASETS <- list(
       "SINGLE_EVENT_VIOLATION_DATE","SINGLE_EVENT_END_DATE","ORIGINAL_ISSUE_DATE","ISSUE_DATE",
       "EFFECTIVE_DATE","EXPIRATION_DATE","RETIREMENT_DATE","TERMINATION_DATE","CREATED_DATE","UPDATED_DATE"),
     inputs = function(cfg, arg) {
-      files <- if (!is.null(arg)) file.path(cfg$data_dir, arg)
+      # arg == "all" bypasses only_file and processes every CSV in data_dir
+      # (e.g. ICIS_FACILITIES.csv, ICIS_PERMITS.csv, ...), one sheet each.
+      files <- if (identical(arg, "all")) list.files(cfg$data_dir, pattern = "\\.csv$", full.names = TRUE)
+               else if (!is.null(arg)) file.path(cfg$data_dir, arg)
                else if (!is.null(cfg$only_file)) file.path(cfg$data_dir, cfg$only_file)
                else list.files(cfg$data_dir, pattern = "\\.csv$", full.names = TRUE)
       if (length(files) == 0 || !all(file.exists(files)))
@@ -803,11 +817,20 @@ DATASETS <- list(
     mode = "memory", trim_ws = FALSE, dup_mode = "none",
     id_col = "EXTERNAL_PERMIT_NMBR", id_label = "Distinct Permits",
     out_prefix = "dmrs",
-    zip_path = file.path(CWA_ROOT, "data/raw/npdes_dmrs_fy2025.zip"),
+    zip_path = file.path(CWA_ROOT, "data/raw/DMR/npdes_dmrs_fy2025.zip"),
     member = "NPDES_DMRS_FY2025.csv", sheet = "NPDES_DMRS_FY2025", nrows_limit = NULL,
-    id_cols = c("ACTIVITY_ID","EXTERNAL_PERMIT_NMBR","VERSION_NMBR","PERM_FEATURE_ID",
-      "PERM_FEATURE_NMBR","LIMIT_SET_ID","LIMIT_SET_DESIGNATOR","LIMIT_SET_SCHEDULE_ID",
+    # PERM_FEATURE_NMBR (the outfall/pipe label, e.g. "001", "001A") and
+    # VERSION_NMBR (permit re-issuance counter, ~9 distinct values) are
+    # deliberately NOT in id_cols: both are treated as categorical variables
+    # (top values + distinct count), unlike PERM_FEATURE_ID (the high-
+    # cardinality internal integer64 system id, which stays excluded below).
+    # PERM_FEATURE_NMBR is already read as character; VERSION_NMBR reads as
+    # integer, so it's force-coerced to character via force_char_cols below
+    # (otherwise it would land in the numeric five-number-summary section).
+    id_cols = c("ACTIVITY_ID","EXTERNAL_PERMIT_NMBR","PERM_FEATURE_ID",
+      "LIMIT_SET_ID","LIMIT_SET_DESIGNATOR","LIMIT_SET_SCHEDULE_ID",
       "LIMIT_ID","LIMIT_VALUE_ID","DMR_EVENT_ID","DMR_FORM_VALUE_ID","DMR_VALUE_ID","NPDES_VIOLATION_ID"),
+    force_char_cols = c("VERSION_NMBR"),
     date_cols = c("LIMIT_BEGIN_DATE","LIMIT_END_DATE","MONITORING_PERIOD_END_DATE",
       "VALUE_RECEIVED_DATE","RNC_DETECTION_DATE","RNC_RESOLUTION_DATE"),
     descriptions = c("NPDES_DMRS_FY2025.csv" = "description of all DMR (Discharge Monitoring Report) records, FY2025"),
@@ -930,6 +953,7 @@ if (!interactive() && !nzchar(Sys.getenv("SUMMARIZE_NO_MAIN"))) {
     cat("Usage: Rscript scripts/summary/summarize.R <dataset> [arg]\n",
         "  datasets:", paste(names(DATASETS), collapse = ", "), "\n",
         "  or 'all' for the memory-safe datasets:", paste(MEMORY_SAFE, collapse = ", "), "\n",
+        "  npdes all -> every CSV in npdes_downloads/ (ignores only_file)\n",
         sep = " ")
     quit(status = 1L)
   }
