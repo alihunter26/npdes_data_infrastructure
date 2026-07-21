@@ -35,18 +35,24 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #      permits the panel already assigned to the facility -- never from other
 #      permits that merely share the site.
 #
-#   3. ONE "PRIMARY" CODE PER PERMIT. A single permit can carry several NAICS
-#      (or SIC) codes. We keep the one flagged primary (PRIMARY_INDICATOR_FLAG
-#      == "Y"), falling back to the first listed code when none is flagged.
-#      This is the same primary-code rule used in
-#      scripts/build/04_build_permit_panel_major_continuous.R.
+#   3. ALL CODES, PRIMARY FIRST. A single permit can carry several NAICS (or
+#      SIC) codes. We keep EVERY code (not just the one flagged primary), but
+#      order each permit's codes so its PRIMARY_INDICATOR_FLAG == "Y" code
+#      comes first, followed by its remaining codes. (Prior to 2026-07-21 this
+#      script kept only the primary code, matching the rule in
+#      scripts/build/04_build_permit_panel_major_continuous.R; per Ali's
+#      2026-07-17 question in this step's README -- "should it include all?"
+#      -- it now does.)
 #
-#   4. MULTI-PERMIT FACILITIES -> SEMICOLON LIST. Most facilities have exactly
-#      one individual permit, so they get exactly one code. For the few
-#      facilities linked to more than one permit, we combine the DISTINCT codes
-#      across their permits into one semicolon-separated string -- exactly the
-#      convention script 01 uses for the NPDES_ID column itself, so a facility-
-#      month stays a single row.
+#   4. MULTI-VALUE FACILITIES -> SEMICOLON LIST, PRIMARY-FIRST, DEDUPED. Most
+#      facilities have exactly one individual permit with exactly one code, so
+#      they get exactly one code. For the rest -- a permit with >1 code, a
+#      facility with >1 permit, or both -- we combine every non-blank code
+#      across all of the facility's permits into one semicolon-separated
+#      string, ordered primary-code(s) first and de-duplicated (order
+#      preserved, not alphabetical) -- exactly the "; "-join convention script
+#      01 uses for the NPDES_ID column itself, so a facility-month stays a
+#      single row.
 #
 #   5. "MISSING" MEANS NO ROW IN THE CODE FILE. A facility whose permit(s) never
 #      appear in NPDES_NAICS.csv gets a blank NAICS_CODE (same for SIC). This
@@ -80,15 +86,15 @@ rd <- function(file, cols) {
         colClasses = class_map, showProgress = FALSE)
 }
 
-# Small helper: from a code file, keep ONE "primary" code per permit.
-# Sort so PRIMARY_INDICATOR_FLAG == "Y" rows come first within each NPDES_ID,
-# then keep the first row per NPDES_ID (its primary code, or the first listed
-# code if none is flagged primary). Returns NPDES_ID + the code.
-primary_code <- function(file, code_col) {
+# Small helper: from a code file, return EVERY (NPDES_ID, code) row -- no
+# collapsing -- with an explicit IS_PRIMARY flag so downstream steps can order
+# primary-first without losing the other codes a permit carries.
+all_codes <- function(file, code_col) {
   d <- rd(file, c("NPDES_ID", code_col, "PRIMARY_INDICATOR_FLAG"))
   d[, NPDES_ID := trimws(NPDES_ID)]
-  d <- d[order(NPDES_ID, PRIMARY_INDICATOR_FLAG != "Y")]   # "Y" sorts before non-"Y"
-  unique(d, by = "NPDES_ID")[, c("NPDES_ID", code_col), with = FALSE]
+  d[, (code_col) := trimws(get(code_col))]
+  d[, IS_PRIMARY := PRIMARY_INDICATOR_FLAG == "Y"]
+  d[, c("NPDES_ID", code_col, "IS_PRIMARY"), with = FALSE]
 }
 
 # ------------------------------------------------------------------------------
@@ -111,29 +117,36 @@ fac_long <- fac_permits[, .(NPDES_ID = trimws(unlist(strsplit(NPDES_ID, ";")))),
 fac_long <- fac_long[NPDES_ID != ""]      # drop any empty pieces
 
 # ------------------------------------------------------------------------------
-# STEP 3: Look up each permit's primary NAICS and SIC code.
+# STEP 3: Look up every permit's NAICS and SIC codes (all of them, not just
+# the primary one).
 # ------------------------------------------------------------------------------
-naics <- primary_code("NPDES_NAICS.csv", "NAICS_CODE")
-sic   <- primary_code("NPDES_SICS.csv",  "SIC_CODE")
+naics <- all_codes("NPDES_NAICS.csv", "NAICS_CODE")
+sic   <- all_codes("NPDES_SICS.csv",  "SIC_CODE")
 
-# Attach the codes to each (facility, permit) row. Left joins: every permit row
-# is kept; permits absent from a code file get NA for that code (ASSUMPTION 5).
-fac_long <- naics[fac_long, on = "NPDES_ID"]
-fac_long <- sic[fac_long,   on = "NPDES_ID"]
+# Attach the codes to each (facility, permit) row -- NAICS and SIC joined
+# SEPARATELY, not into one shared table. A permit can carry >1 of each now, so
+# joining both onto the same table would cross-join its N naics codes against
+# its M sic codes and fabricate N*M rows; keeping them apart avoids that.
+# Left joins: every permit row is kept; permits absent from a code file get NA
+# (ASSUMPTION 5). allow.cartesian: a permit legitimately fans out to >1 row now.
+fac_naics <- naics[fac_long, on = "NPDES_ID", allow.cartesian = TRUE]
+fac_sic   <- sic[fac_long,   on = "NPDES_ID", allow.cartesian = TRUE]
 
 # ------------------------------------------------------------------------------
 # STEP 4: Collapse back to ONE row per facility (ASSUMPTION 4).
 # ------------------------------------------------------------------------------
-# For each facility, combine the DISTINCT non-blank codes/descriptions across
-# its permit(s) into a single semicolon-separated string (usually just one).
-join_distinct <- function(x) {
-  x <- x[!is.na(x) & x != ""]
-  if (length(x) == 0) "" else paste(sort(unique(x)), collapse = "; ")
+# For each facility, order its codes so IS_PRIMARY rows sort first, drop blanks,
+# de-duplicate (keeping first occurrence -- i.e. primary stays first, order is
+# NOT re-sorted alphabetically), then join with "; ".
+collapse_primary_first <- function(code, is_primary) {
+  code <- code[order(!is_primary)]   # IS_PRIMARY (TRUE) rows first; NA sorts last
+  code <- code[!is.na(code) & code != ""]
+  code <- unique(code)
+  if (length(code) == 0) "" else paste(code, collapse = "; ")
 }
-fac_codes <- fac_long[, .(
-    NAICS_CODE = join_distinct(NAICS_CODE),
-    SIC_CODE   = join_distinct(SIC_CODE)
-  ), by = FACILITY_UIN]
+fac_codes_naics <- fac_naics[, .(NAICS_CODE = collapse_primary_first(NAICS_CODE, IS_PRIMARY)), by = FACILITY_UIN]
+fac_codes_sic   <- fac_sic[,   .(SIC_CODE   = collapse_primary_first(SIC_CODE,   IS_PRIMARY)), by = FACILITY_UIN]
+fac_codes <- merge(fac_codes_naics, fac_codes_sic, by = "FACILITY_UIN", all = TRUE)
 
 # ------------------------------------------------------------------------------
 # STEP 5: Attach the facility-level codes onto every panel row.
