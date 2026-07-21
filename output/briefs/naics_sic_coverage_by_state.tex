@@ -1,0 +1,123 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{url}
+
+% Machine-generated figures (see scripts/diagnostics/make_naics_sic_coverage_brief.R).
+% Do NOT hand-edit the \input files; rerun the generator instead.
+\input{naics_sic_coverage_numbers.tex}
+
+\title{\vspace{-2.5em}NAICS and SIC Industry-Code Coverage in the NPDES\\
+Major-Individual Panel, by State (\covYearMin--\covYearMax)}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+\vspace{-2.5em}
+
+\section*{Scope and data}
+This brief measures how often EPA NPDES permits carry an industry classification
+code---North American Industry Classification System (\textbf{NAICS}) and the older
+Standard Industrial Classification (\textbf{SIC})---and how that coverage varies
+across states. The universe is the \textbf{major-individual} permit population
+(individual ``NPD'' permits flagged \emph{major} in a given year), reconstructed
+by year over \covYearMin--\covYearMax\ with entry and exit allowed. The unit of
+observation is a \emph{permit-year}; a permit-year ``has NAICS'' (``has SIC'') if
+that permit appears at least once in \texttt{NPDES\_NAICS.csv}
+(\texttt{NPDES\_SICS.csv}). Coverage figures pool all \covPermitYears\ permit-years
+across the \covNStates\ reporting states and territories.
+
+Two properties of the source matter. First, NAICS/SIC presence is a
+\emph{time-invariant permit attribute}: the code files carry no date, so within a
+permit, coverage does not change year to year---the cross-state variation below is
+structural, not a reporting trend. Second, ``coverage'' means a code is
+\emph{on file}; it does not assess whether the code is correct.
+
+\section*{Headline findings}
+\begin{itemize}
+  \item \textbf{SIC is near-universal: \covNatSic\% nationally}, at or near 100\% in
+        almost every state. Only \covLoSicList\ fall below 90\%.
+  \item \textbf{NAICS is sparse and sharply state-dependent: \covNatNaics\% nationally.}
+        The distribution is bimodal, not centered on the mean: \covZeroNaics\ states
+        and territories record NAICS on essentially \emph{none} of their
+        major-individual permits, while \covHiNaics\ record it on 95\%+.
+  \item \textbf{The gap is administrative, not industrial.} Whether a permit has a
+        NAICS code tracks the \emph{permitting authority}, not the facility. Several
+        of the largest state programs sit at $\approx$0\% (e.g.\ CA, IL, OH, WI, MD,
+        WV; TX at 0.2\%), while neighbors of similar industrial mix (e.g.\ KY, OK, ID
+        at 99--100\%) are fully coded.
+\end{itemize}
+
+\section*{General state reporting of NAICS and SIC codes}
+Industry codes enter ICIS-NPDES at permit issuance and are maintained by the
+administering authority---the state environmental agency in delegated (authorized)
+states, or the EPA Region otherwise. Because SIC long predates NAICS and was the
+required classification when most of these permits and their legacy records were
+created, virtually every major-individual permit carries a SIC code: coverage is
+\covNatSic\% pooled and effectively saturated in all but a couple of jurisdictions.
+NAICS adoption, by contrast, was never uniformly back-filled. A state's ICIS-NPDES
+records either systematically include NAICS (yielding near-100\% coverage) or they
+do not (yielding near-0\%), producing the two-cluster pattern in
+Table~\ref{tab:cov_state} rather than a smooth gradient. The modest national
+upward drift over the window---from 33.6\% (2005) to 38.9\% (2025) in
+Table~\ref{tab:cov_year}, against flat SIC---reflects newer permits in already-coded
+states, not laggard states beginning to report.
+
+\paragraph{Implication for analysis.} For any cross-state industry classification,
+use \textbf{SIC}: its coverage is uniform, so it does not confound industry with
+state. Pooled NAICS is unusable, and conditioning on NAICS presence would silently
+select on state (dropping entire programs such as CA, OH, and IL). This is recorded
+in \texttt{docs/data\_quirks.md} as the operative guidance for the panel.
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{NAICS and SIC coverage of major-individual NPDES permits, pooled
+\covYearMin--\covYearMax, by state/territory. $n$ = permit-years with a code on
+file; \% = share of that state's permit-years.}\label{tab:cov_state}
+\begin{tabular}{l r r r r r}
+\toprule
+State & Permit-yrs & NAICS $n$ & NAICS \% & SIC $n$ & SIC \% \\
+\midrule
+\input{tab_naics_sic_by_state_rows.tex}
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{National coverage by year (pooled across states).}\label{tab:cov_year}
+\begin{tabular}{r r r r}
+\toprule
+Year & Permit-yrs & NAICS \% & SIC \% \\
+\midrule
+\input{tab_naics_sic_by_year_rows.tex}
+\end{tabular}
+\end{table}
+
+\section*{Caveats}
+\begin{itemize}
+  \item Figures are \emph{permit-year} shares pooled over the window; a state's
+        permit count is its total active major-individual permit-years, not distinct
+        permits. Because coverage is time-invariant within a permit, pooling does not
+        distort the shares.
+  \item Coverage measures \emph{presence} of a code, not its accuracy or its match to
+        the facility's true activity.
+  \item ``States'' includes DC and U.S.\ territories (\covNStates\ units); the
+        smallest have very few permit-years, so their percentages are noisy.
+  \item \covLoSicList\ are the only sub-90\% SIC jurisdictions and warrant a look
+        before use---atypical against the otherwise saturated SIC pattern.
+\end{itemize}
+
+\section*{Reproducibility}
+Coverage is computed by
+\path{scripts/diagnostics/naics_sic_coverage_by_state_year.R} (writes a
+state\,$\times$\,year CSV to \texttt{output/tables/}). This brief's tables are
+generated from the newest such CSV (\covSrcFile) by
+\path{scripts/diagnostics/make_naics_sic_coverage_brief.R}, which emits the
+\texttt{\textbackslash input} fragments and the in-text numbers. Rerun that
+generator after any refresh; do not edit the fragments or this PDF by hand.
+
+\end{document}
