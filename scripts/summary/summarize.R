@@ -324,6 +324,11 @@ build_summary <- function(df, cfg, fname, all_cols = NULL, id_label = NULL, note
 # exactly; numeric/date quantiles are estimated from a rolling random sample.
 build_summary_chunked <- function(cfg, fname, nrows_limit = NULL, chunk_size = 2000000) {
 
+  # Numeric/date quantiles below are estimated from a rolling random sample
+  # (sample.int); seeded so the reported 5th/95th percentiles are exactly
+  # reproducible run to run rather than drifting with each execution.
+  set.seed(1)
+
   read_cmd <- sprintf("unzip -p %s %s", shQuote(cfg$zip_path), shQuote(cfg$member))
 
   col_names         <- names(fread(cmd = read_cmd, nrows = 0))

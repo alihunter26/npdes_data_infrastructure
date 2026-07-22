@@ -2,11 +2,8 @@
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
 # summarize_dmrs.R
-# Produces the same summary-sheet format as summarize_npdes.R for the
-# NPDES_DMRS_FY2025.csv file, which lives inside a zip on disk.
-#
-# Reads directly from the zip via `unzip -p` piped into fread --
-# no need to extract the full CSV to disk first.
+# Produces the same summary-sheet format as summarize_npdes.R for
+# dmr analysis/01_dmr_fy2025.csv.
 #
 # Output: one Excel file with a single sheet.
 
@@ -19,23 +16,33 @@ options(openxlsx.dateFormat = "mm/dd/yyyy")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-ZIP_PATH   <- file.path(CWA_ROOT, "data/raw/npdes_dmrs_fy2025.zip")
-CSV_IN_ZIP <- "NPDES_DMRS_FY2025.csv"
-OUT_FILE   <- sprintf(file.path(CWA_ROOT, "output/dmrs_summary_%s.xlsx"),
-                      format(Sys.time(), "%Y-%m-%d_%H%M"))
+CSV_PATH <- file.path(CWA_ROOT, "dmr analysis/04_dmr_fy2025_00530_monloc1_c1q1.csv")
+OUT_DIR  <- file.path(CWA_ROOT, "output/DMR")               # DMR summaries live here
+dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE) # self-create on fresh clones
+OUT_FILE <- sprintf(file.path(OUT_DIR, "dmrs_summary_%s.xlsx"),
+                    format(Sys.time(), "%Y-%m-%d_%H%M"))
 
 # Set to a number (e.g. 500000) to read only that many rows while testing.
 # Set to NULL to read the full file.
 NROWS_LIMIT <- NULL
 
 # Columns that are identifiers — skip them (summary stats are not meaningful)
+# PERM_FEATURE_NMBR (outfall/pipe label, e.g. "001", "001A") and VERSION_NMBR
+# (permit re-issuance counter, ~9 distinct values) are deliberately NOT here:
+# both are treated as categorical variables below, unlike PERM_FEATURE_ID (the
+# high-cardinality internal integer64 system id, which stays excluded).
 ID_COLS <- c(
-  "ACTIVITY_ID", "EXTERNAL_PERMIT_NMBR", "VERSION_NMBR",
-  "PERM_FEATURE_ID", "PERM_FEATURE_NMBR",
+  "ACTIVITY_ID", "EXTERNAL_PERMIT_NMBR",
+  "PERM_FEATURE_ID",
   "LIMIT_SET_ID", "LIMIT_SET_DESIGNATOR", "LIMIT_SET_SCHEDULE_ID",
   "LIMIT_ID", "LIMIT_VALUE_ID", "DMR_EVENT_ID",
   "DMR_FORM_VALUE_ID", "DMR_VALUE_ID", "NPDES_VIOLATION_ID"
 )
+
+# Columns to force to character so they land in the categorical section
+# rather than numeric (VERSION_NMBR reads as integer from the CSV, but it's a
+# small discrete code -- a five-number numeric summary would be meaningless).
+FORCE_CHAR_COLS <- c("VERSION_NMBR")
 
 # Columns to parse as dates
 DATE_COLS <- c(
@@ -167,25 +174,25 @@ date_summary_row <- function(x, var_name) {
   )
 }
 
-# ── Read the zip and build the summary ───────────────────────────────────────
+# ── Read the CSV and build the summary ────────────────────────────────────────
 
-build_summary_df <- function(zip_path, csv_name, nrows_limit = NULL) {
+build_summary_df <- function(csv_path, nrows_limit = NULL) {
 
-  read_cmd <- sprintf("unzip -p %s %s", shQuote(zip_path), shQuote(csv_name))
+  csv_name <- basename(csv_path)
 
   # Scan column names without loading data, then select only non-ID columns.
   # Keep EXTERNAL_PERMIT_NMBR temporarily for the permit count.
   cat("Scanning columns...\n")
-  all_col_names <- names(fread(cmd = read_cmd, nrows = 0))
+  all_col_names <- names(fread(csv_path, nrows = 0))
   cols_to_read  <- setdiff(all_col_names, setdiff(ID_COLS, "EXTERNAL_PERMIT_NMBR"))
 
   cat("Reading", csv_name, "(", length(cols_to_read), "of", length(all_col_names),
-      "columns; streaming via 'unzip -p') ...\n")
+      "columns) ...\n")
 
   # Keep as data.table — reference semantics let us drop columns in-place
   # with set(), avoiding memory-doubling copies.
   df <- fread(
-    cmd        = read_cmd,
+    file       = csv_path,
     select     = cols_to_read,
     na.strings = c("", "NA"),
     nrows      = if (is.null(nrows_limit)) Inf else nrows_limit
@@ -193,6 +200,10 @@ build_summary_df <- function(zip_path, csv_name, nrows_limit = NULL) {
 
   n_rows <- nrow(df)
   cat("Read", format(n_rows, big.mark = ","), "rows.\n")
+
+  # Force explicitly-listed columns to character (categorical), in-place.
+  for (col in intersect(FORCE_CHAR_COLS, names(df)))
+    if (!is.character(df[[col]])) set(df, j = col, value = as.character(df[[col]]))
 
   # Columns that will be summarised (excludes the permit ID we carried along)
   cols_to_summarise <- setdiff(names(df), ID_COLS)
@@ -417,11 +428,11 @@ write_sheet <- function(wb, sheet_name, summary_list) {
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-if (!file.exists(ZIP_PATH))
-  stop("Zip file not found: ", ZIP_PATH)
+if (!file.exists(CSV_PATH))
+  stop("CSV file not found: ", CSV_PATH)
 
 wb           <- createWorkbook()
-summary_list <- build_summary_df(ZIP_PATH, CSV_IN_ZIP, NROWS_LIMIT)
+summary_list <- build_summary_df(CSV_PATH, NROWS_LIMIT)
 write_sheet(wb, "NPDES_DMRS_FY2025", summary_list)
 
 saveWorkbook(wb, OUT_FILE, overwrite = TRUE)

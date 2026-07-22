@@ -160,6 +160,11 @@ date_summary_row <- function(x, var_name) {
 
 build_summary_df <- function(zip_path, csv_name, nrows_limit = NULL, chunk_size = 2000000) {
 
+  # Numeric/date quantiles below are estimated from a rolling random sample
+  # (sample.int); seeded so the reported 5th/95th percentiles are exactly
+  # reproducible run to run rather than drifting with each execution.
+  set.seed(1)
+
   # Stream straight from the zip — no extraction to disk. Each fread re-runs
   # this command, so chunks are read by re-streaming and skipping prior rows.
   read_cmd <- sprintf("unzip -p %s %s", shQuote(zip_path), shQuote(csv_name))

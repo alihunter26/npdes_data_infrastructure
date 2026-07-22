@@ -25,14 +25,18 @@ distinct-count label, reader). Output was verified byte-identical to the legacy
 per-dataset scripts, except every sheet now uses the fuller 8-column categorical /
 9-column numeric layout (a trailing, always-blank **Missing Explanation** column).
 
-## Legacy per-dataset scripts (kept for reference; still run)
+## Legacy per-dataset scripts (moved to `CWA scraps/`)
 
 `summarize_npdes.R` (the template the others mirror), `summarize_dmrs.R`,
 `summarize_eff_violations.R`, `summarize_eff_violations_state.R`,
 `summarize_master_general_permits.R`, `summarize_outfalls_layer.R`,
-`summarize_attains.R`, `summarize_limits.R`, `summarize_limits_chunked.R`. Two cross-tab
-scripts (`summarize_dmr_coverage_major_minor.R`, `summarize_year_coverage.R`) build a
-different kind of output (coverage matrices) and are **not** folded into `summarize.R`.
+`summarize_attains.R`, `summarize_limits.R`, `summarize_limits_chunked.R` are fully
+superseded by `summarize.R` and were moved to `CWA scraps/` (repo root) to keep this
+folder to the maintained scripts. They still run as-is if needed (same `_paths.R`
+sourcing, unaffected by location) but are no longer the recommended way to generate
+these summaries. Two cross-tab scripts (`summarize_dmr_coverage_major_minor.R`,
+`summarize_year_coverage.R`) build a different kind of output (coverage matrices), are
+still current, and remain in this folder.
 
 ## Conventions
 
