@@ -16,11 +16,16 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #                       "ever major", NOT "always major" -- a facility that was
 #                       major for even one year of its history qualifies, even
 #                       if it was minor before or after.
-#   Spine             : UNBALANCED = each qualifying facility x every
-#                       (year, month) between its earliest possible "opening"
-#                       and latest possible "closing" month, clipped to the
-#                       Jan 2005 - Dec 2025 window.
+#   Spine             : BALANCED = every qualifying facility x every (year, month)
+#                       in the full Jan 2005 - Dec 2025 window, regardless of when
+#                       that facility actually held an active permit. A new
+#                       FACILITY_OPERATING flag (1/0) marks which rows fall inside
+#                       vs. outside each facility's own earliest-open/latest-close
+#                       window (clipped to the panel window) -- downstream scripts
+#                       use it to distinguish a true zero (operating, no event) from
+#                       an undefined one (not operating -- see LABELED ASSUMPTION 9).
 #
+
 # LABELED ASSUMPTIONS (read before using results):
 #   1. "EVER MAJOR", NOT "ALWAYS MAJOR". This is a broader/looser population
 #      than 03_build_facility_panel_major_individual.R (in scripts/build/),
@@ -66,9 +71,21 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #      throughout (never coerced to numeric), so leading zeros in ZIP codes
 #      (e.g., many New England zips) are preserved exactly as in the source
 #      file.
+#   9. FACILITY_OPERATING = 1 iff the calendar month falls within
+#      [floor_date(spine_start,"month"), floor_date(spine_end,"month")] for that
+#      facility -- i.e. within the SAME earliest-open/latest-close window (unioned
+#      across all the facility's individual permits, clipped to the panel window;
+#      see ASSUMPTIONS 2-4) already used to decide which facilities/months qualify
+#      for the spine at all. This introduces no new business rule -- it exposes a
+#      value already computed, so downstream scripts can tell "operating, zero
+#      events" (FACILITY_OPERATING=1, count=0) apart from "not operating, count is
+#      undefined" (FACILITY_OPERATING=0, count should read NA). Facility ATTRIBUTE
+#      columns (name, address, NPDES_ID list, ...) are NOT masked by this flag --
+#      they keep broadcasting the one representative snapshot across every month,
+#      unchanged from before (per ASSUMPTION 7).
 #
 # Source: EPA ECHO bulk "ICIS-NPDES" download (ICIS_PERMITS.csv, ICIS_FACILITIES.csv)
-# Output: data/processed/facility_month_panel_major_individual_2005_2025.csv
+# Output: data/processed/01_facility_month_panel_major_individual_2005_2025.csv
 # Deterministic (no stochastic steps); rebuilt entirely from raw + this script.
 # ==============================================================================
 
@@ -81,7 +98,7 @@ suppressPackageStartupMessages({
 YEAR_MIN <- 2005L
 YEAR_MAX <- 2025L
 RAW_DIR  <- file.path(CWA_ROOT, "data/raw/npdes_downloads")
-OUT_PATH <- file.path(CWA_ROOT, "data/processed/facility_month_panel_major_individual_2005_2025.csv")
+OUT_PATH <- file.path(CWA_ROOT, "data/processed/01_facility_month_panel_major_individual_2005_2025.csv")
 
 # The first and last calendar months the panel can ever contain.
 WINDOW_START <- as.Date(sprintf("%d-01-01", YEAR_MIN))   # Jan 1, 2005
@@ -210,6 +227,11 @@ qual_fac[, spine_start := pmax(facility_open, WINDOW_START)]
 qual_fac[, spine_end   := pmin(facility_close, WINDOW_END)]
 qual_fac <- qual_fac[spine_start <= spine_end]
 
+# Calendar-month bounds of the operating window (LABELED ASSUMPTION 9), used below
+# to compute FACILITY_OPERATING at the same month granularity the spine itself uses.
+qual_fac[, spine_start_month := floor_date(spine_start, "month")]
+qual_fac[, spine_end_month   := floor_date(spine_end,   "month")]
+
 # ------------------------------------------------------------------------------
 # STEP 6: Facility attribute snapshot (one representative record per facility).
 # ------------------------------------------------------------------------------
@@ -224,18 +246,36 @@ fac_attr <- unique(fac, by = "facility_id")[
       FAC_LONG = GEOCODE_LONGITUDE)]
 
 # ------------------------------------------------------------------------------
-# STEP 7: Build the facility-by-month spine (BALANCED panel).
+# STEP 7: Build the facility-by-month spine (BALANCED panel) + FACILITY_OPERATING.
 # ------------------------------------------------------------------------------
-# Create a complete grid: every qualifying facility × every month in the full
+# Create a complete grid: every qualifying facility x every month in the full
 # panel window (Jan 2005 - Dec 2025), regardless of when each facility was
-# actually open. Blank/NA attributes for months outside a facility's active window.
+# actually open. Facility ATTRIBUTES (name, address, ...) still broadcast across
+# every month unchanged (ASSUMPTION 7) -- but every row also gets FACILITY_OPERATING
+# (ASSUMPTION 9), so downstream scripts can tell a real zero apart from an
+# undefined one for months outside the facility's active window.
 all_months <- data.table(month_date = seq(WINDOW_START, WINDOW_END, by = "month"))
 all_months[, `:=`(YEAR = year(month_date), MONTH = month(month_date))]
-all_months[, month_date := NULL]
 
-spine <- CJ(facility_id = unique(qual_fac$facility_id), 
-            YEAR = all_months$YEAR, 
-            MONTH = all_months$MONTH)
+# BUG FIX (2026-07-21): CJ() does not dedupe its inputs by default (unique=FALSE).
+# all_months$YEAR/$MONTH are NOT unique (252 rows each, e.g. YEAR=2005 repeated
+# 12x) -- passing them as-is squares the year-month dimension (252 x 252
+# instead of 21 x 12), producing ~477M rows instead of ~1.89M and blowing R's
+# vector memory limit. Fix: cross facility_id against the DISTINCT year/month
+# values, matching every other spine-building in this codebase.
+spine <- CJ(facility_id = unique(qual_fac$facility_id),
+            YEAR = unique(all_months$YEAR),
+            MONTH = unique(all_months$MONTH))
+spine <- all_months[spine, on = c("YEAR", "MONTH")]
+
+# Attach each facility's operating-window bounds and flag which spine rows fall
+# inside it. Every facility_id here has exactly one (spine_start_month,
+# spine_end_month) pair (guaranteed by qual_fac's own spine_start <= spine_end
+# filter above), so this join can never introduce a missing bound.
+spine <- qual_fac[, .(facility_id, spine_start_month, spine_end_month)][spine, on = "facility_id"]
+spine[, FACILITY_OPERATING := as.integer(month_date >= spine_start_month &
+                                          month_date <= spine_end_month)]
+spine[, c("month_date", "spine_start_month", "spine_end_month") := NULL]
 
 # ------------------------------------------------------------------------------
 # STEP 8: Assemble the final panel: spine + facility attributes + NPDES_ID list.
@@ -245,7 +285,7 @@ panel <- qual_fac[, .(facility_id, NPDES_ID, MAJOR_MINOR_FLAG, PERMIT_TYPE_FLAG)
 setnames(panel, "facility_id", "FACILITY_UIN")
 
 setcolorder(panel, c("FACILITY_UIN", "YEAR", "MONTH", "NPDES_ID", "MAJOR_MINOR_FLAG",
-                     "PERMIT_TYPE_FLAG", "FACILITY_TYPE_CODE",
+                     "PERMIT_TYPE_FLAG", "FACILITY_OPERATING", "FACILITY_TYPE_CODE",
                      "FACILITY_NAME", "LOCATION_ADDRESS", "CITY", "STATE_CODE", "ZIP",
                      "COUNTY_CODE", "FAC_LAT", "FAC_LONG"))
 setorder(panel, FACILITY_UIN, YEAR, MONTH)
@@ -267,7 +307,9 @@ message("Individual permits ever flagged major          : ", sum(permits$ever_ma
 message("Qualifying facilities (ever major, ever indiv.): ", nrow(qual_fac))
 message("Facilities with >1 linked NPDES_ID             : ",
         sum(lengths(strsplit(qual_fac$NPDES_ID, "; ")) > 1))
-message("Panel rows (unbalanced facility x month)       : ", nrow(panel))
+message("Panel rows (balanced facility x month, all ", YEAR_MIN, "-", YEAR_MAX, " months): ", nrow(panel))
+message("  FACILITY_OPERATING == 1 (in active window)   : ", sum(panel$FACILITY_OPERATING == 1L))
+message("  FACILITY_OPERATING == 0 (outside active window): ", sum(panel$FACILITY_OPERATING == 0L))
 months_per_fac <- panel[, .N, by = FACILITY_UIN]$N
 message("Months per facility: min ", min(months_per_fac), " max ", max(months_per_fac),
         " (", YEAR_MIN, "-", YEAR_MAX, " = ", (YEAR_MAX - YEAR_MIN + 1) * 12, " months if never clipped)")

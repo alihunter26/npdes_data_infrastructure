@@ -161,8 +161,18 @@ panel <- insp_month[panel,
                     on = c(facility_id = "FACILITY_UIN", "YEAR", "MONTH")]
 setnames(panel, "facility_id", "FACILITY_UIN")            # restore the panel's name
 
-# Facility-months with no inspection came through as NA -> set them to 0L.
-for (c in new_cols) panel[is.na(get(c)), (c) := 0L]
+# Facility-months with no inspection came through as NA. A true zero only
+# applies while the facility was actually operating (FACILITY_OPERATING == 1,
+# from 01_build_facility_month_panel_major_individual.R); months outside its
+# active window get an explicit NA -- the count is undefined, not zero. But a
+# REAL matched inspection always wins over the operating flag: some facilities
+# have genuine recorded inspections outside their computed open/close window
+# (e.g. administrative lag near permit boundaries) -- NA only means "not
+# operating AND no data," never "not operating, so discard real data."
+for (c in new_cols) {
+  panel[is.na(get(c)) & FACILITY_OPERATING == "1", (c) := 0L]
+  panel[is.na(get(c)) & FACILITY_OPERATING == "0", (c) := NA]
+}
 
 # Put the new columns at the end, after the existing panel columns, and restore
 # the panel's row order.
@@ -176,14 +186,18 @@ fwrite(panel, OUT_PATH)
 # ------------------------------------------------------------------------------
 message("=== 02_add_inspections: inspection counts attached to month panel ===")
 message("Inspection rows in window (2005-2025)          : ", n_rows_read)
-message("Distinct inspections routed onto panel months  : ", sum(panel$N_INSPECTIONS_TOTAL))
-message("Facility-months with >=1 inspection            : ", sum(panel$N_INSPECTIONS_TOTAL > 0))
+# na.rm = TRUE throughout: non-operating months are now legitimately NA
+# (FACILITY_OPERATING == 0), so these sanity checks are computed over the
+# operating rows only, same as before this change for every operating row.
+message("Distinct inspections routed onto panel months  : ", sum(panel$N_INSPECTIONS_TOTAL, na.rm = TRUE))
+message("Facility-months with >=1 inspection            : ", sum(panel$N_INSPECTIONS_TOTAL > 0, na.rm = TRUE))
 message("  of which any CEI / ROS / SA1 / AU1           : ",
-        sum(panel$N_CEI > 0), " / ", sum(panel$N_ROS > 0), " / ",
-        sum(panel$N_SA1 > 0), " / ", sum(panel$N_AU1 > 0))
+        sum(panel$N_CEI > 0, na.rm = TRUE), " / ", sum(panel$N_ROS > 0, na.rm = TRUE), " / ",
+        sum(panel$N_SA1 > 0, na.rm = TRUE), " / ", sum(panel$N_AU1 > 0, na.rm = TRUE))
 message("State-led / EPA-led inspection totals          : ",
-        sum(panel$N_STATE_INSPECTIONS), " / ", sum(panel$N_EPA_INSPECTIONS))
+        sum(panel$N_STATE_INSPECTIONS, na.rm = TRUE), " / ", sum(panel$N_EPA_INSPECTIONS, na.rm = TRUE))
 message("Identity n_state + n_epa == n_total holds      : ",
-        all(panel$N_STATE_INSPECTIONS + panel$N_EPA_INSPECTIONS == panel$N_INSPECTIONS_TOTAL))
+        all(panel$N_STATE_INSPECTIONS + panel$N_EPA_INSPECTIONS == panel$N_INSPECTIONS_TOTAL, na.rm = TRUE))
+message("Facility-months NOT operating (NA counts)      : ", sum(panel$FACILITY_OPERATING == "0"))
 message("Panel rows: ", nrow(panel), " | columns: ", ncol(panel))
 message("Written to: ", OUT_PATH)

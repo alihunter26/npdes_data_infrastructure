@@ -292,8 +292,19 @@ for (c in count_cols) adds[is.na(get(c)), (c) := 0L]
 panel <- adds[panel, on = c(facility_id = "FACILITY_UIN", "YEAR", "MONTH")]
 setnames(panel, "facility_id", "FACILITY_UIN")            # restore the panel's name
 
-for (c in count_cols) panel[is.na(get(c)), (c) := 0L]
-# penalties stay NA where no formal action carried an assessed amount (ASSUMPTION 5).
+# A true zero only applies while the facility was actually operating
+# (FACILITY_OPERATING == 1, from 01_build_facility_month_panel_major_individual.R);
+# months outside its active window get an explicit NA -- undefined, not zero. But
+# a REAL matched enforcement action always wins over the operating flag: some
+# facilities have genuine recorded actions outside their computed open/close
+# window (e.g. administrative lag near permit boundaries) -- NA only means "not
+# operating AND no data," never "not operating, so discard real data."
+for (c in count_cols) {
+  panel[is.na(get(c)) & FACILITY_OPERATING == "1", (c) := 0L]
+  panel[is.na(get(c)) & FACILITY_OPERATING == "0", (c) := NA]
+}
+# penalties stay NA where no formal action carried an assessed amount (ASSUMPTION 5);
+# a non-operating month already has no formal action, so it's already NA here too.
 
 # Put the new columns at the end, after the existing panel columns, and restore
 # the panel's row order.
@@ -308,34 +319,38 @@ fwrite(panel, OUT_PATH)
 message("=== 05_add_enforcement: enforcement actions attached to month panel ===")
 message("Formal actions dropped for no/parse date         : ", fp$n_no_date)
 message("Informal actions dropped for no/parse date       : ", ip$n_no_date)
-message("Formal actions placed on panel                   : ", sum(panel$N_FORMAL_ACTIONS),
-        "  (AFR ", sum(panel$N_AFR), " / JDC ", sum(panel$N_JDC), ")")
+# na.rm = TRUE throughout: non-operating months are now legitimately NA
+# (FACILITY_OPERATING == 0), so these sums/identities are computed over the
+# operating rows only, same as before this change for every operating row.
+message("Formal actions placed on panel                   : ", sum(panel$N_FORMAL_ACTIONS, na.rm = TRUE),
+        "  (AFR ", sum(panel$N_AFR, na.rm = TRUE), " / JDC ", sum(panel$N_JDC, na.rm = TRUE), ")")
 message("  SCWAAPO / STAOCO / SCWAAO / 309A               : ",
-        sum(panel$N_SCWAAPO), " / ", sum(panel$N_STAOCO), " / ",
-        sum(panel$N_SCWAAO), " / ", sum(panel$N_309A))
+        sum(panel$N_SCWAAPO, na.rm = TRUE), " / ", sum(panel$N_STAOCO, na.rm = TRUE), " / ",
+        sum(panel$N_SCWAAO, na.rm = TRUE), " / ", sum(panel$N_309A, na.rm = TRUE))
 message("  State-led / EPA-led formal totals              : ",
-        sum(panel$N_STATE_FORMAL), " / ", sum(panel$N_EPA_FORMAL))
+        sum(panel$N_STATE_FORMAL, na.rm = TRUE), " / ", sum(panel$N_EPA_FORMAL, na.rm = TRUE))
 message("  Identity state + epa == formal total holds     : ",
-        all(panel$N_STATE_FORMAL + panel$N_EPA_FORMAL == panel$N_FORMAL_ACTIONS))
+        all(panel$N_STATE_FORMAL + panel$N_EPA_FORMAL == panel$N_FORMAL_ACTIONS, na.rm = TRUE))
 message("Formal penalties ($, assessed only): federal ",
         format(sum(panel$FED_PENALTY, na.rm = TRUE), big.mark = ","),
         " / state ", format(sum(panel$STATE_PENALTY, na.rm = TRUE), big.mark = ","))
 message("  Facility-months w/ a fed / state amount assessed : ",
-        sum(panel$N_FED_PENALTY_ASSESSED > 0), " / ", sum(panel$N_STATE_PENALTY_ASSESSED > 0))
+        sum(panel$N_FED_PENALTY_ASSESSED > 0, na.rm = TRUE), " / ", sum(panel$N_STATE_PENALTY_ASSESSED > 0, na.rm = TRUE))
 message("  Of months WITH a formal action, penalty is NA (not assessed) fed / state : ",
-        sum(panel$N_FORMAL_ACTIONS > 0 & is.na(panel$FED_PENALTY)), " / ",
-        sum(panel$N_FORMAL_ACTIONS > 0 & is.na(panel$STATE_PENALTY)),
+        sum(panel$N_FORMAL_ACTIONS > 0 & is.na(panel$FED_PENALTY), na.rm = TRUE), " / ",
+        sum(panel$N_FORMAL_ACTIONS > 0 & is.na(panel$STATE_PENALTY), na.rm = TRUE),
         "  (assessed at $0: ",
         sum(panel$FED_PENALTY == 0, na.rm = TRUE), " / ",
         sum(panel$STATE_PENALTY == 0, na.rm = TRUE), ")")
-message("Informal action ROWS on panel (per-row; dups incl.): ", sum(panel$N_INFORMAL_ACTIONS),
-        "  (LOVWL ", sum(panel$N_LOVWL), " / NOV ", sum(panel$N_NOV),
-        " / NONC ", sum(panel$N_NONC), " / AER ", sum(panel$N_AER), ")")
+message("Informal action ROWS on panel (per-row; dups incl.): ", sum(panel$N_INFORMAL_ACTIONS, na.rm = TRUE),
+        "  (LOVWL ", sum(panel$N_LOVWL, na.rm = TRUE), " / NOV ", sum(panel$N_NOV, na.rm = TRUE),
+        " / NONC ", sum(panel$N_NONC, na.rm = TRUE), " / AER ", sum(panel$N_AER, na.rm = TRUE), ")")
 message("  Official / unofficial informal totals          : ",
-        sum(panel$N_OFFICIAL_INFORMAL), " / ", sum(panel$N_UNOFFICIAL_INFORMAL))
+        sum(panel$N_OFFICIAL_INFORMAL, na.rm = TRUE), " / ", sum(panel$N_UNOFFICIAL_INFORMAL, na.rm = TRUE))
 message("  Identity official + unofficial == informal tot : ",
-        all(panel$N_OFFICIAL_INFORMAL + panel$N_UNOFFICIAL_INFORMAL == panel$N_INFORMAL_ACTIONS))
+        all(panel$N_OFFICIAL_INFORMAL + panel$N_UNOFFICIAL_INFORMAL == panel$N_INFORMAL_ACTIONS, na.rm = TRUE))
 message("Facility-months with >=1 formal / informal action: ",
-        sum(panel$N_FORMAL_ACTIONS > 0), " / ", sum(panel$N_INFORMAL_ACTIONS > 0))
+        sum(panel$N_FORMAL_ACTIONS > 0, na.rm = TRUE), " / ", sum(panel$N_INFORMAL_ACTIONS > 0, na.rm = TRUE))
+message("Facility-months NOT operating (NA counts)        : ", sum(panel$FACILITY_OPERATING == "0"))
 message("Panel rows: ", nrow(panel), " | columns: ", ncol(panel))
 message("Written to: ", OUT_PATH)

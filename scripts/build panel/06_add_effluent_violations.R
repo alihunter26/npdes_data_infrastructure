@@ -260,7 +260,18 @@ for (c in all_new) counts[is.na(get(c)), (c) := 0L]
 # Left-join: panel key FACILITY_UIN == source key facility_id, plus YEAR/MONTH.
 panel <- counts[panel, on = c(facility_id = "FACILITY_UIN", "YEAR", "MONTH")]
 setnames(panel, "facility_id", "FACILITY_UIN")            # restore the panel's name
-for (c in all_new) panel[is.na(get(c)), (c) := 0L]
+
+# A true zero only applies while the facility was actually operating
+# (FACILITY_OPERATING == 1, from 01_build_facility_month_panel_major_individual.R);
+# months outside its active window get an explicit NA -- undefined, not zero. But
+# a REAL matched effluent violation always wins over the operating flag: some
+# facilities have genuine recorded violations outside their computed open/close
+# window (e.g. administrative lag near permit boundaries) -- NA only means "not
+# operating AND no data," never "not operating, so discard real data."
+for (c in all_new) {
+  panel[is.na(get(c)) & FACILITY_OPERATING == "1", (c) := 0L]
+  panel[is.na(get(c)) & FACILITY_OPERATING == "0", (c) := NA]
+}
 
 # ------------------------------------------------------------------------------
 # STEP 5: Restore the original column order and row order.
@@ -283,26 +294,31 @@ fwrite(panel, OUT_PATH)
 # ------------------------------------------------------------------------------
 message("=== 06_add_effluent_violations: effluent codes attached to month panel ===")
 message("Condensed source ID-months in window (2005-2025) : ", n_rows_read)
+# na.rm = TRUE throughout: non-operating months are now legitimately NA
+# (FACILITY_OPERATING == 0), so these sums are computed over the operating
+# rows only, same as before this change for every operating row.
 message("All-parameter violations on panel (D80/D90/E90)  : ",
-        sum(panel$n_D80), " / ", sum(panel$n_D90), " / ", sum(panel$n_E90))
+        sum(panel$n_D80, na.rm = TRUE), " / ", sum(panel$n_D90, na.rm = TRUE), " / ", sum(panel$n_E90, na.rm = TRUE))
 message("Facility-months with >=1 D80 / D90 / E90         : ",
-        sum(panel$n_D80 > 0), " / ", sum(panel$n_D90 > 0), " / ", sum(panel$n_E90 > 0))
-message("TSS gross monthly-avg effluent violations        : ", sum(panel$N_TSS_EFF_VIOLATIONS),
-        "  (D90 ", sum(panel$N_TSS_EFF_D90),
-        " / D80 ", sum(panel$N_TSS_EFF_D80),
-        " / E90 ", sum(panel$N_TSS_EFF_E90), ")")
-message("Facility-months with >=1 TSS effluent violation  : ", sum(panel$N_TSS_EFF_VIOLATIONS > 0))
+        sum(panel$n_D80 > 0, na.rm = TRUE), " / ", sum(panel$n_D90 > 0, na.rm = TRUE), " / ", sum(panel$n_E90 > 0, na.rm = TRUE))
+message("TSS gross monthly-avg effluent violations        : ", sum(panel$N_TSS_EFF_VIOLATIONS, na.rm = TRUE),
+        "  (D90 ", sum(panel$N_TSS_EFF_D90, na.rm = TRUE),
+        " / D80 ", sum(panel$N_TSS_EFF_D80, na.rm = TRUE),
+        " / E90 ", sum(panel$N_TSS_EFF_E90, na.rm = TRUE), ")")
+message("Facility-months with >=1 TSS effluent violation  : ", sum(panel$N_TSS_EFF_VIOLATIONS > 0, na.rm = TRUE))
 # Cross-check: the all-parameter columns count the same codes over ALL parameters,
 # so they are overwhelmingly a superset of the TSS-only columns. They are NOT
 # guaranteed >= cell-by-cell, though: the TSS counts use DISTINCT NPDES_VIOLATION_ID
 # while the condensed source counts DISTINCT vkey (its more aggressive "latest-
 # version" de-dup), so in a vanishingly small number of facility-months the
 # condensed count can be 1-2 lower. We report the exceptions, not assert inequality.
+# (Restricted to operating rows -- non-operating rows are NA on both sides.)
 short <- pmax(0L, panel$N_TSS_EFF_D80 - panel$n_D80) +
          pmax(0L, panel$N_TSS_EFF_D90 - panel$n_D90) +
          pmax(0L, panel$N_TSS_EFF_E90 - panel$n_E90)
 message("Cells where all-param < TSS subset (dedup-key diff): ",
-        sum(short > 0), " of ", nrow(panel),
-        "  (max shortfall ", if (any(short > 0)) max(short) else 0L, ")")
+        sum(short > 0, na.rm = TRUE), " of ", sum(panel$FACILITY_OPERATING == "1"),
+        "  (max shortfall ", if (any(short > 0, na.rm = TRUE)) max(short, na.rm = TRUE) else 0L, ")")
+message("Facility-months NOT operating (NA counts)         : ", sum(panel$FACILITY_OPERATING == "0"))
 message("Panel rows: ", nrow(panel), " | columns: ", ncol(panel))
 message("Written to: ", OUT_PATH)

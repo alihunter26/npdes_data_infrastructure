@@ -157,8 +157,18 @@ for (c in new_cols) counts[is.na(get(c)), (c) := 0L]
 panel <- counts[panel, on = c(facility_id = "FACILITY_UIN", "YEAR", "MONTH")]
 setnames(panel, "facility_id", "FACILITY_UIN")            # restore the panel's name
 
-# Facility-months with no violation of a given kind came through as NA -> 0L.
-for (c in new_cols) panel[is.na(get(c)), (c) := 0L]
+# Facility-months with no violation of a given kind came through as NA. A true
+# zero only applies while the facility was actually operating
+# (FACILITY_OPERATING == 1, from 01_build_facility_month_panel_major_individual.R);
+# months outside its active window get an explicit NA -- undefined, not zero. But
+# a REAL matched violation always wins over the operating flag: some facilities
+# have genuine recorded violations outside their computed open/close window
+# (e.g. administrative lag near permit boundaries) -- NA only means "not
+# operating AND no data," never "not operating, so discard real data."
+for (c in new_cols) {
+  panel[is.na(get(c)) & FACILITY_OPERATING == "1", (c) := 0L]
+  panel[is.na(get(c)) & FACILITY_OPERATING == "0", (c) := NA]
+}
 
 # Put the new columns at the end, after the existing panel columns, and restore
 # the panel's row order.
@@ -171,12 +181,16 @@ fwrite(panel, OUT_PATH)
 # STEP 6: Run log (sanity checks).
 # ------------------------------------------------------------------------------
 message("=== 04_add_violations: schedule/event violation counts attached to month panel ===")
-message("Permit-schedule violations placed on panel     : ", sum(panel$N_PS_VIOLATIONS))
-message("Compliance-schedule violations placed on panel : ", sum(panel$N_CS_VIOLATIONS))
-message("Single-event violations placed on panel        : ", sum(panel$N_SE_VIOLATIONS))
+# na.rm = TRUE throughout: non-operating months are now legitimately NA
+# (FACILITY_OPERATING == 0), so these sums are computed over the operating
+# rows only, same as before this change for every operating row.
+message("Permit-schedule violations placed on panel     : ", sum(panel$N_PS_VIOLATIONS, na.rm = TRUE))
+message("Compliance-schedule violations placed on panel : ", sum(panel$N_CS_VIOLATIONS, na.rm = TRUE))
+message("Single-event violations placed on panel        : ", sum(panel$N_SE_VIOLATIONS, na.rm = TRUE))
 message("Facility-months with >=1 PS / CS / SE violation : ",
-        sum(panel$N_PS_VIOLATIONS > 0), " / ",
-        sum(panel$N_CS_VIOLATIONS > 0), " / ",
-        sum(panel$N_SE_VIOLATIONS > 0))
+        sum(panel$N_PS_VIOLATIONS > 0, na.rm = TRUE), " / ",
+        sum(panel$N_CS_VIOLATIONS > 0, na.rm = TRUE), " / ",
+        sum(panel$N_SE_VIOLATIONS > 0, na.rm = TRUE))
+message("Facility-months NOT operating (NA counts)      : ", sum(panel$FACILITY_OPERATING == "0"))
 message("Panel rows: ", nrow(panel), " | columns: ", ncol(panel))
 message("Written to: ", OUT_PATH)
