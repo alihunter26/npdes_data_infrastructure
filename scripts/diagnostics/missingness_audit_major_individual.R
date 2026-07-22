@@ -2,10 +2,10 @@
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
 # ==============================================================================
-# 07_missingness_audit_major_individual.R
+# missingness_audit_major_individual.R
 # ------------------------------------------------------------------------------
 # For every core ICIS-NPDES bulk file already used to build the major-individual
-# facility-month panel (scripts 01-06 in this folder), compute what share of
+# facility-month panel (scripts 01-06 in scripts/build panel/), compute what share of
 # each column is missing -- RESTRICTED to the same population as that panel:
 # NPDES_IDs that are individual ("NPD") permits ever flagged MAJOR at some
 # point in their history.

@@ -1,6 +1,6 @@
 # READMEs — facility-by-month panel build (`scripts/build panel/`)
 
-This folder documents the seven numbered scripts in `scripts/build panel/` that build the
+This folder documents the six numbered scripts in `scripts/build panel/` that build the
 **facility-by-month panel** of major, individually-permitted NPDES facilities,
 2005–2025. There is one README per script, written to the
 [Social Science Data Editors](https://social-science-data-editors.github.io/guidance/)
@@ -17,13 +17,16 @@ guidance). Each file is self-contained; export any of them to PDF from VS Code w
 | 04 | `04_add_violations.R` | [04](04_add_violations.md) | PS/CS/SE violation counts |
 | 05 | `05_add_enforcement.R` | [05](05_add_enforcement.md) | formal/informal enforcement counts + penalty $ |
 | 06 | `06_add_effluent_violations.R` | [06](06_add_effluent_violations.md) | all effluent-violation counts: TSS subset + all-parameter D80/D90/E90 |
-| 07 | `07_missingness_audit_major_individual.R` | [07](07_missingness_audit_major_individual.md) | missingness audit (diagnostic, not a panel step) |
+
+The missingness audit that was step 07 now lives in
+[`scripts/diagnostics/`](../../diagnostics/missingness_audit_major_individual.md).
 
 ## Pipeline order and conventions (shared by all steps)
 
 - **Run in order 01 → 02 → … → 06.** Each step reads the prior step's CSV from
-  `data/processed/` and writes the next. Step 07 is a standalone diagnostic that
-  reads the final panel (06) and the raw files.
+  `data/processed/` and writes the next. The missingness audit
+  (`scripts/diagnostics/missingness_audit_major_individual.R`) is a standalone diagnostic
+  that reads the final panel (06) and the raw files.
 - **Unit of analysis:** the FRS facility (`FACILITY_UIN`), or `NPDES_ID` when
   `FACILITY_UIN` is blank. Panel grain is one row per **facility × year × month**.
 - **Panel window:** January 2005 – December 2025 (`YEAR_MIN = 2005`, `YEAR_MAX = 2025`).

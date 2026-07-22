@@ -1,6 +1,6 @@
-# README — `07_missingness_audit_major_individual.R`
+# README — `missingness_audit_major_individual.R`
 
-*Step 7: a standalone **diagnostic** (not a panel-building step). Input: the final panel
+*A standalone **diagnostic** (not a panel-building step). Input: the final panel
 (06) + raw ICIS-NPDES files. Output: per-variable missingness tables.*
 
 ## Overview
@@ -94,7 +94,7 @@ effluent file restricted per chunk.
 ## Instructions to run
 
 ```bash
-Rscript "scripts/build panel/07_missingness_audit_major_individual.R"
+Rscript "scripts/diagnostics/missingness_audit_major_individual.R"
 ```
 Run **after** step 06 (needs the final panel to define the population). Requires `unzip`
 and the effluent zip in `data/raw/`.

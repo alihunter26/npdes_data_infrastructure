@@ -1,9 +1,9 @@
 # `scripts/build panel/` — facility-by-month panel pipeline
 
-The seven numbered scripts that build the **facility-by-month panel** of major,
+The six numbered scripts that build the **facility-by-month panel** of major,
 individually-permitted NPDES facilities, 2005–2025, from the raw ECHO/ICIS-NPDES data
 in `data/raw/`. Each step reads the prior step's CSV from `data/processed/` and writes
-the next; step 07 is a standalone missingness diagnostic.
+the next.
 
 > This is distinct from the facility-**year** / permit builders, which live in the
 > `build/` folder that was **moved to `../EIL Summer/build/`** (outside this repo).
@@ -18,7 +18,9 @@ the next; step 07 is a standalone missingness diagnostic.
 | 04 | `04_add_violations.R` | PS/CS/SE violation counts |
 | 05 | `05_add_enforcement.R` | formal/informal enforcement counts + penalty $ |
 | 06 | `06_add_effluent_violations.R` | all effluent-violation counts: TSS subset + all-parameter D80/D90/E90 (final panel) |
-| 07 | `07_missingness_audit_major_individual.R` | missingness audit (diagnostic) |
+
+> The missingness audit that used to be step 07 is now a diagnostic:
+> [`../diagnostics/missingness_audit_major_individual.R`](../diagnostics/missingness_audit_major_individual.R).
 
 **Per-script documentation** — inputs, outputs, and every decision/assumption — lives in
 [`READMEs/`](READMEs/README.md) (SSDE-style, one file per script).
@@ -37,7 +39,7 @@ the next; step 07 is a standalone missingness diagnostic.
 Rscript "scripts/build panel/01_build_facility_month_panel_major_individual.R"
 Rscript "scripts/build panel/02_add_inspections.R"
 # … 03, 04, 05, 06 in order
-Rscript "scripts/build panel/07_missingness_audit_major_individual.R"   # diagnostic, after 06
+Rscript "scripts/diagnostics/missingness_audit_major_individual.R"   # diagnostic, after 06
 ```
 
 Step 06 needs `python3` and `unzip` on `PATH` (it streams the raw effluent file), plus
