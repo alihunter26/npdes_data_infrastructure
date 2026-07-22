@@ -1,0 +1,220 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{url}
+
+% Machine-generated figures (see make_permit_types_brief.R). Do NOT hand-edit
+% the \input files or this compiled document; rerun the generator instead.
+\input{permit_types_numbers.tex}
+
+\title{\vspace{-2.5em}General vs.\ Individual NPDES Permits:\\
+Regulatory Framework and Empirical Patterns in ICIS-NPDES}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+\vspace{-2.5em}
+
+\section*{Scope}
+This brief distinguishes the Clean Water Act's two NPDES permitting vehicles --
+\textbf{individual} and \textbf{general} permits -- on regulatory grounds, then shows how
+that distinction is encoded in the ICIS-NPDES (ECHO) bulk data used in this project, and
+how it shapes observed enforcement patterns. All data figures are computed by
+\path{make_permit_types_brief.R} from the raw ICIS-NPDES files and the existing
+enforcement breakdown in \path{output/enforcement_by_permit_type.csv}
+(\path{scripts/enforcement_by_permit_type.R}); see \S\ref{sec:repro}.
+
+\section{The regulatory distinction}
+
+\paragraph{Individual permits.} An individual permit is written for one specific
+facility. Its effluent limits combine technology-based limits (set nationally, by
+industry category) with \textbf{water-quality-based limits derived from the specific
+receiving water}, so two dischargers with identical processes can face different
+numeric limits depending on where they discharge. Individual permits require a full,
+facility-specific application (40 CFR \S\,122.21) and carry facility-specific monitoring
+and Discharge Monitoring Report (DMR) obligations. They are the norm for larger, more
+complex dischargers -- municipal treatment plants and major industrial sources.
+
+\paragraph{General permits.} A general permit (40 CFR \S\,122.28) is a single template
+permit the permitting authority issues once to cover \textbf{many similar, lower-risk
+dischargers} at once -- construction and industrial stormwater, concentrated animal
+feeding operations (CAFOs), and small or short-lived operations. A facility obtains
+coverage by filing a \textbf{Notice of Intent (NOI)} against the master permit, which
+substitutes for an individual application; conditions are standardized and monitoring is
+lighter or absent. The relationship is one-to-many: one master general permit can cover
+hundreds of thousands of individual coverages (\S\ref{sec:data}).
+
+\paragraph{A common misconception: permit term.} Both permit types are capped at the
+\emph{same} statutory maximum: 40 CFR \S\,122.46 limits any NPDES permit, individual or
+general, to a fixed term not exceeding five years. The practical difference is
+administrative, not legal -- reissuing one general permit covers every facility under it
+at once, so general permits are almost always issued for the full five years, while an
+individual permit's specific term (and whether it is reissued on time or instead runs on
+under administrative continuance) depends on that facility's own permitting history
+(see \path{docs/data_quirks.md} on the \texttt{ADC} status flag).
+
+\paragraph{Moving between vehicles.} The Director may require any discharger covered by a
+general permit to apply for and obtain an individual permit instead (40 CFR
+\S\,122.28(b)(3)) -- e.g., if a facility's risk profile turns out not to fit the general
+permit's assumptions. Conversely, an owner/operator covered by a general permit may
+itself request exclusion and apply for an individual permit within 90 days of the general
+permit's publication.
+
+\paragraph{Representative general-permit programs.} EPA's Multi-Sector General Permit
+(MSGP) covers stormwater discharges from industrial facilities across roughly thirty
+sectors in areas where EPA is the permitting authority; the Construction General Permit
+(CGP) covers stormwater from construction sites disturbing $\geq 1$ acre with a pathway to
+a water of the US. CAFOs are typically covered under state- or EPA-issued general
+permits as well. These are the concrete real-world instances of the ``construction and
+industrial stormwater, CAFOs'' category.
+
+\section{How the distinction appears in ICIS-NPDES}
+\label{sec:data}
+
+\texttt{PERMIT\_TYPE\_CODE} marks the permitting vehicle on every ICIS-NPDES permit
+record. \texttt{NPD} = individual permit; \texttt{GPC} = a facility's coverage under a
+general permit; \texttt{NGP} = the general permit itself (the master record, not a
+covered facility) -- a small correction to an earlier internal note that had mislabeled
+this as \texttt{GPG}, a code that does not appear anywhere in the raw file. The remaining
+codes (\texttt{UFT}, \texttt{IIU}, \texttt{APR}, \texttt{SIN}, \texttt{SNN}) are minor,
+low-volume variants (state-issued or non-NPDES-equivalent records); their exact
+definitions were not independently confirmed against an authoritative EPA reference table
+and are not load-bearing for this analysis.
+
+\begin{table}[h]
+\centering
+\caption{\texttt{PERMIT\_TYPE\_CODE} frequency, two framings: \textbf{Permits} = distinct
+\texttt{EXTERNAL\_PERMIT\_NMBR} values (one row per permit); \textbf{Records} = raw rows
+in \texttt{ICIS\_PERMITS.csv} (one row per permit \emph{version} -- reissuances and
+modifications each add a row).}\label{tab:codes}
+\begin{tabular}{l r r}
+\toprule
+Code & Permits (distinct) & Records (all versions) \\
+\midrule
+\input{tab_permit_type_codes_rows.tex}
+\end{tabular}
+\end{table}
+
+The gap between the two columns matters: general-permit \emph{coverages} (\texttt{GPC})
+outnumber individual permits by roughly ten to one on either count, but reissuance
+behavior differs -- \npdMultiVersionPct\% of individual permits carry more than one
+version (a permit keeps its \texttt{NPDES\_ID} across $\sim$5-year reissuances), versus
+\gpcMultiVersionPct\% of general-permit coverages, which are more often
+\textbf{renumbered} when the master permit is reissued (e.g., an \texttt{NDR100000}-cycle
+coverage becomes an \texttt{NDR110000}-cycle coverage under a new ID) rather than
+versioned under the same one.
+
+\paragraph{Major status tracks the individual vehicle.} Of \everMajorTotal{} permits ever
+flagged ``major'' in any version, \everMajorIndiv{} (\everMajorIndivPct\%) are individual
+permits. Restricting analysis to major \emph{and} individual permits, as this project's
+facility panel does, is therefore a modest restriction on the major population and a
+severe one on the permit universe as a whole (\npdDistinct{} individual permits of
+\permitsTotal{} total).
+
+\paragraph{Facility identity and shared IDs.} Individual permits map cleanly to one
+physical site with a stable FRS registry identifier (\texttt{FACILITY\_UIN}) and point
+geocode. General-permit coverages frequently \textbf{share one generic
+\texttt{FACILITY\_UIN}} across unrelated sites: the most extreme case in this data is one
+North Dakota UIN (\texttt{\maxGpcUin}) spanning \maxGpcCount{} distinct general-permit
+coverages (construction-stormwater projects at different locations, sharing an
+administrative facility record rather than a physical one). This makes facility-level
+aggregation reliable for individual permits and hazardous for general ones.
+
+\paragraph{Both at once.} \dualPermitFacilities{} \texttt{FACILITY\_UIN}s hold both an
+individual (\texttt{NPD}) and a general (\texttt{GPC}) permit. This is typically an
+individually permitted process discharge \emph{plus} a general stormwater coverage at the
+same site -- the two permits govern different discharges, not the same one, so they
+should not be collapsed into a single "one facility, one permit" record.
+
+\paragraph{Data richness.} Monitoring and enforcement are concentrated on the
+individual/major side. Per \path{docs/data_quirks.md}, FY2025 DMR data shows majors at
+$\sim$84\% reporting coverage versus $\sim$7\% for minors -- consistent with general
+permits' lighter-to-absent numeric monitoring requirements.
+
+\section{Enforcement patterns by permit type}
+
+\begin{table}[h]
+\centering
+\footnotesize
+\caption{Formal vs.\ informal enforcement action records, by permit type and
+major/minor status (all years, all actions in the bulk enforcement files; each row is one
+action record, not one facility).}\label{tab:enforcement}
+\begin{tabular}{l l r r r r}
+\toprule
+Permit type & Status & Formal & Informal & Total & \% Informal \\
+\midrule
+\input{tab_enforcement_rows.tex}
+\end{tabular}
+\end{table}
+
+Pooling across major/minor status, individual permits accrue \enfIndivTotal{} action
+records (\enfIndivFormalPct\% formal / \enfIndivInformalPct\% informal) and general
+permits \enfGenTotal{} (\enfGenFormalPct\% formal / \enfGenInformalPct\% informal). The
+two permit types look broadly similar in their formal/informal \emph{split}, but arrive
+there by different detection pathways:
+
+\begin{itemize}
+  \item \textbf{Individual permits} (mostly majors) generate violations chiefly through
+    routine DMR review (numeric effluent-limit exceedances) and scheduled inspections.
+    Individual/major permittees are also the population to which EPA's
+    \textbf{significant noncompliance (SNC)} criteria are principally applied: since 1995,
+    EPA policy has defined SNC to include, among other triggers, any monthly average
+    effluent limit exceeded by $\geq$40\% (or by $\geq$20\% for two or more consecutive
+    months), any limit violated for four or more months in a two-consecutive-quarter
+    window, unauthorized bypass/pass-through, and reporting violations 30+ days late. These
+    criteria presuppose numeric monthly DMR limits -- exactly what individual permits
+    carry and general permits typically do not -- which is why SNC tracking is
+    substantively an individual/major-permit concept rather than a general-permit one.
+  \item \textbf{General permits} have less routine numeric monitoring, so violations more
+    often surface through inspections, failure to file the NOI or other required paperwork,
+    or complaints, rather than a DMR exceedance. Consistent with this, the response is more
+    often informal (\enfGenInformalPct\% vs.\ \enfIndivInformalPct\% for individual). The
+    Director's authority to revoke general-permit coverage and require an individual permit
+    (\S\,1 above; 40 CFR \S\,122.28(b)(3)) is the formal escalation path when a covered facility
+    turns out to warrant closer, facility-specific regulation.
+\end{itemize}
+
+\section{The 2015 NPDES Electronic Reporting Rule}
+
+EPA's NPDES Electronic Reporting Rule took effect \textbf{December 21, 2015}, replacing
+paper-based NPDES reporting with mandatory electronic submission, with the stated goal of
+more complete, timely, and nationally consistent compliance data. Implementation was
+phased: \textbf{Phase 1} (largely individual-permit DMR data) had a compliance deadline
+of December 21, 2016; \textbf{Phase 2} (general-permit and other remaining data streams)
+was originally due December 21, 2020 but was later extended by rule, giving affected
+programs up to five additional years. This phased rollout is the mechanism behind the
+"2016 eRule" reporting break already flagged in this project's data documentation
+(\path{docs/data_quirks.md}): majors' DMR coverage was already high before the rule,
+while minors' and general-permit coverage only began rising as Phase 1, and later Phase
+2, requirements took hold -- so pre- and post-2016 (and pre/post-2020+) coverage are not
+directly comparable, particularly for general-permit-covered dischargers.
+
+\section{Implications for analysis}
+
+For facility-level research, the individual permit is the meaningful analytical unit: one
+physical site, a stable identifier, dense measurement, and a trustworthy location. The
+general permit is best understood as an \textbf{administrative umbrella, not a facility}
+-- a single \texttt{FACILITY\_UIN} or master permit number can span hundreds of unrelated
+sites, and monitoring/enforcement data is comparatively sparse. Restricting to major
+individual permits, as this project's panel does, buys a well-defined and well-measured
+population at a real cost to external validity: it excludes the large majority of
+permitted dischargers, which are general, lightly monitored, and (per
+\S\,3) usually resolved informally rather than through the DMR/inspection/SNC pipeline
+that individual permits generate.
+
+\section*{Reproducibility}
+\label{sec:repro}
+Every figure above is generated by \path{make_permit_types_brief.R} from
+\path{data/raw/npdes_downloads/ICIS_PERMITS.csv},
+\path{data/raw/npdes_downloads/ICIS_FACILITIES.csv}, and the pre-built
+\path{output/enforcement_by_permit_type.csv} (from
+\path{scripts/enforcement_by_permit_type.R}, not recomputed here). Regulatory
+citations (40 CFR \S\S\,122.28, 122.46; the 1995 SNC criteria memorandum; the 2015
+Electronic Reporting Rule and its Phase 2 extension) are drawn from the Federal Register
+and eCFR and are not derived from project data. Rerun the generator after any raw-data
+refresh; do not hand-edit the \texttt{\textbackslash input} fragments or this PDF.
+
+\end{document}

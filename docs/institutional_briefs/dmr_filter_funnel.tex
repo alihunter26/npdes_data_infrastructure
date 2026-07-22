@@ -1,0 +1,72 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{url}
+
+\title{\vspace{-2.5em}Row and Permit Attrition Across the DMR Filter Pipeline\\
+FY2009 vs.\ FY2025}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+\vspace{-2.5em}
+
+\section*{Scope and data}
+This brief tracks how many \textbf{observations} (DMR rows) and how many
+\textbf{distinct permits} survive each step of the DMR filter pipeline in
+\texttt{dmr analysis/}, comparing FY2009 against FY2025. The starting point
+(\textbf{Stage 0}) is the \emph{raw, completely unfiltered} DMR file exactly
+as delivered by EPA ECHO --- every permit (major and minor, individual and
+general), every parameter, feature type, and monitoring location, with no
+restriction of any kind. Four filtering stages are then applied in sequence,
+narrowing that raw universe down to a single pollutant/monitoring-location/
+limit-type slice used for TSS effluent compliance analysis:
+
+\begin{enumerate}
+  \item \textbf{Major-Individual} --- restrict to permits that are
+        individual (\texttt{PERMIT\_TYPE\_CODE = "NPD"}) and were flagged
+        major in at least one permit version. No parameter, feature-type, or
+        monitoring-location restriction yet.
+  \item \textbf{+TSS (00530)} --- restrict to \texttt{PARAMETER\_CODE =
+        '00530'} (Total Suspended Solids).
+  \item \textbf{+Effluent Gross} --- restrict to
+        \texttt{MONITORING\_LOCATION\_CODE IN ('1','EG')} (both map to
+        "Effluent Gross" per EPA's \texttt{REF\_MONITORING\_LOCATION} table).
+  \item \textbf{+C1/Q1} --- restrict to \texttt{LIMIT\_VALUE\_TYPE\_CODE IN
+        ('C1','Q1')} (the concentration- and mass-average value slots).
+\end{enumerate}
+
+Each stage is built by \texttt{dmr analysis/filter\_dmr\_*.R} (parameterized
+by fiscal year) and self-verifies column counts and category cardinality
+before writing its output; see the scripts for the exact filter logic. Stage
+0's summary is computed directly via DuckDB SQL aggregation rather than
+loaded into R (the raw file is 11--27M rows, too large to safely read in full
+on this machine); see \texttt{scripts/summary/build\_dmr\_raw\_summary.R}.
+All figures below are measured directly from the raw file and the four
+filtered CSVs for each fiscal year, not estimated.
+
+\section*{Underlying numbers}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+ & \multicolumn{2}{c}{FY2009} & \multicolumn{2}{c}{FY2025} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+Stage & Rows & Permits & Rows & Permits \\
+\midrule
+0. Raw / All Permits  & 11{,}077{,}254 & 44{,}230 & 26{,}869{,}750 & 89{,}954 \\
+1. Major-Individual   & 4{,}015{,}793 & 6{,}555 & 4{,}703{,}897 & 6{,}701 \\
+2. +TSS (00530)        &   440{,}369 & 6{,}426 &   489{,}033 & 6{,}572 \\
+3. +Effluent Gross     &   328{,}296 & 6{,}091 &   336{,}437 & 6{,}117 \\
+4. +C1/Q1              &    80{,}196 & 4{,}974 &    75{,}818 & 4{,}880 \\
+\bottomrule
+\end{tabular}
+\caption{Row and permit counts at each filter stage, FY2009 vs.\ FY2025.}
+\label{tab:funnel}
+\end{table}
+
+\end{document}
