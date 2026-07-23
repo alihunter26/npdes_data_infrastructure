@@ -25,7 +25,12 @@ resource-intensive; general permits are efficient but coarse.
 ## 2. How the distinction appears in this dataset
 
 - **Permit-type codes.** `PERMIT_TYPE_CODE` marks the vehicle: `NPD` = individual, `GPC` =
-  general-permit covered (plus a master `GPG` and minor types). General-permit records dominate the
+  a facility's coverage under a general permit, `NGP` = the general permit itself (the master
+  record, not a covered facility) — corrects an earlier internal note that had mislabeled this
+  as `GPG`, a code that does not appear anywhere in the raw file. The remaining codes (`UFT`,
+  `IIU`, `APR`, `SIN`, `SNN`) are minor, low-volume variants (state-issued or non-NPDES-equivalent
+  records) not independently confirmed against an authoritative EPA reference table and not
+  load-bearing for this analysis. General-permit records dominate the
   file — roughly **1.37M `GPC` vs. 243k `NPD`** permit records — even though individual permits carry
   most of the regulatory content.
 
