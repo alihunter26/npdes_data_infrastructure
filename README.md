@@ -26,7 +26,7 @@ Raw data is excluded from version control (see `.gitignore`) due to size.
 ```
 CWA/
 ├── _paths.R          # central path config (anchors to repo root; no absolute paths)
-├── run_all.R         # one-command rebuild of every panel:  Rscript run_all.R
+├── run_all.R         # one-command rebuild of the panel:  Rscript run_all.R
 ├── data/
 │   ├── raw/          # original ECHO downloads — never modified
 │   │   ├── npdes_downloads/        # 15 core ICIS-NPDES tables
@@ -34,12 +34,15 @@ CWA/
 │   │   └── Master General Permits/
 │   ├── processed/    # cleaned / analysis-ready files (built from code)
 │   └── crosswalks/   # reference tables (parameter, NAICS/SIC, state codes)
-├── scripts/
-│   ├── build panel/  # facility-by-month panel pipeline (01–07); see its READMEs/
-│   ├── summary/      # per-dataset Excel summary sheets
-│   └── diagnostics/  # data-quality checks and one-off analyses
-│   # NOTE: the former scripts/build/ pipeline was moved OUT of this repo to the
-│   # EIL Summer working folder (../EIL Summer/build). See the note below.
+├── code/
+│   ├── 00_setup/            # package/directory checks (run_all.R's first step)
+│   ├── 01_data_download/    # scripted ECHO bulk-file downloader
+│   ├── 02_cleaning/         # reserved — no dedicated module yet; see its module_README.md
+│   ├── 03_panel_building/   # facility-by-month panel pipeline (01–06); see its READMEs/
+│   ├── summary/             # per-dataset Excel summary sheets
+│   └── diagnostics/         # data-quality checks, grouped by topic; see its README.md
+├── build/            # sibling pipeline: facility-year / permit-panel builder (see below)
+├── dmr analysis/     # sibling pipeline: DMR row-filtering, feeds 03_panel_building/06
 ├── output/           # generated summaries (.xlsx) and flagged/extract CSVs
 │   ├── tables/       # diagnostic CSV extracts
 │   └── figures/
@@ -51,17 +54,15 @@ CWA/
 
 ## Scripts
 
-### `build/` — panel pipeline (moved out of this repo)
+### `build/` and the external EIL Summer builders — two separate things, easy to conflate
 
-> **Relocated:** the former `scripts/build/` folder now lives in the **EIL Summer**
-> working folder (`../EIL Summer/build`), outside this repository. It holds the
-> facility-**year** / permit builders (`01–05`) plus `build_effluent_violations_npdes_month_panel.R`
-> and `filter_dmr_...R` — the latter two still produce inputs consumed by the
-> `scripts/build panel/` pipeline (their output CSVs live in `data/processed/`), so keep that
-> folder available when you need to rebuild those inputs.
+This repo has its **own** root-level `build/` folder (a sibling to `code/`, not nested
+inside it — see decision in `code/README.md`), currently holding one script,
+`filter_dmr_fy2025_effgross_major_individual.R`.
 
-The (relocated) numbered build steps turn the raw ECHO tables into the analysis panels
-in `data/processed/`:
+That is **distinct** from the original facility-**year** / permit-panel builders, which
+genuinely still live outside this repo, in the **EIL Summer** working folder
+(`../EIL Summer/build/`):
 
 | Step | Output |
 |---|---|
@@ -70,8 +71,15 @@ in `data/processed/`:
 | `03_build_facility_panel_major_individual.R` | FRS-facility panel (never-minor, entry/exit) |
 | `04_build_permit_panel_major_continuous.R` | permit panel: major every year (balanced) |
 | `05_build_permit_panel_major_entryexit.R` | permit panel: never-minor (entry/exit) |
+| `build_effluent_violations_npdes_month_panel.R` | condensed effluent panel feeding `code/03_panel_building/06_add_effluent_violations.R` |
+| `filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` | DMR rows (TSS / effluent-gross / monthly-avg) |
 
-### `scripts/summary/` — dataset summaries
+Those two external scripts' output CSVs live in `data/processed/` and are still needed
+to rebuild those specific inputs — keep that external folder available. This repo's own
+`build/` is a newer, separate addition; the two are not the same folder and were never
+merged.
+
+### `code/summary/` — dataset summaries
 
 These all produce the **same summary-sheet format**: per variable, the percent missing,
 distinct-category counts, top frequent values (with code → description lookups), and
@@ -82,7 +90,7 @@ summaries from a dataset registry, so the shared styles / helpers / worksheet wr
 live in one place instead of being copy-pasted across scripts:
 
 ```
-Rscript scripts/summary/summarize.R <dataset> [arg]
+Rscript code/summary/summarize.R <dataset> [arg]
 #   <dataset>: npdes | dmrs | attains | eff_violations | eff_violations_state
 #              limits | master_general_permits | outfalls_layer   (or "all")
 #   [arg]:     state code for eff_violations_state (default NY);
@@ -92,38 +100,19 @@ Rscript scripts/summary/summarize.R <dataset> [arg]
 
 Each dataset is a config entry in the `DATASETS` list (id/date columns, descriptions,
 distinct-count label, reader). To add or adjust a summary, edit that entry — not a
-whole script. Output verified byte-identical to the old per-dataset scripts, with one
-intentional layout change: every sheet now uses the fuller 8-column categorical /
-9-column numeric tables (a trailing, always-blank **Missing Explanation** column that
-some sheets already had) and a single "Notes" footer. No summary statistic changes
-value. The old per-dataset scripts below are kept as a reference and still run.
+whole script. Every sheet uses an 8-column categorical / 9-column numeric layout (a
+trailing, always-blank **Missing Explanation** column) and a single "Notes" footer.
 
-| Script | Input | Output |
-|---|---|---|
-| `summarize_npdes.R` | every CSV in `npdes_downloads/` | `npdes_summary_*.xlsx` (one sheet per table) |
-| `summarize_dmrs.R` | `npdes_dmrs_fy2025.zip` (read via `unzip -p`) | `dmrs_summary_*.xlsx` |
-| `summarize_eff_violations.R` | full `NPDES_EFF_VIOLATIONS.csv`, streamed from its zip (chunked, ~16 GB) | `eff_violations_summary_*.xlsx` |
-| `summarize_eff_violations_state.R` | effluent violations for one state — set `STATE` at the top (e.g. `"NY"`, `"VA"`, `"PR"`) | `eff_violations_<state>_*.csv` + `_summary_*.xlsx` |
-| `summarize_master_general_permits.R` | `ICIS_MASTER_GENERAL_PERMITS.csv` | `master_general_permits_summary_*.xlsx` |
-| `summarize_outfalls_layer.R` | `npdes_outfalls_layer.csv` | `outfalls_layer_summary_*.xlsx` |
-| `summarize_attains.R` | CSVs in `Attains/` | `attains_summary_*.xlsx` |
+Datasets covered: `npdes` (every CSV in `npdes_downloads/`, one sheet per table),
+`dmrs`, `attains`, `eff_violations` / `eff_violations_state`, `limits`,
+`master_general_permits`, `outfalls_layer`.
 
-`summarize_npdes.R` is the template the others mirror. It normalizes whitespace-only
-cells (e.g. the literal space ECHO uses for "blank" in QNCR `HLRNC`) to `NA`, so the
-`% Missing` column and the frequent-values list stay consistent. Set its `ONLY_FILE`
-variable to summarize a single table instead of all of them.
+### `code/diagnostics/` — diagnostics & checks
 
-### `scripts/diagnostics/` — diagnostics & checks
-
-| Script | Purpose |
-|---|---|
-| `eff_flagged.R` | Flags suspicious effluent-violation rows for one state → `eff_flagged_<state>_*.csv`, each with a `FLAG_REASON`. Flags: negative `DMR_VALUE_NMBR`, negative `DMR_VALUE_STANDARD_UNITS`, a year before 1984 in any of four date columns, or any value > 1,000,000 in a non-ID column. State is set at the top or passed as an argument: `Rscript eff_flagged.R va` |
-| `count_informal_exact_duplicates.R` | Counts fully-identical duplicate rows in informal enforcement and writes every duplicate row, copies side by side, to `output/tables/` |
-| `dup_enforcement_pairs.R` | Diagnoses why `(NPDES_ID, ENF_IDENTIFIER)` pairs repeat in formal enforcement |
-| `dup_rows_by_enf_type.R` | Extracts formal-enforcement rows identical except `ENF_TYPE_CODE`/`DESC` (one action recorded once per statute) → `output/tables/` |
-| `cs_rnc_missingness.R` | Tests why RNC fields are ~61% blank in compliance-schedule violations (joins permit major/minor + RNC-tracking flags) |
-
-`scripts/diagnostics/preview_dmr2025.R` is a one-off snippet to peek at the DMR zip.
+Grouped into one subfolder per topic (NAICS/SIC coverage, enforcement duplicates,
+missingness, outfalls, brief generation, effluent QC). See
+[`code/diagnostics/README.md`](code/diagnostics/README.md) for the full, current list —
+not duplicated here so this table can't drift out of sync as scripts are added.
 
 ## Conventions
 

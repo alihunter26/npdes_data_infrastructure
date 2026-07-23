@@ -7,7 +7,7 @@ complete-case analysis induces selection bias, not just lost power.
 
 Number provenance. Figures marked *(measured)* were computed this session from the
 raw files in `data/raw/` (via the checks in `scripts/check_naics_sic_mapping.R`,
-`scripts/summary/summarize_dmr_coverage_major_minor.R`, and ad-hoc passes over
+`code/summary/summarize_dmr_coverage_major_minor.R`, and ad-hoc passes over
 `ICIS_PERMITS`, `ICIS_FACILITIES`, `NPDES_EFF_VIOLATIONS`); they are reproducible but
 were run interactively. Figures marked *(derived)* follow logically from the data model.
 Figures marked *(qualitative)* are dataset knowledge not exactly quantified here.
