@@ -13,7 +13,7 @@ not build steps.
 | `00_setup/` | Package/directory checks, run first. See its `module_README.md`. |
 | `01_data_download/` | Downloads the EPA ECHO / ICIS-NPDES bulk files into `data/raw/`. Off by default in `run_all.R` — see its `module_README.md`. |
 | `02_cleaning/` | Reserved. No dedicated cleaning module exists yet — cleaning logic currently lives inline in `03_panel_building/` and in the `dmr analysis/` and `build/` sibling pipelines. See its `module_README.md`. |
-| `03_panel_building/` | The core pipeline: builds the facility-by-**month** panel of major, individually-permitted NPDES facilities, 2005–2025. Steps `01`–`06`, documented per-script in `03_panel_building/READMEs/`. |
+| `03_panel_building/` | The core pipeline: builds the facility-by-**month** panel of major, individually-permitted NPDES facilities, 2005–2025. Steps `01`–`06` build it; `07` corrects `FACILITY_OPERATING` (final panel). Documented per-script in `03_panel_building/READMEs/`. |
 | `summary/` | Per-dataset Excel summary generators. `summarize.R` is the single registry-driven entry point; the legacy `summarize_*.R` scripts are kept for reference. |
 | `diagnostics/` | Data-quality checks and one-off analyses, grouped by topic (NAICS/SIC coverage, enforcement duplicates, missingness, outfalls, brief generation, effluent QC). Not part of the panel build — see `diagnostics/README.md`. |
 

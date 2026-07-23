@@ -9,7 +9,7 @@ the code in `code/` and `code/03_panel_building/`.
 | File | Purpose |
 |---|---|
 | `data_dictionary.md` | Key fields across the ICIS-NPDES tables and how they join. |
-| `codebook.md` | Variable definitions for the processed panels (stub — expand as panels grow). |
+| `codebook.md` | Full column-by-column variable definitions for the current facility-by-month panel (`07_facility_month_panel_major_individual_operating_corrected_2005_2025.csv`). |
 | `npdes_data_overview.md` | High-level tour of the NPDES/ECHO data and what each file covers. |
 | `permit_types_brief.md` | Permit-type codes (individual `NPD`, general, master general, …) and what they mean. |
 | `time_varying_vs_snapshot.md` | Which fields are time-varying vs. one-snapshot-per-facility (drives the panel's broadcast-vs-monthly logic). |

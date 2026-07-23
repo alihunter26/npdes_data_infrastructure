@@ -38,7 +38,7 @@ CWA/
 │   ├── 00_setup/            # package/directory checks (run_all.R's first step)
 │   ├── 01_data_download/    # scripted ECHO bulk-file downloader
 │   ├── 02_cleaning/         # reserved — no dedicated module yet; see its module_README.md
-│   ├── 03_panel_building/   # facility-by-month panel pipeline (01–06); see its READMEs/
+│   ├── 03_panel_building/   # facility-by-month panel pipeline (01–07); see its READMEs/
 │   ├── summary/             # per-dataset Excel summary sheets
 │   └── diagnostics/         # data-quality checks, grouped by topic; see its README.md
 ├── build/            # sibling pipeline: facility-year / permit-panel builder (see below)
@@ -48,7 +48,7 @@ CWA/
 │   └── figures/
 └── docs/
     ├── data_dictionary.md   # key fields and table join logic
-    ├── codebook.md          # variable definitions for processed data (stub)
+    ├── codebook.md          # variable definitions for the current facility-by-month panel (step 07)
     └── notes.md             # running notes on quirks, decisions, findings
 ```
 
