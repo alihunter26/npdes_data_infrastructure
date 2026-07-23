@@ -1,5 +1,9 @@
 # Raw data — too large for version control
-data/raw/
+# (data/raw/* not data/raw/ so the negations below can re-include specific files;
+# git cannot re-include a file whose parent directory is itself fully excluded)
+data/raw/*
+!data/raw/README.md
+!data/raw/_download_log.csv
 
 # R artifacts
 .Rhistory
@@ -13,6 +17,9 @@ Thumbs.db
 # Large processed files (add exceptions below as needed)
 data/processed/*.csv
 data/crosswalks/*.csv
+
+# dmr analysis/ intermediates — multi-GB, rebuilt from data/raw/ + dmr analysis/*.R
+dmr analysis/*.csv
 
 # Generated summary / flag outputs (rebuilt from scripts) — incl. nested subfolders
 output/*.xlsx
