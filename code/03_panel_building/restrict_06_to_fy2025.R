@@ -4,13 +4,21 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # ==============================================================================
 # restrict_06_to_fy2025.R
 # ------------------------------------------------------------------------------
-# Restrict the step-06 facility-by-month panel to Fiscal Year 2025.
+# Restrict the current final facility-by-month panel to Fiscal Year 2025.
 #
-# Input : data/processed/06_facility_month_panel_major_individual_effluent_2005_2025.csv
-# Output: data/processed/06_facility_month_panel_major_individual_effluent_fy2025.csv
+# Input : data/processed/07_facility_month_panel_major_individual_operating_corrected_2005_2025.csv
+# Output: data/processed/07_facility_month_panel_major_individual_operating_corrected_fy2025.csv
 #
-# This is a pure ROW filter: every column of the 06 panel is preserved unchanged;
-# only facility-months outside FY2025 are dropped. Run after the 01..06 pipeline.
+# UPDATED 2026-07-23: repointed from the step-06 panel to step-07's corrected panel
+# (FACILITY_OPERATING was undercounting real activity -- see step 07's README/
+# docs/codebook.md). This script's own filename still says "06" for historical
+# reasons; its actual source and output are now the 07 panel. Prior fy2025 output
+# from the (now superseded) 06 panel remains on disk as
+# data/processed/06_facility_month_panel_major_individual_effluent_fy2025.csv, unchanged.
+#
+# This is a pure ROW filter: every column of the source panel is preserved
+# unchanged; only facility-months outside FY2025 are dropped. Run after the
+# 01..07 pipeline.
 # ==============================================================================
 
 suppressPackageStartupMessages(library(data.table))
@@ -23,10 +31,10 @@ suppressPackageStartupMessages(library(data.table))
 FY          <- 2025L
 FY_CALENDAR <- FALSE   # FALSE => Oct(FY-1)..Sep(FY);  TRUE => Jan..Dec(FY)
 
-IN_PATH  <- file.path(CWA_ROOT, "data/processed/06_facility_month_panel_major_individual_effluent_2005_2025.csv")
-OUT_PATH <- file.path(CWA_ROOT, "data/processed/06_facility_month_panel_major_individual_effluent_fy2025.csv")
+IN_PATH  <- file.path(CWA_ROOT, "data/processed/07_facility_month_panel_major_individual_operating_corrected_2005_2025.csv")
+OUT_PATH <- file.path(CWA_ROOT, "data/processed/07_facility_month_panel_major_individual_operating_corrected_fy2025.csv")
 
-if (!file.exists(IN_PATH)) stop("06 panel not found: ", IN_PATH)
+if (!file.exists(IN_PATH)) stop("07 panel not found: ", IN_PATH)
 
 # Read every column as text so IDs, ZIP leading zeros, and the blank-vs-0 penalty
 # distinction round-trip exactly; only YEAR/MONTH are coerced (for the filter).
@@ -50,7 +58,7 @@ span <- if (FY_CALENDAR) {
 } else {
   sprintf("federal FY%d (Oct %d - Sep %d)", FY, FY - 1L, FY)
 }
-message("Restricted 06 panel to ", span)
+message("Restricted 07 panel to ", span)
 message("  rows in    : ", format(nrow(panel), big.mark = ","))
 message("  rows out   : ", format(nrow(fy),    big.mark = ","))
 message("  months     : ", min(ym), " .. ", max(ym),

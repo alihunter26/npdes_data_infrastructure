@@ -1,8 +1,8 @@
 # READMEs — facility-by-month panel build (`code/03_panel_building/`)
 
-This folder documents the six numbered scripts in `code/03_panel_building/` that build the
-**facility-by-month panel** of major, individually-permitted NPDES facilities,
-2005–2025. There is one README per script, written to the
+This folder documents the seven numbered scripts in `code/03_panel_building/` that
+build the **facility-by-month panel** of major, individually-permitted NPDES
+facilities, 2005–2025. There is one README per script, written to the
 [Social Science Data Editors](https://social-science-data-editors.github.io/guidance/)
 template (and the Colmer lab
 [Making-a-Replication-Package](https://github.com/jonathancolmer/lab-guide/wiki/Making-a-Replication-Package)
@@ -17,16 +17,20 @@ guidance). Each file is self-contained; export any of them to PDF from VS Code w
 | 04 | `04_add_violations.R` | [04](04_add_violations.md) | PS/CS/SE violation counts |
 | 05 | `05_add_enforcement.R` | [05](05_add_enforcement.md) | formal/informal enforcement counts + penalty $ |
 | 06 | `06_add_effluent_violations.R` | [06](06_add_effluent_violations.md) | all effluent-violation counts: TSS subset + all-parameter D80/D90/E90 |
+| 07 | `07_extend_facility_operating.R` | [07](07_extend_facility_operating.md) | corrects `FACILITY_OPERATING`, which undercounted real activity; final panel |
 
-The missingness audit that was step 07 now lives in
-[`code/diagnostics/missingness/`](../../diagnostics/missingness/missingness_audit_major_individual.md).
+The missingness audit that used to occupy the "step 07" name now lives in
+[`code/diagnostics/missingness/`](../../diagnostics/missingness/missingness_audit_major_individual.md)
+and is unrelated to the current step 07 above (added 2026-07-23) — the number was
+vacant and has been reused for a real pipeline step.
 
 ## Pipeline order and conventions (shared by all steps)
 
-- **Run in order 01 → 02 → … → 06.** Each step reads the prior step's CSV from
-  `data/processed/` and writes the next. The missingness audit
+- **Run in order 01 → 02 → … → 07.** Each step reads the prior step's CSV from
+  `data/processed/` and writes the next; step 07 is a post-processing correction that
+  only reads step 06's output (no raw files). The missingness audit
   (`code/diagnostics/missingness/missingness_audit_major_individual.R`) is a standalone
-  diagnostic that reads the final panel (06) and the raw files.
+  diagnostic that reads the final panel and the raw files.
 - **Unit of analysis:** the FRS facility (`FACILITY_UIN`), or `NPDES_ID` when
   `FACILITY_UIN` is blank. Panel grain is one row per **facility × year × month**.
 - **Panel window:** January 2005 – December 2025 (`YEAR_MIN = 2005`, `YEAR_MAX = 2025`).

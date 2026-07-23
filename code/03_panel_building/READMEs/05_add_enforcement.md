@@ -77,8 +77,11 @@ operating.
    in STEP 4 of the script.
 2. **Type/activity breakouts can overlap** (PI naming). An action with several
    `ENF_TYPE_CODE`s is counted in each matching column, so the type columns are **not** a
-   partition and needn't sum to the total (many codes aren't broken out). `AGENCY` and
-   `OFFICIAL_FLG` **do** partition their totals — the run log verifies both identities.
+   partition and needn't sum to the total (many codes aren't broken out). `AGENCY` **does**
+   partition — but only within each activity type, not across all formal actions:
+   `N_STATE_AFR + N_EPA_AFR` partitions `N_AFR`, and `N_STATE_JDC + N_EPA_JDC` partitions
+   `N_JDC`, separately. `OFFICIAL_FLG` partitions `N_INFORMAL_ACTIONS` directly. The run log
+   verifies all three identities.
 3. **Exact `ENF_TYPE_CODE` match.** e.g. `N_AER` matches `"AER"` exactly; the `"AERS"`
    ("-S" significant variant) is **not** folded in (same for `LOVWL`/`NOV`/`NONC`).
    `TODO:` decide whether "-S" variants should be included.
@@ -112,7 +115,11 @@ operating.
   `N_JDC`←`"JDC"` (judicial).
 - Formal type (`ENF_TYPE_CODE`): `N_SCWAAPO`←`"SCWAAPO"`, `N_STAOCO`←`"STAOCO"`,
   `N_SCWAAO`←`"SCWAAO"`, `N_309A`←`"309A"`.
-- Formal agency (`AGENCY`): `N_STATE_FORMAL`←`"State"`, `N_EPA_FORMAL`←`"EPA"`.
+- Formal agency × activity (`AGENCY` within each `ACTIVITY_TYPE_CODE`): `N_STATE_AFR`←`AFR`+`"State"`,
+  `N_EPA_AFR`←`AFR`+`"EPA"`, `N_STATE_JDC`←`JDC`+`"State"`, `N_EPA_JDC`←`JDC`+`"EPA"`. There is no
+  single state/EPA split of *all* formal actions — agency is broken out separately within `AFR` and
+  within `JDC`, so `N_STATE_AFR + N_EPA_AFR` partitions `N_AFR` (not `N_FORMAL_ACTIONS`), and likewise
+  `N_STATE_JDC + N_EPA_JDC` partitions `N_JDC`.
 - Informal type (`ENF_TYPE_CODE`): `N_LOVWL`←`"LOVWL"`, `N_NOV`←`"NOV"`,
   `N_NONC`←`"NONC"`, `N_AER`←`"AER"`.
 - Informal official (`OFFICIAL_FLG`): `N_OFFICIAL_INFORMAL`←`"Y"`,
@@ -127,10 +134,10 @@ inner-join to the crosswalk drops unroutable `NPDES_ID`s.
 
 **Hardcoded parameters:** `YEAR_MIN = 2005`, `YEAR_MAX = 2025`; dollar strip `gsub("[$, ]","")`.
 
-## Output columns (20)
+## Output columns (22)
 
 - **Formal counts:** `N_FORMAL_ACTIONS`, `N_AFR`, `N_JDC`, `N_SCWAAPO`, `N_STAOCO`,
-  `N_SCWAAO`, `N_309A`, `N_STATE_FORMAL`, `N_EPA_FORMAL`.
+  `N_SCWAAO`, `N_309A`, `N_STATE_AFR`, `N_EPA_AFR`, `N_STATE_JDC`, `N_EPA_JDC`.
 - **Formal penalties:** `FED_PENALTY` (sum $ or NA), `N_FED_PENALTY_ASSESSED`,
   `STATE_PENALTY` (sum $ or NA), `N_STATE_PENALTY_ASSESSED`.
 - **Informal counts (per raw row — see Assumption 1a):** `N_INFORMAL_ACTIONS`, `N_LOVWL`,
@@ -147,9 +154,9 @@ Run **after** step 04.
 
 - A facility-month with a formal action but no assessed amount: `N_FORMAL_ACTIONS > 0`
   yet `FED_PENALTY`/`STATE_PENALTY` = NA and `N_*_PENALTY_ASSESSED` = 0.
-- Run-log identities: `N_STATE_FORMAL + N_EPA_FORMAL == N_FORMAL_ACTIONS`;
-  `N_OFFICIAL_INFORMAL + N_UNOFFICIAL_INFORMAL == N_INFORMAL_ACTIONS`; both computed
-  with `na.rm = TRUE` since non-operating/no-data rows are now legitimately NA.
+- Run-log identities: `N_STATE_AFR + N_EPA_AFR == N_AFR`; `N_STATE_JDC + N_EPA_JDC ==
+  N_JDC`; `N_OFFICIAL_INFORMAL + N_UNOFFICIAL_INFORMAL == N_INFORMAL_ACTIONS`; all
+  computed with `na.rm = TRUE` since non-operating/no-data rows are now legitimately NA.
 - A non-operating facility-month can still show a real, non-NA count if an action
   was genuinely recorded then (Assumption 7) — `FACILITY_OPERATING == 0` does not by
   itself imply NA.

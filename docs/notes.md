@@ -39,6 +39,38 @@ Standalone; not in `run_all.R`. Columns: `NPDES_ID, month, n_D80, n_D90, n_E90`.
 - **Engine:** DuckDB out-of-core (5 GB mem cap + disk spill); the zip member is
   streamed to a ~3.9 GB gzip temp once, then parsed. ~15 min end to end.
 
+### `FACILITY_OPERATING` correction — step 07 (2026-07-23)
+Script: `code/03_panel_building/07_extend_facility_operating.R` →
+`data/processed/07_facility_month_panel_major_individual_operating_corrected_2005_2025.csv`
+(new final panel; superseded `06_..._effluent_2005_2025.csv`, which remains on disk
+unchanged).
+- **Trigger:** a direct question about whether `FACILITY_OPERATING == 0` (hence `NA`
+  count columns) could be mislabeling facilities that were genuinely operating but just
+  quiet that month.
+- **Measured on the 06 panel:** 12.66% of `FACILITY_OPERATING == 0` rows (32,033 of
+  253,028) carried a real recorded event anyway. 75.9% of those are >12 months outside
+  the computed window (median 31, max 250 months) — not boundary noise. 2,381 of 7,511
+  facilities (32%) affected: 2,132 close-side, 413 open-side.
+- **Root cause:** permits with `PERMIT_STATUS_CODE == "ADC"` (Administrative
+  Continuance) have `EXPIRATION_DATE` read as a real closing date by script 01 even
+  though `ADC` means the permit is still legally active pending renewal. Confirmed on
+  facility `110006619212` / permit `NH0100455`. 86.7% of the 8,007 permits linked to
+  this panel's facilities carry `ADC` status at some point. This was already flagged as
+  a general risk in `docs/data_quirks.md` (the `PERMIT_STATUS_CODE`/`EXPIRATION_DATE`
+  row) before it was confirmed to actually be realized in the built panel.
+- **Fix:** extend each facility's window (both directions, per PI decision) to
+  `min/max(computed window, first/last month with a real recorded event)`; fill
+  previously-NA count columns with `0` in the newly-covered months. Never shrinks a
+  window. `FACILITY_OPERATING` in the new file carries the corrected value; the
+  original is preserved as `FACILITY_OPERATING_PERMIT_WINDOW`.
+- **Verified:** full column diff against the 06 panel shows zero illegal changes —
+  every altered cell is exactly a blank/NA → 0 fill, every other column byte-identical.
+  109,823 rows flip `FACILITY_OPERATING` 0→1; 3,772,636 NA→0 fills. Self-check (no
+  `FACILITY_OPERATING==0` row may carry a real event after correction) passes and is a
+  mathematical guarantee of the construction, not just an empirical result.
+- **Not yet regenerated:** `06_facility_month_panel_major_individual_effluent_fy2025.csv`
+  (the FY2025 row-filter) still reflects the pre-correction 06 panel.
+
 ## Findings
 
 ### Effluent D80/D90/E90 counts, 2005–2025 (2026-07-14)
