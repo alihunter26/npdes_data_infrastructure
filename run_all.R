@@ -24,13 +24,15 @@
 # step wrote. Steps are sourced in isolated environments so their variables
 # can't collide; data passes between them via the CSVs on disk, not R objects.
 #
-# Not run here (deliberately):
-#   - code/diagnostics/, code/summary/, dmr analysis/, build/ -- QC/reporting/
-#     sibling pipelines, not part of rebuilding the panel. See code/README.md.
-#   - code/03_panel_building/restrict_06_to_fy2025.R -- optional helper, run
-#     manually after this script. Repointed 2026-07-23 to read the step-07 panel
-#     (its own filename still says "06" for historical reasons) ->
-#     data/processed/07_facility_month_panel_major_individual_operating_corrected_fy2025.csv
+# Not run here (deliberately): code/diagnostics/, code/summary/, dmr analysis/,
+# build/ -- QC/reporting/sibling pipelines, not part of rebuilding the panel. See
+# code/README.md.
+#
+# REMOVED 2026-07-23: the FY2025 row-filter helper (restrict_06_to_fy2025.R) was
+# deleted. Its last output, data/processed/07_facility_month_panel_major_individual_
+# operating_corrected_fy2025.csv, remains on disk as a static file -- it is no
+# longer regenerable by any script. Filter the full 07 panel directly if you need
+# a fresh FY2025 (or other) extract.
 # ==============================================================================
 
 # Locate the repo root and load path config (defines CWA_ROOT, RAW_DIR, ...)

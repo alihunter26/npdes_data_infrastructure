@@ -13,12 +13,14 @@ against the actual CSV header and, where a discrepancy turned up, the script sou
 remains on disk (untouched, for audit) but should no longer be used for analysis — it
 has the pre-correction `FACILITY_OPERATING` described below.
 
-**FY2025 row-filter, updated 2026-07-23.** `restrict_06_to_fy2025.R` now reads the 07
-panel and writes `07_facility_month_panel_major_individual_operating_corrected_fy2025.csv`
-(federal FY2025, Oct 2024–Sep 2025) — this is the current FY2025 extract, same 58
-columns as the full 07 panel. The old `06_facility_month_panel_major_individual_effluent_fy2025.csv`
-remains on disk unchanged (pre-correction `FACILITY_OPERATING`, 57 columns) — don't use
-it going forward.
+**FY2025 row-filter script removed (2026-07-23).** `restrict_06_to_fy2025.R` (which
+produced a federal-FY2025, Oct 2024–Sep 2025 extract) has been deleted. Its last output,
+`07_facility_month_panel_major_individual_operating_corrected_fy2025.csv` (58 columns,
+same shape as the full 07 panel), remains on disk as a **static, non-regenerable**
+file — there is no longer a script that rebuilds it, so don't treat it as a source of
+truth. The still-older `06_facility_month_panel_major_individual_effluent_fy2025.csv`
+(pre-correction `FACILITY_OPERATING`, 57 columns) also remains on disk, unchanged. For
+a fresh FY2025 (or any other window) extract, filter the full 07 panel directly.
 
 **Grain:** facility × year × month. **Unit:** FRS facility (`FACILITY_UIN`, or
 `NPDES_ID` when `FACILITY_UIN` is blank). **Population:** facilities linked to ≥1

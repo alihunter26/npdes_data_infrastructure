@@ -33,13 +33,13 @@ output.
 ## Helper scripts (not part of the numbered chain)
 
 - `summarize_violation_types.R` — tabulates violation-type frequencies → `output/tables/`.
-- `restrict_06_to_fy2025.R` — restricts the current final panel to **federal FY2025**
-  (Oct 2024 – Sep 2025; set `FY_CALENDAR <- TRUE` for calendar 2025). Pure row filter,
-  all columns preserved. **Repointed 2026-07-23** from the step-06 panel to the step-07
-  panel (its own filename still says "06" for historical reasons) →
-  `data/processed/07_..._operating_corrected_fy2025.csv`. Run after step 07. The old
-  06-sourced output, `data/processed/06_..._effluent_fy2025.csv`, remains on disk
-  unchanged and should not be used going forward.
+
+> **Removed 2026-07-23:** `restrict_06_to_fy2025.R` (the federal-FY2025 row filter) was
+> deleted. Its last output, `data/processed/07_..._operating_corrected_fy2025.csv`,
+> remains on disk as a static file — **it is no longer regenerable by any script.** The
+> earlier, pre-correction output, `data/processed/06_..._effluent_fy2025.csv`, also
+> remains on disk unchanged. Neither should be treated as a source of truth going
+> forward; filter the current 07 panel directly for a fresh FY2025 (or other) extract.
 
 ## Run order
 

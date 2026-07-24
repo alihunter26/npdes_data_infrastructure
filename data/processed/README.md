@@ -10,8 +10,8 @@ the script that produces it.
 |---|---|---|
 | `01_…`→`06_facility_month_panel_major_individual_*_2005_2025.csv` | `code/03_panel_building/01…06_*.R` (run in order) | facility × month (majors, individual) |
 | `07_facility_month_panel_major_individual_operating_corrected_2005_2025.csv` | `code/03_panel_building/07_extend_facility_operating.R` | the 06 panel with `FACILITY_OPERATING` corrected (see its README) — **current final panel** |
-| `07_facility_month_panel_major_individual_operating_corrected_fy2025.csv` | `code/03_panel_building/restrict_06_to_fy2025.R` (repointed to 07 on 2026-07-23) | the 07 panel restricted to federal FY2025 (Oct 2024–Sep 2025) — **current FY2025 extract** |
-| `06_facility_month_panel_major_individual_effluent_fy2025.csv` | superseded — was `restrict_06_to_fy2025.R`'s output before it was repointed to 07 | ⚠️ pre-correction `FACILITY_OPERATING`; kept on disk unchanged, don't use going forward |
+| `07_facility_month_panel_major_individual_operating_corrected_fy2025.csv` | **orphaned** — was `code/03_panel_building/restrict_06_to_fy2025.R`, deleted 2026-07-23 | ⚠️ static file, no longer regenerable by any script; the 07 panel restricted to federal FY2025 (Oct 2024–Sep 2025) as of the script's last run |
+| `06_facility_month_panel_major_individual_effluent_fy2025.csv` | **orphaned** — same removed script, pre-correction output | ⚠️ static file, no longer regenerable; also pre-correction `FACILITY_OPERATING`. Kept on disk unchanged, don't use going forward |
 | `facility_month_panel_major_individual_2005_2025.csv` | `code/03_panel_building/01_*.R` (⚠️ 02 expects the `01_`-prefixed name — see `code/03_panel_building/READMEs/`) | facility × month |
 | `npdes_enforcement_panel_*_2005_2025.csv`, `permit_panel_major_individual_*_2005_2025.csv`, `facility_panel_major_individual_2005_2025.csv` | the external `01…05_*.R` in **`../EIL Summer/build/`** (outside this repo — not this repo's own `build/`) | facility-year / permit panels |
 | `effluent_violations_npdes_month_panel_2005_2025.csv` | the external `build_effluent_violations_npdes_month_panel.R` in **`../EIL Summer/build/`** | permit × month (D80/D90/E90) |
@@ -22,7 +22,10 @@ the script that produces it.
 
 - **Regenerable, not tracked.** Excluded from version control (`data/processed/*.csv`
   in `.gitignore`) due to size. Rebuild with `Rscript run_all.R` and the
-  `code/03_panel_building/` scripts (see their READMEs).
+  `code/03_panel_building/` scripts (see their READMEs). **Exception:** the two
+  `*_fy2025.csv` files above are now orphaned — their producing script was deleted
+  2026-07-23, so they can no longer be rebuilt; they're stale by construction and
+  should not be relied on.
 - **No hand-editing.** Every value is traceable to a script and a logged run.
 - **Two distinct panel families:** the facility-**month** pipeline lives in
   `code/03_panel_building/` (documented in `code/03_panel_building/READMEs/`); the
