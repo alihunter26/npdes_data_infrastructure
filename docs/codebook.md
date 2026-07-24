@@ -1,26 +1,31 @@
 # Codebook — facility-by-month panel
 
 Variable definitions for the **most recent panel**:
-`data/processed/07_facility_month_panel_major_individual_operating_corrected_2005_2025.csv`
-(built 2026-07-23; 58 columns). This is the final-assembly output of the seven-step
-pipeline in `code/03_panel_building/01…07_*.R` — see
+`data/processed/06_facility_month_panel_major_individual_effluent_2005_2025.csv`
+(built 2026-07-23; 58 columns). This is the final-assembly output of the six-step
+pipeline in `code/03_panel_building/01…06_*.R` — see
 [`code/03_panel_building/README.md`](../code/03_panel_building/README.md) for the pipeline
 and [`READMEs/`](../code/03_panel_building/READMEs/) for full per-script detail (this
-file condenses those seven READMEs into one column-by-column reference, cross-checked
+file condenses those six READMEs into one column-by-column reference, cross-checked
 against the actual CSV header and, where a discrepancy turned up, the script source).
 
-**Step 07 supersedes step 06.** `06_facility_month_panel_major_individual_effluent_2005_2025.csv`
-remains on disk (untouched, for audit) but should no longer be used for analysis — it
-has the pre-correction `FACILITY_OPERATING` described below.
+**2026-07-23: a standalone correction step 07 was retired and folded into step 01.**
+`FACILITY_OPERATING` used to be corrected by a post-processing script that ran after
+step 06 (because it needed every event type already assembled). It turned out to only
+need to know *whether and when* a facility had any real event, not the full detailed
+counts, so that check now runs **inside step 01** instead — `FACILITY_OPERATING` is
+correct from the moment it's first created, and steps 02–06 needed no code changes.
+The panel's columns, values, and row count are **unchanged** by this move — verified
+by a full column-by-column diff against the retired step-07 output (zero differences).
+See "The window correction" below and step 01's README for the full story.
 
 **FY2025 row-filter script removed (2026-07-23).** `restrict_06_to_fy2025.R` (which
-produced a federal-FY2025, Oct 2024–Sep 2025 extract) has been deleted. Its last output,
-`07_facility_month_panel_major_individual_operating_corrected_fy2025.csv` (58 columns,
-same shape as the full 07 panel), remains on disk as a **static, non-regenerable**
-file — there is no longer a script that rebuilds it, so don't treat it as a source of
-truth. The still-older `06_facility_month_panel_major_individual_effluent_fy2025.csv`
-(pre-correction `FACILITY_OPERATING`, 57 columns) also remains on disk, unchanged. For
-a fresh FY2025 (or any other window) extract, filter the full 07 panel directly.
+produced a federal-FY2025, Oct 2024–Sep 2025 extract) has been deleted. Its two prior
+outputs remain on disk as **static, non-regenerable** files — there is no longer a
+script that rebuilds either, so don't treat them as a source of truth:
+`07_facility_month_panel_major_individual_operating_corrected_fy2025.csv` and the
+still-older `06_facility_month_panel_major_individual_effluent_fy2025.csv`. For a
+fresh FY2025 (or any other window) extract, filter the current 06 panel directly.
 
 **Grain:** facility × year × month. **Unit:** FRS facility (`FACILITY_UIN`, or
 `NPDES_ID` when `FACILITY_UIN` is blank). **Population:** facilities linked to ≥1
@@ -45,10 +50,10 @@ encodes "nothing happened":
   event).
 - **A real matched event always wins**, regardless of `FACILITY_OPERATING`. A month
   can show `FACILITY_OPERATING == 0` and still carry a non-NA count if an event was
-  genuinely recorded then — but as of step 07, this can only happen for a facility with
-  **zero** recorded events anywhere in its whole panel life (see below); for every
-  facility with at least one real event, the window has already been extended to cover
-  it, so `FACILITY_OPERATING == 0` now reliably means NA.
+  genuinely recorded then — but this can now only happen for a facility with **zero**
+  recorded events anywhere in its whole panel life (see below); for every facility
+  with at least one real event, the window has already been extended to cover it, so
+  `FACILITY_OPERATING == 0` reliably means NA.
 
 This applies to every `N_*` / `n_*` count column below (inspections, NAICS/SIC are
 exempt — they're time-invariant attributes, not events). The two penalty-dollar
@@ -57,15 +62,14 @@ columns (`FED_PENALTY`, `STATE_PENALTY`) use a related but separate NA rule: NA 
 
 Of 1,892,772 rows, **1,749,567 are operating (`=1`) and 143,205 are not (`=0`)**.
 
-### The step-07 correction (why these numbers differ from the pre-07 panel)
+### The window correction (why `FACILITY_OPERATING` isn't just permit dates)
 
-`FACILITY_OPERATING` (as first computed in step 01) is derived purely from
-`ICIS_PERMITS` date fields — it has no independent knowledge of whether a facility was
-actually active. Measured directly on the step-06 panel: **12.66% of
-`FACILITY_OPERATING == 0` rows (32,033 of 253,028) still carried a real recorded
-event** — proof the facility was genuinely active — and 75.9% of those were more than
-12 months outside the computed window (median 31, max 250 months). 2,381 of 7,511
-facilities (32%) were affected.
+`FACILITY_OPERATING` was originally computed purely from `ICIS_PERMITS` date fields —
+no independent knowledge of whether a facility was actually active. Measured directly:
+**12.66% of `FACILITY_OPERATING == 0` rows (32,033 of 253,028) still carried a real
+recorded event** — proof the facility was genuinely active — and 75.9% of those were
+more than 12 months outside the computed window (median 31, max 250 months). 2,381 of
+7,511 facilities (32%) were affected.
 
 **Root cause:** permits with `PERMIT_STATUS_CODE == "ADC"` (Administrative
 Continuance — legally still active past the nominal `EXPIRATION_DATE` while a renewal
@@ -73,28 +77,31 @@ is pending) had that `EXPIRATION_DATE` read as a real closing date anyway. 86.7%
 8,007 permits linked to this panel's facilities carry `ADC` status at some point (see
 `docs/data_quirks.md`, the `PERMIT_STATUS_CODE`/`EXPIRATION_DATE` row).
 
-**Step 07's fix:** extend each facility's window (both directions) to
-`min/max(computed window, first/last month with a real recorded event)`, then fill the
-newly-covered months' previously-`NA` count columns with `0`. This can only grow a
-window, never shrink one. The result: `FACILITY_OPERATING` in this panel is the
-**corrected** flag; the original permit-window-only flag is preserved as a new column,
-**`FACILITY_OPERATING_PERMIT_WINDOW`** (column 8) — see its entry below. Full detail
-and the worked example (facility `110006619212`) are in
-[`code/03_panel_building/READMEs/07_extend_facility_operating.md`](../code/03_panel_building/READMEs/07_extend_facility_operating.md)
-and `docs/notes.md`.
+**The fix (now applied inside step 01):** extend each facility's window (both
+directions) to `min/max(permit-only window, first/last month with a real recorded
+event)`, checking event *existence* only across inspections, PS/CS/SE violations,
+formal/informal enforcement, and effluent violations (the last via the pre-built
+condensed panel — no need to stream the raw 16 GB effluent file for this). This can
+only grow a window, never shrink one. The result: `FACILITY_OPERATING` in this panel
+is the **corrected** flag; the original permit-window-only flag is preserved as a
+separate column, **`FACILITY_OPERATING_PERMIT_WINDOW`** (column 8) — see its entry
+below. Full detail, every labeled assumption, and the worked example (facility
+`110006619212`) are in
+[`code/03_panel_building/READMEs/01_build_facility_month_panel_major_individual.md`](../code/03_panel_building/READMEs/01_build_facility_month_panel_major_individual.md)
+(Assumptions 10–13) and `docs/notes.md`.
 
 **One residual limitation to know:** a facility whose panel life shows **zero**
 recorded events anywhere (no inspections, violations, enforcement, or effluent
 violations, ever) cannot be corrected this way — there's no event to extend the window
 against, so its `FACILITY_OPERATING` still rests entirely on the original permit-date
-window and carries the same undiagnosed risk described above. This step fixes every
+window and carries the same undiagnosed risk described above. The fix resolves every
 facility where the risk is *provable* from the panel's own data; it cannot fix a
 facility where the permit dates are wrong **and** the facility was never independently
 observed doing anything.
 
 ---
 
-## 1 · Spine & facility attributes (step 01, +1 column from step 07)
+## 1 · Spine & facility attributes (step 01)
 
 | # | Column | Type | Description |
 |---|---|---|---|
@@ -104,8 +111,8 @@ observed doing anything.
 | 4 | `NPDES_ID` | text | **Semicolon-separated list** of every individual (`NPD`) permit ever linked to this facility, `sort(unique(...))`. 427 of 7,511 facilities (5.7%) have >1; max is 7. To count distinct permits per facility, split on `"; "` — grouping directly on `FACILITY_UIN` will not do it, the collapse already happened here. |
 | 5 | `MAJOR_MINOR_FLAG` | text | Semicolon list, **position-aligned with `NPDES_ID`** — one major/minor flag (`M`/`N`) per listed permit, from `ICIS_PERMITS.MAJOR_MINOR_STATUS_FLAG`. A facility qualifies for the panel if *any* entry is ever `M` at any point in that permit's version history ("ever major"); entries can legitimately mix `M` and `N` for the same facility. 875 facilities shift between major and minor at some point. |
 | 6 | `PERMIT_TYPE_FLAG` | text | Constant `"NPD"` for every row — the panel is restricted to individual permits by construction (general/`GPC` permits are out of scope). |
-| 7 | `FACILITY_OPERATING` | integer (0/1) | **Corrected as of step 07** — see "Read this first" above. 1 iff the calendar month falls within the facility's window after extending it (per step 07) to also cover any month with a real recorded event. Facility *attribute* columns (name, address, `NPDES_ID` list, …) are **not** masked by this flag — they broadcast the same snapshot to every month regardless. |
-| 8 | `FACILITY_OPERATING_PERMIT_WINDOW` | integer (0/1) | **New in step 07.** The *original* script-01 definition, unchanged: 1 iff the month falls within the facility's earliest-open/latest-close window computed purely from permit dates (unioned across all its individual permits, clipped to 2005–2025) — before the step-07 correction. Preserved for traceability; use `FACILITY_OPERATING` (column 7) for analysis, not this one. |
+| 7 | `FACILITY_OPERATING` | integer (0/1) | **Corrected** — see "Read this first" above. 1 iff the calendar month falls within the facility's window after extending it to also cover any month with a real recorded event. Facility *attribute* columns (name, address, `NPDES_ID` list, …) are **not** masked by this flag — they broadcast the same snapshot to every month regardless. |
+| 8 | `FACILITY_OPERATING_PERMIT_WINDOW` | integer (0/1) | The *original* permit-dates-only definition: 1 iff the month falls within the facility's earliest-open/latest-close window computed purely from permit dates (unioned across all its individual permits, clipped to 2005–2025) — before the correction. Preserved for traceability; use `FACILITY_OPERATING` (column 7) for analysis, not this one. |
 | 9 | `FACILITY_TYPE_CODE` | text | Raw ICIS facility-type code. Observed values in this panel: `CNG`, `COR`, `CTG`, `DIS`, `FDF`, `MWD`, `MXO`, `NON`, `POF`, `STF`, `TRB`, or blank. **No code→label lookup table exists anywhere in this repo** — don't guess at meanings (e.g. `MWD` is commonly "municipal wastewater discharge" in ICIS documentation generally, but that mapping isn't verified against a source held here). If you need this decoded, pull EPA's ICIS-NPDES facility-type reference table before using it analytically. Time-invariant snapshot. |
 | 10 | `FACILITY_NAME` | text | Snapshot, time-invariant. When a facility has >1 linked permit, the record with a non-blank name is preferred and broadcast to all months. Real name/location changes over time are **not** tracked (ICIS carries no history for these fields). |
 | 11 | `LOCATION_ADDRESS` | text | Snapshot, same caveat as `FACILITY_NAME`. |
@@ -195,7 +202,7 @@ resolving to the facility counts.
 | 42 | `N_EPA_AFR` | integer / NA | `AFR` actions led by EPA. `N_STATE_AFR + N_EPA_AFR == N_AFR` (agency is one-per-action; verified in the run log). |
 | 43 | `N_STATE_JDC` | integer / NA | `JDC` actions led by a state agency. |
 | 44 | `N_EPA_JDC` | integer / NA | `JDC` actions led by EPA. `N_STATE_JDC + N_EPA_JDC == N_JDC`. |
-| 45 | `FED_PENALTY` | numeric $ / NA | Sum of federal penalty dollars (`FED_PENALTY_ASSESSED_AMT`) across the facility-month's formal actions, penalty de-duplicated to one value per action first. **NA means "not assessed," not "$0."** Blanks vastly outnumber true zeros (~107k blank vs. 72 genuine federal $0s). NA is independent of `FACILITY_OPERATING` — it's about whether an amount was ever assessed; unaffected by the step-07 correction. |
+| 45 | `FED_PENALTY` | numeric $ / NA | Sum of federal penalty dollars (`FED_PENALTY_ASSESSED_AMT`) across the facility-month's formal actions, penalty de-duplicated to one value per action first. **NA means "not assessed," not "$0."** Blanks vastly outnumber true zeros (~107k blank vs. 72 genuine federal $0s). NA is independent of `FACILITY_OPERATING` — it's about whether an amount was ever assessed; unaffected by the window correction. |
 | 46 | `N_FED_PENALTY_ASSESSED` | integer | Count of distinct formal actions carrying a non-blank federal penalty amount. |
 | 47 | `STATE_PENALTY` | numeric $ / NA | Same as `FED_PENALTY` for `STATE_LOCAL_PENALTY_AMT` (~64k blank vs. 768 genuine state $0s). |
 | 48 | `N_STATE_PENALTY_ASSESSED` | integer | Count of distinct formal actions carrying a non-blank state penalty amount. |
@@ -214,7 +221,7 @@ ending in `S` (e.g. `AERS` vs. `AER`) are the state-issued counterpart of the sa
 activity and are **not** folded into these columns — an open `TODO` in the source
 script.
 
-## 6 · Effluent violations (step 06)
+## 6 · Effluent violations (step 06, final assembly)
 
 **Two independent count sets, kept separate on purpose** — `n_D80/n_D90/n_E90` are
 all-parameter (every parameter, feature, and monitoring location), while
@@ -242,20 +249,13 @@ and routed via the step-01 crosswalk.
 | 31 | `N_TSS_EFF_D90` | integer / NA | TSS subset, `D90` code. |
 | 32 | `N_TSS_EFF_D80` | integer / NA | TSS subset, `D80` code. |
 | 33 | `N_TSS_EFF_E90` | integer / NA | TSS subset, `E90` code — genuine measured exceedances of the TSS limit. |
-| 56 | `n_D80` | integer / NA | All-parameter `D80` count, from the pre-built condensed monthly panel (`effluent_violations_npdes_month_panel_2005_2025.csv`); already de-duplicated to distinct underlying violations (latest DMR resubmission version only) at source. |
+| 56 | `n_D80` | integer / NA | All-parameter `D80` count, from the pre-built condensed monthly panel (`effluent_violations_npdes_month_panel_2005_2025.csv`); already de-duplicated to distinct underlying violations (latest DMR resubmission version only) at source. This is the same file step 01 reads for its event-existence check (Assumption 12). |
 | 57 | `n_D90` | integer / NA | All-parameter `D90` count. |
 | 58 | `n_E90` | integer / NA | All-parameter `E90` count. |
 
 Columns 30–33 sit right after `N_SE_VIOLATIONS` (their original position from when
 this block lived in step 04); columns 56–58 sit at the very end of the panel — the
 two effluent blocks are not adjacent in column order.
-
-## 7 · Operating-window correction (step 07)
-
-Adds no new event columns — see "Read this first" above and column 8
-(`FACILITY_OPERATING_PERMIT_WINDOW`) in section 1. Step 07 only redefines column 7
-(`FACILITY_OPERATING`) and NA→0-fills the newly-covered rows of every count column
-listed in sections 2–6 above; it never changes an already-real value.
 
 ---
 
@@ -285,7 +285,9 @@ listed in sections 2–6 above; it never changes an already-real value.
 - **Routing** — every event-level source file is joined to a facility via `NPDES_ID`
   through the identical permit→facility crosswalk built in step 01 and rebuilt
   identically in each downstream step; an event on *any* individual permit ever linked
-  to the facility counts toward that facility, not just the major one(s).
+  to the facility counts toward that facility, not just the major one(s). Step 01
+  itself builds this crosswalk **twice** — once restricted (for the spine), once
+  unrestricted (for the event-existence scan) — see its README, Assumption 13.
 - **Two operating flags, one intended for use** — `FACILITY_OPERATING` (corrected,
   column 7) is what analysis should use; `FACILITY_OPERATING_PERMIT_WINDOW` (column 8)
   is the original permit-date-only version, kept for traceability/audit only.
@@ -298,7 +300,7 @@ listed in sections 2–6 above; it never changes an already-real value.
 - [`docs/data_quirks.md`](data_quirks.md), [`docs/notes.md`](notes.md),
   [`docs/time_varying_vs_snapshot.md`](time_varying_vs_snapshot.md) — known data
   issues, e.g. the ~2016 eRule DMR-coverage break, non-monthly DMR periods, and the
-  `PERMIT_STATUS_CODE`/`ADC` quirk behind the step-07 correction.
+  `PERMIT_STATUS_CODE`/`ADC` quirk behind the window correction.
 - [`code/03_panel_building/READMEs/`](../code/03_panel_building/READMEs/) — full
   SSDE-style documentation per build step, including every numbered assumption this
   dictionary compresses into single lines.

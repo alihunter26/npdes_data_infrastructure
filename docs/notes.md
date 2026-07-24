@@ -71,6 +71,34 @@ unchanged).
 - **Not yet regenerated:** `06_facility_month_panel_major_individual_effluent_fy2025.csv`
   (the FY2025 row-filter) still reflects the pre-correction 06 panel.
 
+### `FACILITY_OPERATING` correction relocated into step 01 (2026-07-23)
+Per request, step 07 above was retired and its logic folded directly into
+`code/03_panel_building/01_build_facility_month_panel_major_individual.R`
+(Assumptions 10–13 there). The findings and numbers in the entry above are unchanged
+and still accurate — only *where* the correction runs changed, not what it does or
+what it produces.
+- **Why this was possible:** the correction only ever needed event *existence*
+  (whether/when a facility had any real event), not the full detailed counts steps
+  02/04/05/06 compute — so it doesn't actually need to wait until step 06 finishes.
+  Verified empirically first: zero facility-months have a positive TSS-subset
+  violation while the condensed all-parameter effluent panel shows nothing, so step 01
+  can use just the condensed panel and skip streaming the raw 16 GB effluent file
+  entirely (no `python3`/`unzip` needed in step 01).
+- **Bug caught and fixed during the move:** an early version of the relocated logic
+  derived its event-routing crosswalk from `01`'s own individual/major-restricted
+  facility table, rather than a full, unrestricted `ICIS_FACILITIES` read (as
+  02/04/05/06 each independently do) — this silently dropped events recorded under a
+  qualifying facility's *other* (general/minor) permits, undercounting the correction
+  (2,305 facilities extended instead of 2,381). Fixed by reading `ICIS_FACILITIES` a
+  second, unrestricted time inside step 01.
+- **Verified:** the new panel — `06_facility_month_panel_major_individual_effluent_2005_2025.csv`,
+  rebuilt via a full 01→06 run — is **byte-for-byte identical** (full column diff,
+  zero differences) to the retired step-07 output. Final counts unchanged: 2,381
+  facilities extended, 1,749,567 operating / 143,205 not.
+- `07_extend_facility_operating.R` and its README were deleted; the file
+  `07_facility_month_panel_major_individual_operating_corrected_2005_2025.csv` remains
+  on disk as an orphaned, superseded artifact (see `data/processed/README.md`).
+
 ## Findings
 
 ### Effluent D80/D90/E90 counts, 2005–2025 (2026-07-14)

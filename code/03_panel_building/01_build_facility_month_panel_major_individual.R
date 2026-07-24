@@ -18,12 +18,15 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #                       if it was minor before or after.
 #   Spine             : BALANCED = every qualifying facility x every (year, month)
 #                       in the full Jan 2005 - Dec 2025 window, regardless of when
-#                       that facility actually held an active permit. A new
-#                       FACILITY_OPERATING flag (1/0) marks which rows fall inside
-#                       vs. outside each facility's own earliest-open/latest-close
-#                       window (clipped to the panel window) -- downstream scripts
-#                       use it to distinguish a true zero (operating, no event) from
-#                       an undefined one (not operating -- see LABELED ASSUMPTION 9).
+#                       that facility actually held an active permit. Two flags
+#                       mark which rows fall inside vs. outside a facility's
+#                       active window:
+#                         FACILITY_OPERATING               - CORRECTED (use this)
+#                         FACILITY_OPERATING_PERMIT_WINDOW - permit-dates only
+#                       -- downstream scripts use FACILITY_OPERATING to
+#                       distinguish a true zero (operating, no event) from an
+#                       undefined one (not operating -- see LABELED ASSUMPTIONS
+#                       9-13).
 #
 
 # LABELED ASSUMPTIONS (read before using results):
@@ -72,20 +75,66 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #      throughout (never coerced to numeric), so leading zeros in ZIP codes
 #      (e.g., many New England zips) are preserved exactly as in the source
 #      file.
-#   9. FACILITY_OPERATING = 1 iff the calendar month falls within
+#   9. FACILITY_OPERATING_PERMIT_WINDOW = 1 iff the calendar month falls within
 #      [floor_date(spine_start,"month"), floor_date(spine_end,"month")] for that
-#      facility -- i.e. within the SAME earliest-open/latest-close window (unioned
+#      facility -- i.e. within the earliest-open/latest-close window (unioned
 #      across all the facility's individual permits, clipped to the panel window;
-#      see ASSUMPTIONS 2-4) already used to decide which facilities/months qualify
-#      for the spine at all. This introduces no new business rule -- it exposes a
-#      value already computed, so downstream scripts can tell "operating, zero
-#      events" (FACILITY_OPERATING=1, count=0) apart from "not operating, count is
-#      undefined" (FACILITY_OPERATING=0, count should read NA). Facility ATTRIBUTE
-#      columns (name, address, NPDES_ID list, ...) are NOT masked by this flag --
-#      they keep broadcasting the one representative snapshot across every month,
-#      unchanged from before (per ASSUMPTION 7).
+#      see ASSUMPTIONS 2-4) already used to decide which facilities/months
+#      qualify for the spine at all. This is preserved for traceability but is
+#      NOT the column downstream scripts should use -- see ASSUMPTION 10.
+#  10. WHY THERE'S A SECOND, CORRECTED FLAG -- measured, not hypothetical. On
+#      an earlier build that used ASSUMPTION 9's flag directly as
+#      FACILITY_OPERATING, 12.66% of its FACILITY_OPERATING==0 rows (32,033 of
+#      253,028) still carried a real recorded event downstream -- direct proof
+#      the facility was active. 75.9% of those were >12 months outside the
+#      computed window (median 31, max 250 months); 2,381 of 7,511 facilities
+#      (32%) were affected. ROOT CAUSE (confirmed): permits with
+#      PERMIT_STATUS_CODE == "ADC" (Administrative Continuance -- legally still
+#      active past the nominal EXPIRATION_DATE while a renewal is pending) have
+#      that EXPIRATION_DATE read as a real closing date by ASSUMPTION 2 anyway,
+#      since ICIS_PERMITS carries no field marking a facility's true open/close
+#      independent of permit paperwork. Example: facility 110006619212 / permit
+#      NH0100455, EXPIRATION_DATE = 01/29/2005, PERMIT_STATUS_CODE = "ADC", no
+#      TERMINATION_DATE/RETIREMENT_DATE -- its permit-only window closes at the
+#      start of the panel even though it has real recorded events up to 250
+#      months later. 86.7% of the 8,007 permits linked to this panel's
+#      facilities carry ADC status at some point.
+#  11. THE FIX: EXTEND THE WINDOW TO COVER ANY REAL EVENT, BOTH DIRECTIONS (per
+#      PI decision). Per facility:
+#        new_start = min(permit-window start, first month with a real event)
+#        new_end   = max(permit-window end,   last month with a real event)
+#      FACILITY_OPERATING = 1 iff the month falls in [new_start, new_end]. This
+#      can only grow a window, never shrink one -- a facility with zero
+#      recorded events anywhere keeps its ASSUMPTION-9 window unchanged.
+#  12. "REAL EVENT" HERE MEANS EXISTENCE, NOT THE DETAILED COUNTS. This script
+#      only needs to know WHETHER and WHEN a facility had any inspection,
+#      PS/CS/SE violation, formal/informal enforcement action, or effluent
+#      violation -- not the type/agency/code breakdowns scripts 02/04/05/06
+#      still compute in full. It checks: NPDES_INSPECTIONS (begin, falling back
+#      to end date), NPDES_PS/CS_VIOLATIONS (SCHEDULE_DATE), NPDES_SE_VIOLATIONS
+#      (SINGLE_EVENT_VIOLATION_DATE), NPDES_FORMAL_ENFORCEMENT_ACTIONS
+#      (SETTLEMENT_ENTERED_DATE), NPDES_INFORMAL_ENFORCEMENT_ACTIONS
+#      (ACHIEVED_DATE) -- same date rules scripts 02/04/05 use for their own
+#      counts -- plus the pre-built condensed effluent panel (any of
+#      n_D80/n_D90/n_E90 > 0; the same source script 06 reads for its
+#      all-parameter columns). It deliberately does NOT stream the raw ~16 GB
+#      NPDES_EFF_VIOLATIONS.csv that script 06 uses for its TSS-specific
+#      subset: verified empirically (on the panel this correction was
+#      originally developed against) that ZERO facility-months have a positive
+#      TSS-subset violation while the condensed all-parameter panel shows
+#      nothing -- the condensed panel is already a complete proxy for "any
+#      effluent event" here, so this script needs neither `python3` nor `unzip`.
+#  13. ROUTED BY THE SAME CROSSWALK AS EVERY OTHER STEP. All six event sources
+#      are routed NPDES_ID -> facility_id via the identical crosswalk built in
+#      STEP 4 below (FACILITY_UIN when present, else NPDES_ID) -- reused
+#      directly here rather than rebuilt, since this script is where it
+#      originates; scripts 02/04/05/06 rebuild it independently, per their own
+#      READMEs.
 #
-# Source: EPA ECHO bulk "ICIS-NPDES" download (ICIS_PERMITS.csv, ICIS_FACILITIES.csv)
+# Source: EPA ECHO bulk "ICIS-NPDES" download (ICIS_PERMITS.csv,
+# ICIS_FACILITIES.csv, NPDES_INSPECTIONS.csv, NPDES_PS/CS/SE_VIOLATIONS.csv,
+# NPDES_FORMAL/INFORMAL_ENFORCEMENT_ACTIONS.csv), plus the pre-built condensed
+# effluent panel (data/processed/effluent_violations_npdes_month_panel_2005_2025.csv).
 # Output: data/processed/01_facility_month_panel_major_individual_2005_2025.csv
 # Deterministic (no stochastic steps); rebuilt entirely from raw + this script.
 # ==============================================================================
@@ -99,6 +148,7 @@ suppressPackageStartupMessages({
 YEAR_MIN <- 2005L
 YEAR_MAX <- 2025L
 RAW_DIR  <- file.path(CWA_ROOT, "data/raw/npdes_downloads")
+EFF_PATH <- file.path(CWA_ROOT, "data/processed/effluent_violations_npdes_month_panel_2005_2025.csv")
 OUT_PATH <- file.path(CWA_ROOT, "data/processed/01_facility_month_panel_major_individual_2005_2025.csv")
 
 # The first and last calendar months the panel can ever contain.
@@ -202,8 +252,23 @@ fac <- permits[fac, on = "NPDES_ID"]
 # Filter to 48 continental US states + DC (exclude Alaska, Hawaii, and US territories).
 fac <- fac[!(STATE_CODE %in% c("AK", "HI", "PR", "VI", "GU", "AS", "MP"))]
 
+# NPDES_ID -> facility_id crosswalk for STEP 6B (LABELED ASSUMPTION 13). Built
+# from a FRESH, UNRESTRICTED read of ICIS_FACILITIES -- every NPDES_ID (any
+# permit type, not just individual/major-eligible), matching exactly how
+# scripts 02/04/05/06 each build theirs. `fac` above is already filtered to
+# `NPDES_ID %in% permits$NPDES_ID`, so deriving the crosswalk from it instead
+# would silently miss events recorded under a facility's OTHER (general/minor)
+# permits -- a real bug caught by comparing against the originally-verified
+# step-07 correction numbers (2,381 facilities extended); this full crosswalk
+# reproduces them exactly.
+fac_all <- rd("ICIS_FACILITIES.csv", c("NPDES_ID", "FACILITY_UIN"))
+fac_all[, NPDES_ID     := trimws(NPDES_ID)]
+fac_all[, FACILITY_UIN := trimws(FACILITY_UIN)]
+fac_all[, facility_id  := fifelse(FACILITY_UIN != "", FACILITY_UIN, NPDES_ID)]
+xwalk <- unique(fac_all[NPDES_ID != "", .(NPDES_ID, facility_id)])
+
 # ------------------------------------------------------------------------------
-# STEP 5: Facility-level eligibility and window.
+# STEP 5: Facility-level eligibility and permit-only window.
 # ------------------------------------------------------------------------------
 # A facility qualifies if ANY of its linked individual permits was ever major.
 # Its overall window spans the earliest opening to the latest closing across
@@ -228,10 +293,13 @@ qual_fac[, spine_start := pmax(facility_open, WINDOW_START)]
 qual_fac[, spine_end   := pmin(facility_close, WINDOW_END)]
 qual_fac <- qual_fac[spine_start <= spine_end]
 
-# Calendar-month bounds of the operating window (LABELED ASSUMPTION 9), used below
-# to compute FACILITY_OPERATING at the same month granularity the spine itself uses.
+# Calendar-month bounds of the PERMIT-ONLY window (LABELED ASSUMPTION 9), kept
+# both as Dates (for FACILITY_OPERATING_PERMIT_WINDOW) and as an integer
+# YEAR*12+MONTH ("ym") key (for the extension arithmetic in STEP 6C).
 qual_fac[, spine_start_month := floor_date(spine_start, "month")]
 qual_fac[, spine_end_month   := floor_date(spine_end,   "month")]
+qual_fac[, spine_start_ym := year(spine_start_month) * 12L + month(spine_start_month)]
+qual_fac[, spine_end_ym   := year(spine_end_month)   * 12L + month(spine_end_month)]
 
 # ------------------------------------------------------------------------------
 # STEP 6: Facility attribute snapshot (one representative record per facility).
@@ -247,14 +315,70 @@ fac_attr <- unique(fac, by = "facility_id")[
       FAC_LONG = GEOCODE_LONGITUDE)]
 
 # ------------------------------------------------------------------------------
-# STEP 7: Build the facility-by-month spine (BALANCED panel) + FACILITY_OPERATING.
+# STEP 6B: Scan every event source for EXISTENCE only (LABELED ASSUMPTIONS 10-13).
+# ------------------------------------------------------------------------------
+# For each source, read (NPDES_ID, date field(s)), parse the date the same way
+# the step that later counts it in full does, keep the panel window, route via
+# `xwalk`, and collapse to the distinct set of (facility_id, YEAR, MONTH) that
+# had ANY row -- no counting, no type/agency/code breakouts (those remain the
+# job of scripts 02/04/05/06).
+event_months <- function(file, date_cols) {
+  d <- rd(file, c("NPDES_ID", date_cols))
+  d[, NPDES_ID := trimws(NPDES_ID)]
+  d[, edate := do.call(fcoalesce, lapply(date_cols, function(cc) mdy(d[[cc]], quiet = TRUE)))]
+  d <- d[!is.na(edate)]
+  d[, `:=`(YEAR = year(edate), MONTH = month(edate))]
+  d <- d[YEAR >= YEAR_MIN & YEAR <= YEAR_MAX]
+  d <- xwalk[d, on = "NPDES_ID", nomatch = 0]
+  unique(d[, .(facility_id, YEAR, MONTH)])
+}
+
+insp_months     <- event_months("NPDES_INSPECTIONS.csv",
+                                 c("ACTUAL_BEGIN_DATE", "ACTUAL_END_DATE"))
+ps_months       <- event_months("NPDES_PS_VIOLATIONS.csv", "SCHEDULE_DATE")
+cs_months       <- event_months("NPDES_CS_VIOLATIONS.csv", "SCHEDULE_DATE")
+se_months       <- event_months("NPDES_SE_VIOLATIONS.csv", "SINGLE_EVENT_VIOLATION_DATE")
+formal_months   <- event_months("NPDES_FORMAL_ENFORCEMENT_ACTIONS.csv", "SETTLEMENT_ENTERED_DATE")
+informal_months <- event_months("NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv", "ACHIEVED_DATE")
+
+# Effluent: the pre-built condensed all-parameter panel, not the raw 16 GB
+# stream -- verified sufficient for existence purposes (LABELED ASSUMPTION 12).
+eff <- fread(EFF_PATH, showProgress = FALSE,
+             colClasses = list(character = c("NPDES_ID", "month"),
+                               integer   = c("n_D80", "n_D90", "n_E90")))
+eff[, NPDES_ID := trimws(NPDES_ID)]
+eff[, mdate := as.Date(month)]
+eff <- eff[!is.na(mdate)]
+eff[, `:=`(YEAR = year(mdate), MONTH = month(mdate))]
+eff <- eff[YEAR >= YEAR_MIN & YEAR <= YEAR_MAX]
+eff <- eff[n_D80 > 0 | n_D90 > 0 | n_E90 > 0]
+eff <- xwalk[eff, on = "NPDES_ID", nomatch = 0]
+eff_months <- unique(eff[, .(facility_id, YEAR, MONTH)])
+
+event_ym <- unique(rbindlist(list(insp_months, ps_months, cs_months, se_months,
+                                   formal_months, informal_months, eff_months)))
+event_ym[, ym := YEAR * 12L + MONTH]
+event_bounds <- event_ym[, .(event_start = min(ym), event_end = max(ym)), by = facility_id]
+
+# ------------------------------------------------------------------------------
+# STEP 6C: Extend each qualifying facility's window over any real event
+# (LABELED ASSUMPTION 11). Facilities with no recorded events anywhere get NA
+# from the join below; pmin/pmax with na.rm = TRUE then leaves their window
+# exactly as computed in STEP 5 -- this step can only grow a window.
+# ------------------------------------------------------------------------------
+qual_fac <- event_bounds[qual_fac, on = "facility_id"]
+qual_fac[, new_start_ym := pmin(spine_start_ym, event_start, na.rm = TRUE)]
+qual_fac[, new_end_ym   := pmax(spine_end_ym,   event_end,   na.rm = TRUE)]
+
+# ------------------------------------------------------------------------------
+# STEP 7: Build the facility-by-month spine (BALANCED panel) + both operating flags.
 # ------------------------------------------------------------------------------
 # Create a complete grid: every qualifying facility x every month in the full
 # panel window (Jan 2005 - Dec 2025), regardless of when each facility was
 # actually open. Facility ATTRIBUTES (name, address, ...) still broadcast across
-# every month unchanged (ASSUMPTION 7) -- but every row also gets FACILITY_OPERATING
-# (ASSUMPTION 9), so downstream scripts can tell a real zero apart from an
-# undefined one for months outside the facility's active window.
+# every month unchanged (ASSUMPTION 7) -- but every row also gets both operating
+# flags, so downstream scripts can tell a real zero apart from an undefined one
+# for months outside the facility's (corrected) active window.
 all_months <- data.table(month_date = seq(WINDOW_START, WINDOW_END, by = "month"))
 all_months[, `:=`(YEAR = year(month_date), MONTH = month(month_date))]
 
@@ -268,15 +392,20 @@ spine <- CJ(facility_id = unique(qual_fac$facility_id),
             YEAR = unique(all_months$YEAR),
             MONTH = unique(all_months$MONTH))
 spine <- all_months[spine, on = c("YEAR", "MONTH")]
+spine[, ym := YEAR * 12L + MONTH]
 
-# Attach each facility's operating-window bounds and flag which spine rows fall
-# inside it. Every facility_id here has exactly one (spine_start_month,
-# spine_end_month) pair (guaranteed by qual_fac's own spine_start <= spine_end
-# filter above), so this join can never introduce a missing bound.
-spine <- qual_fac[, .(facility_id, spine_start_month, spine_end_month)][spine, on = "facility_id"]
-spine[, FACILITY_OPERATING := as.integer(month_date >= spine_start_month &
-                                          month_date <= spine_end_month)]
-spine[, c("month_date", "spine_start_month", "spine_end_month") := NULL]
+# Attach each facility's permit-only AND extended window bounds; every
+# facility_id here has exactly one set of bounds (guaranteed by qual_fac's own
+# spine_start <= spine_end filter in STEP 5), so this join can never introduce
+# a missing bound.
+spine <- qual_fac[, .(facility_id, spine_start_ym, spine_end_ym,
+                       new_start_ym, new_end_ym)][spine, on = "facility_id"]
+spine[, FACILITY_OPERATING_PERMIT_WINDOW :=
+        as.integer(ym >= spine_start_ym & ym <= spine_end_ym)]
+spine[, FACILITY_OPERATING :=
+        as.integer(ym >= new_start_ym & ym <= new_end_ym)]
+spine[, c("month_date", "ym", "spine_start_ym", "spine_end_ym",
+          "new_start_ym", "new_end_ym") := NULL]
 
 # ------------------------------------------------------------------------------
 # STEP 8: Assemble the final panel: spine + facility attributes + NPDES_ID list.
@@ -286,9 +415,9 @@ panel <- qual_fac[, .(facility_id, NPDES_ID, MAJOR_MINOR_FLAG, PERMIT_TYPE_FLAG)
 setnames(panel, "facility_id", "FACILITY_UIN")
 
 setcolorder(panel, c("FACILITY_UIN", "YEAR", "MONTH", "NPDES_ID", "MAJOR_MINOR_FLAG",
-                     "PERMIT_TYPE_FLAG", "FACILITY_OPERATING", "FACILITY_TYPE_CODE",
-                     "FACILITY_NAME", "LOCATION_ADDRESS", "CITY", "STATE_CODE", "ZIP",
-                     "COUNTY_CODE", "FAC_LAT", "FAC_LONG"))
+                     "PERMIT_TYPE_FLAG", "FACILITY_OPERATING", "FACILITY_OPERATING_PERMIT_WINDOW",
+                     "FACILITY_TYPE_CODE", "FACILITY_NAME", "LOCATION_ADDRESS", "CITY",
+                     "STATE_CODE", "ZIP", "COUNTY_CODE", "FAC_LAT", "FAC_LONG"))
 setorder(panel, FACILITY_UIN, YEAR, MONTH)
 
 # ZIP must stay text (not numeric) all the way through to the file on disk.
@@ -309,8 +438,14 @@ message("Qualifying facilities (ever major, ever indiv.): ", nrow(qual_fac))
 message("Facilities with >1 linked NPDES_ID             : ",
         sum(lengths(strsplit(qual_fac$NPDES_ID, "; ")) > 1))
 message("Panel rows (balanced facility x month, all ", YEAR_MIN, "-", YEAR_MAX, " months): ", nrow(panel))
-message("  FACILITY_OPERATING == 1 (in active window)   : ", sum(panel$FACILITY_OPERATING == 1L))
-message("  FACILITY_OPERATING == 0 (outside active window): ", sum(panel$FACILITY_OPERATING == 0L))
+message("--- Window correction (ASSUMPTIONS 10-13) ---")
+n_extended <- sum(qual_fac$new_start_ym < qual_fac$spine_start_ym |
+                   qual_fac$new_end_ym   > qual_fac$spine_end_ym)
+message("Facilities with window extended by a real event: ", n_extended, " of ", nrow(qual_fac))
+message("  FACILITY_OPERATING == 1 (corrected)             : ", sum(panel$FACILITY_OPERATING == 1L))
+message("  FACILITY_OPERATING == 0 (corrected)              : ", sum(panel$FACILITY_OPERATING == 0L))
+message("  FACILITY_OPERATING_PERMIT_WINDOW == 1 (uncorrected): ",
+        sum(panel$FACILITY_OPERATING_PERMIT_WINDOW == 1L))
 months_per_fac <- panel[, .N, by = FACILITY_UIN]$N
 message("Months per facility: min ", min(months_per_fac), " max ", max(months_per_fac),
         " (", YEAR_MIN, "-", YEAR_MAX, " = ", (YEAR_MAX - YEAR_MIN + 1) * 12, " months if never clipped)")
