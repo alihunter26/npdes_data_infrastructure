@@ -1,5 +1,7 @@
 # `code/00_setup/` — package & directory setup
 
+** Verified by Ali 7/27 **
+
 **Purpose:** the module's master script, run first by `run_all.R`. Checks every R
 package the pipeline uses is installed (installs any missing ones from CRAN) and
 creates the directories every downstream script expects to write into
