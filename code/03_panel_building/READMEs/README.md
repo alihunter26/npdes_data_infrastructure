@@ -9,9 +9,14 @@ template (and the Colmer lab
 guidance). Each file is self-contained; export any of them to PDF from VS Code with
 *Markdown PDF: Export (pdf)*.
 
+> The prerequisite script, `build_effluent_violations_npdes_month_panel.R` (condensed
+> permit×month effluent-violation panel — must run before step 01), now lives in
+> [`code/02_cleaning/`](../../02_cleaning/) (moved 2026-07-27), not here — see
+> [`../../02_cleaning/build_effluent_violations_npdes_month_panel.md`](../../02_cleaning/build_effluent_violations_npdes_month_panel.md)
+> for its README.
+
 | Step | Script | README | Adds |
 |---|---|---|---|
-| *(prereq)* | `build_effluent_violations_npdes_month_panel.R` | [build_effluent_violations_npdes_month_panel](build_effluent_violations_npdes_month_panel.md) | condensed permit×month effluent-violation panel — must run before step 01 |
 | 01 | `01_build_facility_month_panel_major_individual.R` | [01](01_build_facility_month_panel_major_individual.md) | base facility×month spine + facility attributes + corrected `FACILITY_OPERATING` |
 | 02 | `02_add_inspections.R` | [02](02_add_inspections.md) | inspection counts by type & conductor |
 | 03 | `03_add_naics_sic.R` | [03](03_add_naics_sic.md) | NAICS / SIC industry codes |

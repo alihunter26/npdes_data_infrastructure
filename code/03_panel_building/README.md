@@ -34,15 +34,24 @@ the next.
 
 ## Prerequisite (not one of the six numbered steps)
 
-- `build_effluent_violations_npdes_month_panel.R` — must run **before step 01**, not
-  just before step 06: both steps read its output,
+- `build_effluent_violations_npdes_month_panel.R` — lives in
+  [`code/02_cleaning/`](../02_cleaning/), not here (moved 2026-07-27; see that
+  folder's `module_README.md`). Must run **before step 01**, not just before step 06:
+  both steps read its output,
   `data/processed/effluent_violations_npdes_month_panel_2005_2025.csv`. Streams the raw
   effluent file (via DuckDB) into a condensed permit×month summary of both all-parameter
-  and TSS-subset violation counts. See [`READMEs/build_effluent_violations_npdes_month_panel.md`](READMEs/build_effluent_violations_npdes_month_panel.md).
+  and TSS-subset violation counts. See
+  [`../02_cleaning/build_effluent_violations_npdes_month_panel.md`](../02_cleaning/build_effluent_violations_npdes_month_panel.md).
 
 ## Helper scripts (not part of the numbered chain)
 
 - `summarize_violation_types.R` — tabulates violation-type frequencies → `output/tables/`.
+- `use_operating_proxies.R` — defines `use_operating_proxies()`, the event-based
+  `FACILITY_OPERATING` window-extension logic (step 01's Assumptions 10–13), factored
+  out into its own function with an on/off switch per proxy source (inspections,
+  PS/CS/SE violations, formal/informal enforcement, effluent — all default `TRUE`,
+  reproducing the original correction exactly). Sourced and called by step 01; see
+  [`READMEs/01_build_facility_month_panel_major_individual.md`](READMEs/01_build_facility_month_panel_major_individual.md).
 
 > **Removed 2026-07-23:** `restrict_06_to_fy2025.R` (the federal-FY2025 row filter) was
 > deleted. Its outputs (`data/processed/07_..._operating_corrected_fy2025.csv` and the
@@ -65,9 +74,9 @@ panel first (if it's not already on disk) and then runs all six steps in order.
 Neither step 01 nor step 06 needs `python3` or `unzip` — both read only the pre-built
 condensed effluent panel at
 `data/processed/effluent_violations_npdes_month_panel_2005_2025.csv`. That file's own
-build script (`build_effluent_violations_npdes_month_panel.R`, see above) is what needs
-`unzip` and `gzip` on `PATH`, plus the DuckDB R package, since it's the one that
-actually streams the raw ~16 GB effluent file.
+build script (`code/02_cleaning/build_effluent_violations_npdes_month_panel.R`, see
+above) is what needs `unzip` and `gzip` on `PATH`, plus the DuckDB R package, since
+it's the one that actually streams the raw ~16 GB effluent file.
 
 > Step 01's `OUT_PATH` already writes the `01_`-prefixed name step 02 expects — a
 > previously-documented mismatch here has been verified resolved in code. See

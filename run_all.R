@@ -59,7 +59,7 @@ if (DOWNLOAD_DATA) {
 EFF_PANEL_PATH <- file.path(CWA_ROOT, "data/processed/effluent_violations_npdes_month_panel_2005_2025.csv")
 if (!file.exists(EFF_PANEL_PATH)) {
   message("\n===== condensed effluent panel not found; building it first (~15-20 min) =====")
-  source(file.path(CWA_ROOT, "code/03_panel_building/build_effluent_violations_npdes_month_panel.R"),
+  source(file.path(CWA_ROOT, "code/02_cleaning/build_effluent_violations_npdes_month_panel.R"),
          local = new.env())
 }
 

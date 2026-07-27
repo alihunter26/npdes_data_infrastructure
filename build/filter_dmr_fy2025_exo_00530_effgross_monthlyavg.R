@@ -6,7 +6,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # ------------------------------------------------------------------------------
 # MOVED INTO THIS REPO 2026-07-27 from the external EIL Summer working folder
 # (`../EIL Summer/build/`, where an untouched copy remains — same precedent as
-# `code/03_panel_building/build_effluent_violations_npdes_month_panel.R`'s move).
+# `code/02_cleaning/build_effluent_violations_npdes_month_panel.R`'s move).
 # Its own path handling already used this repo's exact `_paths.R` constants
 # (`DMR_DIR`, `PROC_DIR`), so no path changes were needed to run it here.
 #
@@ -48,7 +48,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # ENGINE = DuckDB, out-of-core. The 9.68 GB CSV cannot be held in RAM on this
 # machine (8 GB). We decompress the single zip member to a gzip temp on scratch
 # disk (~4 GB), then let DuckDB stream + spill to disk. Mirrors the pattern in
-# code/03_panel_building/build_effluent_violations_npdes_month_panel.R.
+# code/02_cleaning/build_effluent_violations_npdes_month_panel.R.
 #
 # WHY A TEMP FILE: DuckDB reads files, not .zip members, and reading a CSV from a
 # non-seekable pipe breaks its sniffer. We stream the single CSV member out of

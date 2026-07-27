@@ -1,5 +1,10 @@
 # README — `build_effluent_violations_npdes_month_panel.R`
 
+**Moved 2026-07-27** from `code/03_panel_building/` to `code/02_cleaning/`, per
+request — path-only move, no logic changed. It is not a shared "cleaning helper"
+like the rest of this folder; it just physically lives here now. See
+`code/02_cleaning/module_README.md`.
+
 *Prerequisite for the facility-by-month panel build, not one of its six numbered steps.
 Must run before step 01 (not just before step 06) — both read its output. Input: the raw
 `NPDES_EFF_VIOLATIONS.csv`. Output: one small condensed permit×month summary file.*
@@ -112,7 +117,7 @@ the underlying effluent file. ☒ All data publicly available.
 ## Instructions to run
 
 ```bash
-Rscript "code/03_panel_building/build_effluent_violations_npdes_month_panel.R"
+Rscript "code/02_cleaning/build_effluent_violations_npdes_month_panel.R"
 ```
 Needs `unzip`/`gzip` on `PATH` and the raw effluent zip present in `data/raw/`. Also
 runs automatically from `run_all.R` if its output isn't already on disk.

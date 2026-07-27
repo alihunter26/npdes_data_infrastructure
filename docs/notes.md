@@ -22,9 +22,11 @@ Running notes on data quirks, analytical decisions, and findings.
 ### Effluent-violations NPDES_ID × month panel (2026-07-14; rebuilt in-repo 2026-07-27)
 Produces `data/processed/effluent_violations_npdes_month_panel_2005_2025.csv`.
 **Update 2026-07-27:** this file's producing script now lives in this repo --
-`code/03_panel_building/build_effluent_violations_npdes_month_panel.R` -- and
-`run_all.R` builds it automatically if it's missing (it's a prerequisite for
-steps 01 and 06, not an optional step). The rebuild also folds in the TSS
+`code/02_cleaning/build_effluent_violations_npdes_month_panel.R` (moved again,
+same day, from `code/03_panel_building/` to `code/02_cleaning/`, per request --
+path-only, no logic change) -- and `run_all.R` builds it automatically if it's
+missing (it's a prerequisite for steps 01 and 06, not an optional step). The
+rebuild also folds in the TSS
 gross-effluent-subset counts (`N_TSS_EFF_VIOLATIONS`/`_D90`/`_D80`/`_E90`) that
 `06_add_effluent_violations.R` used to compute separately via a second,
 python3-driven stream of the raw file -- both count sets are now produced in
