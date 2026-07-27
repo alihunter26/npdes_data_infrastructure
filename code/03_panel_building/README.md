@@ -12,7 +12,7 @@ the next.
 
 | Step | Script | Adds |
 |---|---|---|
-| 01 | `01_build_facility_month_panel_major_individual.R` | base facility × month spine + facility attributes + corrected `FACILITY_OPERATING` |
+| 01 | `01_build_facility_month_panel_major_individual.R` | base facility × month spine + facility attributes + `FACILITY_OPERATING`. Step 01 itself only uses **permit paperwork dates** (`ICIS_PERMITS.csv`) to build this window; the *correction* on top of it — extending that window using the six other proxy sources (inspections, PS/CS/SE violations, formal/informal enforcement) plus the pre-built effluent panel — is done by calling `use_operating_proxies()` (see Helper scripts below). |
 | 02 | `02_add_inspections.R` | inspection counts by type & conductor |
 | 03 | `03_add_naics_sic.R` | NAICS / SIC industry codes |
 | 04 | `04_add_violations.R` | PS/CS/SE violation counts |
@@ -50,7 +50,11 @@ the next.
   `FACILITY_OPERATING` window-extension logic (step 01's Assumptions 10–13), factored
   out into its own function with an on/off switch per proxy source (inspections,
   PS/CS/SE violations, formal/informal enforcement, effluent — all default `TRUE`,
-  reproducing the original correction exactly). Sourced and called by step 01; see
+  reproducing the original correction exactly). **This is the only place the six
+  event/proxy sources get used** — step 01 itself builds the baseline window from
+  permit paperwork dates alone (`ICIS_PERMITS.csv`) and never reads any of these six
+  directly; it just calls this function afterward to extend that window. Sourced and
+  called by step 01; see
   [`READMEs/01_build_facility_month_panel_major_individual.md`](READMEs/01_build_facility_month_panel_major_individual.md).
 
 > **Removed 2026-07-23:** `restrict_06_to_fy2025.R` (the federal-FY2025 row filter) was
