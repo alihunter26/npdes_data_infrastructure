@@ -2,7 +2,7 @@
 
 Open decisions and data issues to flag before/while building the facility-by-month
 panel of major individual NPDES facilities, 2005-2025. Pulled from the Master
-Question List, `missingness.md`, `data_quirks.md`, and digging done this round.
+Question List, `missingness.md`, `data_issues.md`, and digging done this round.
 
 ## Date field for operating status
 
@@ -98,7 +98,7 @@ Suggestion: use SIC as the industry variable, coverage is still near-complete fo
 
 ## Enforcement action double-counting (ACTIVITY_ID)
 
-- One enforcement action can show up as multiple rows if it covers more than one permit — same ACTIVITY_ID, one row per permit it touches. Example from `data_quirks.md`: one PRASA settlement = 135 rows, same $1,024,427 fine repeated on every one.
+- One enforcement action can show up as multiple rows if it covers more than one permit — same ACTIVITY_ID, one row per permit it touches. Example from `data_issues.md`: one PRASA settlement = 135 rows, same $1,024,427 fine repeated on every one.
 - Checked the formal enforcement file directly: 111,816 rows but only 103,989 distinct ACTIVITY_ID — about 7% inflation if you just count rows.
 - Restricting to major-individual makes FACILITY_UIN ~1:1 with NPDES_ID, which kills most of this, but not all of it — 84 facilities hold more than one individual permit, so an action touching two of that facility's permits would still double count.
 

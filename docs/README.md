@@ -13,7 +13,7 @@ the code in `code/` and `code/03_panel_building/`.
 | `npdes_data_overview.md` | High-level tour of the NPDES/ECHO data and what each file covers. |
 | `permit_types_brief.md` | Permit-type codes (individual `NPD`, general, master general, …) and what they mean. |
 | `time_varying_vs_snapshot.md` | Which fields are time-varying vs. one-snapshot-per-facility (drives the panel's broadcast-vs-monthly logic). |
-| `data_quirks.md` | Catalogue of gotchas (duplicate rows, non-ASCII filenames, blank-vs-zero, etc.). |
+| `data_issues.md` | Catalogue of known data anomalies and caveats (duplicate rows, non-ASCII filenames, blank-vs-zero, etc.). |
 | `missingness.md` | Where and why fields are missing; how blanks are interpreted. |
 | `notes.md` | Running log of decisions, findings, and open questions. |
 | `panel_questions_for_pis.md` | Design questions raised with the PIs and the guidance received. |

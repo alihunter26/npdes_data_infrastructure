@@ -33,7 +33,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # CAVEAT: this is a CURRENT-VERSION snapshot, not a facility-month time series.
 #   A facility's outfall roster can and does change over its history (~31% of
 #   panel facilities had their TSS-outfall count change at least once across
-#   2005-2025 -- see docs/data_quirks.md). This script answers "how many
+#   2005-2025 -- see docs/data_issues.md). This script answers "how many
 #   outfalls does the facility have on its current permit," not "how many did
 #   it have in a given past year."
 #
@@ -54,7 +54,7 @@ OUT_DIR <- file.path(CWA_ROOT, "output/tables")
 
 # ---- 1. Panel facility -> permit map ------------------------------------------
 # NPDES_ID is semicolon-joined for the 427 facilities holding >1 permit (see
-# docs/data_quirks.md, ICIS_FACILITIES row); split back into one row per permit.
+# docs/data_issues.md, ICIS_FACILITIES row); split back into one row per permit.
 panel <- fread(PANEL_FILE, select = c("FACILITY_UIN", "NPDES_ID"), showProgress = FALSE)
 facilities <- unique(panel)
 fac_permit_map <- facilities[, .(PERMIT = trimws(unlist(strsplit(NPDES_ID, ";")))),

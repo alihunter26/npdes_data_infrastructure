@@ -75,7 +75,7 @@ more than 12 months outside the computed window (median 31, max 250 months). 2,3
 Continuance — legally still active past the nominal `EXPIRATION_DATE` while a renewal
 is pending) had that `EXPIRATION_DATE` read as a real closing date anyway. 86.7% of the
 8,007 permits linked to this panel's facilities carry `ADC` status at some point (see
-`docs/data_quirks.md`, the `PERMIT_STATUS_CODE`/`EXPIRATION_DATE` row).
+`docs/data_issues.md`, the `PERMIT_STATUS_CODE`/`EXPIRATION_DATE` row).
 
 **The fix (now applied inside step 01):** extend each facility's window (both
 directions) to `min/max(permit-only window, first/last month with a real recorded
@@ -297,7 +297,7 @@ two effluent blocks are not adjacent in column order.
 - [`docs/data_dictionary.md`](data_dictionary.md) — cross-table join logic for the raw
   ICIS-NPDES source tables (not the panel itself), plus the `OFFICIAL_FLG` /
   `ENF_TYPE_CODE` "-S variant" notes referenced above.
-- [`docs/data_quirks.md`](data_quirks.md), [`docs/notes.md`](notes.md),
+- [`docs/data_issues.md`](data_issues.md), [`docs/notes.md`](notes.md),
   [`docs/time_varying_vs_snapshot.md`](time_varying_vs_snapshot.md) — known data
   issues, e.g. the ~2016 eRule DMR-coverage break, non-monthly DMR periods, and the
   `PERMIT_STATUS_CODE`/`ADC` quirk behind the window correction.

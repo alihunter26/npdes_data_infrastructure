@@ -210,7 +210,7 @@ December 21, 2016; **Phase 2** (general-permit and other remaining data streams)
 originally due December 21, 2020 but was later extended by rule, giving affected programs
 up to five additional years. This phased rollout is the mechanism behind the "2016 eRule"
 reporting break already flagged in this project's data documentation
-(`docs/data_quirks.md`): majors' DMR coverage was already high before the rule, while
+(`docs/data_issues.md`): majors' DMR coverage was already high before the rule, while
 minors' and general-permit coverage only began rising as Phase 1, and later Phase 2,
 requirements took hold — so pre- and post-2016 (and pre/post-2020+) coverage are not
 directly comparable, particularly for general-permit-covered dischargers.

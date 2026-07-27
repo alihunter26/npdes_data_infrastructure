@@ -85,7 +85,7 @@ unchanged).
   though `ADC` means the permit is still legally active pending renewal. Confirmed on
   facility `110006619212` / permit `NH0100455`. 86.7% of the 8,007 permits linked to
   this panel's facilities carry `ADC` status at some point. This was already flagged as
-  a general risk in `docs/data_quirks.md` (the `PERMIT_STATUS_CODE`/`EXPIRATION_DATE`
+  a general risk in `docs/data_issues.md` (the `PERMIT_STATUS_CODE`/`EXPIRATION_DATE`
   row) before it was confirmed to actually be realized in the built panel.
 - **Fix:** extend each facility's window (both directions, per PI decision) to
   `min/max(computed window, first/last month with a real recorded event)`; fill

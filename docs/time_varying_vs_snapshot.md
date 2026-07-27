@@ -17,7 +17,7 @@ Grain matters as much as time: almost every time-varying table keys on `NPDES_ID
 not `FACILITY_UIN` (a *site*). See §3.
 
 Column headers below were read directly from the raw files; counts marked *(measured)* were
-computed this session over `data/raw/` (see `data_quirks.md`, `missingness.md`).
+computed this session over `data/raw/` (see `data_issues.md`, `missingness.md`).
 
 ---
 
@@ -195,6 +195,6 @@ assumes it never changed. Specific hazards:
 7. Do **not** use penalty dollars as a continuous outcome.
 
 ---
-*Sources: raw headers in `data/raw/`; `data_quirks.md`, `missingness.md`,
+*Sources: raw headers in `data/raw/`; `data_issues.md`, `missingness.md`,
 `panel_questions_for_pis.md`, `npdes_data_overview.md`, `permit_types_brief.md`. Measured counts
 recomputed this session over `ICIS_PERMITS.csv` and are reproducible with `data.table::fread`.*

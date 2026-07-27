@@ -24,7 +24,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #   1. A permit present in the DMR file but ABSENT from ICIS_PERMITS cannot be
 #      classified and is DROPPED (reported in the log).
 #   2. A blank MAJOR_MINOR_STATUS_FLAG (~3.6% of ICIS_PERMITS rows, per
-#      docs/data_quirks.md) is NOT "M": a permit with only blank/minor flags and
+#      docs/data_issues.md) is NOT "M": a permit with only blank/minor flags and
 #      no "M" in any version is treated as non-major and dropped.
 #   3. "Ever major" pools across ALL versions of the permit; it does not require
 #      the permit to have been major in FY2025 specifically. Switch to a
@@ -39,7 +39,7 @@ OUT_PATH <- file.path(PROC_DIR, "dmr_fy2025_exo_00530_effgross_monthlyavg_major_
 PERMITS  <- file.path(RAW_DIR,  "ICIS_PERMITS.csv")
 
 # ---- 1. Ever-major INDIVIDUAL permit set from ICIS_PERMITS --------------------
-# skipNul=TRUE: ICIS_PERMITS has embedded NUL bytes (docs/data_quirks.md).
+# skipNul=TRUE: ICIS_PERMITS has embedded NUL bytes (docs/data_issues.md).
 pm <- fread(PERMITS, select = c("EXTERNAL_PERMIT_NMBR", "PERMIT_TYPE_CODE",
                                 "MAJOR_MINOR_STATUS_FLAG"),
             colClasses = "character", showProgress = FALSE)

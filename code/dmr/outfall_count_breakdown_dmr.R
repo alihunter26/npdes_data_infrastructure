@@ -118,7 +118,7 @@ joined <- merge(fac_permit_map, outfalls_current, by = "PERMIT", allow.cartesian
 n_outfalls <- joined[, .(n_outfalls = uniqueN(FEATURE_ID)), by = FACILITY_UIN]
 
 # Facilities with no EXO DMR activity this FY -> explicit 0 (permitted but did
-# not report, OR not covered by the DMR pull -- see docs/data_quirks.md,
+# not report, OR not covered by the DMR pull -- see docs/data_issues.md,
 # NPDES_DMRS coverage row)
 result <- merge(facilities[, .(FACILITY_UIN)], n_outfalls, by = "FACILITY_UIN", all.x = TRUE)
 result[is.na(n_outfalls), n_outfalls := 0L]

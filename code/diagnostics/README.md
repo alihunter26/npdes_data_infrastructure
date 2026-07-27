@@ -29,4 +29,4 @@ diagnostics (effluent QC, DMR funnel figure, DMR-based outfall counts) live in
   `code/03_panel_building/READMEs/`); `missingness/missingness_audit_major_individual.md`
   is the current example to follow.
 
-Findings from these checks are written up in `docs/data_quirks.md` and `docs/missingness.md`.
+Findings from these checks are written up in `docs/data_issues.md` and `docs/missingness.md`.
