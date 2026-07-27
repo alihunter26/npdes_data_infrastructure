@@ -1,6 +1,11 @@
 # Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
+# Shared cleaning helpers used by every step of this pipeline: rd() (safe raw-file
+# reads), build_facility_crosswalk() (NPDES_ID -> facility_id), and the two
+# coalesce_date_*() date-combining functions. See code/02_cleaning/module_README.md.
+source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
+
 # ==============================================================================
 # 01_build_facility_month_panel_major_individual.R
 # ------------------------------------------------------------------------------
@@ -152,15 +157,6 @@ OUT_PATH <- file.path(CWA_ROOT, "data/processed/01_facility_month_panel_major_in
 WINDOW_START <- as.Date(sprintf("%d-01-01", YEAR_MIN))   # Jan 1, 2005
 WINDOW_END   <- as.Date(sprintf("%d-12-01", YEAR_MAX))   # Dec 1, 2025
 
-# Small helper: read only the columns we need, and read everything as plain
-# text (character), never as numbers. This matters most for ZIP and the ID
-# columns, which must not be silently reinterpreted as numeric.
-rd <- function(file, cols) {
-  class_map <- setNames(rep("character", length(cols)), cols)
-  fread(file.path(RAW_DIR, file), select = cols,
-        colClasses = class_map, showProgress = FALSE)
-}
-
 # ------------------------------------------------------------------------------
 # STEP 1: Read ICIS_PERMITS.csv and keep only INDIVIDUAL permits.
 # ------------------------------------------------------------------------------
@@ -173,7 +169,8 @@ rd <- function(file, cols) {
 pm <- rd("ICIS_PERMITS.csv",
          c("EXTERNAL_PERMIT_NMBR", "PERMIT_TYPE_CODE", "MAJOR_MINOR_STATUS_FLAG",
            "EFFECTIVE_DATE", "ISSUE_DATE", "ORIGINAL_ISSUE_DATE",
-           "EXPIRATION_DATE", "TERMINATION_DATE", "RETIREMENT_DATE"))
+           "EXPIRATION_DATE", "TERMINATION_DATE", "RETIREMENT_DATE"),
+         raw_dir = RAW_DIR)
 
 pm[, NPDES_ID         := trimws(EXTERNAL_PERMIT_NMBR)]
 pm[, PERMIT_TYPE_CODE := trimws(PERMIT_TYPE_CODE)]
@@ -186,19 +183,17 @@ pm <- pm[PERMIT_TYPE_CODE == "NPD"]   # keep individual permits only
 # ------------------------------------------------------------------------------
 # Opening: take the EARLIEST non-missing date among the three candidate
 # "start" fields. This is the most generous (earliest) reading of when the
-# permit could have started being active.
-pm[, open_date := pmin(mdy(EFFECTIVE_DATE, quiet = TRUE),
-                       mdy(ISSUE_DATE, quiet = TRUE),
-                       mdy(ORIGINAL_ISSUE_DATE, quiet = TRUE),
-                       na.rm = TRUE)]
+# permit could have started being active. (coalesce_date_extreme() is the
+# shared helper for this "earliest/latest of whichever candidates are present"
+# mechanic -- see code/02_cleaning/cleaning_helpers.R.)
+pm[, open_date := coalesce_date_extreme(
+  pm, c("EFFECTIVE_DATE", "ISSUE_DATE", "ORIGINAL_ISSUE_DATE"), which = "min")]
 
 # Closing: take the LATEST non-missing date among the three candidate "end"
 # fields. This is the most generous (latest) reading of when the permit could
 # have stopped being active.
-pm[, close_date := pmax(mdy(EXPIRATION_DATE, quiet = TRUE),
-                        mdy(TERMINATION_DATE, quiet = TRUE),
-                        mdy(RETIREMENT_DATE, quiet = TRUE),
-                        na.rm = TRUE)]
+pm[, close_date := coalesce_date_extreme(
+  pm, c("EXPIRATION_DATE", "TERMINATION_DATE", "RETIREMENT_DATE"), which = "max")]
 
 # Was this specific permit-version ever flagged "M" (major)?
 pm[, is_major := MAJOR_MINOR_STATUS_FLAG == "M"]
@@ -232,7 +227,8 @@ permits <- pm[, .(
 fac <- rd("ICIS_FACILITIES.csv",
           c("NPDES_ID", "FACILITY_UIN", "FACILITY_TYPE_CODE", "FACILITY_NAME",
             "LOCATION_ADDRESS", "CITY", "STATE_CODE", "ZIP", "COUNTY_CODE",
-            "GEOCODE_LATITUDE", "GEOCODE_LONGITUDE"))
+            "GEOCODE_LATITUDE", "GEOCODE_LONGITUDE"),
+          raw_dir = RAW_DIR)
 fac[, NPDES_ID     := trimws(NPDES_ID)]
 fac[, FACILITY_UIN := trimws(FACILITY_UIN)]
 
@@ -249,20 +245,17 @@ fac <- permits[fac, on = "NPDES_ID"]
 # Filter to 48 continental US states + DC (exclude Alaska, Hawaii, and US territories).
 fac <- fac[!(STATE_CODE %in% c("AK", "HI", "PR", "VI", "GU", "AS", "MP"))]
 
-# NPDES_ID -> facility_id crosswalk for STEP 6B (LABELED ASSUMPTION 13). Built
-# from a FRESH, UNRESTRICTED read of ICIS_FACILITIES -- every NPDES_ID (any
-# permit type, not just individual/major-eligible), matching exactly how
-# scripts 02/04/05/06 each build theirs. `fac` above is already filtered to
-# `NPDES_ID %in% permits$NPDES_ID`, so deriving the crosswalk from it instead
-# would silently miss events recorded under a facility's OTHER (general/minor)
-# permits -- a real bug caught by comparing against the originally-verified
-# step-07 correction numbers (2,381 facilities extended); this full crosswalk
-# reproduces them exactly.
-fac_all <- rd("ICIS_FACILITIES.csv", c("NPDES_ID", "FACILITY_UIN"))
-fac_all[, NPDES_ID     := trimws(NPDES_ID)]
-fac_all[, FACILITY_UIN := trimws(FACILITY_UIN)]
-fac_all[, facility_id  := fifelse(FACILITY_UIN != "", FACILITY_UIN, NPDES_ID)]
-xwalk <- unique(fac_all[NPDES_ID != "", .(NPDES_ID, facility_id)])
+# NPDES_ID -> facility_id crosswalk for STEP 6B (LABELED ASSUMPTION 13), from
+# build_facility_crosswalk() in code/02_cleaning/cleaning_helpers.R. That
+# function always does a FRESH, UNRESTRICTED read of ICIS_FACILITIES -- every
+# NPDES_ID (any permit type, not just individual/major-eligible), matching
+# exactly how scripts 02/04/05/06 each build theirs. `fac` above is already
+# filtered to `NPDES_ID %in% permits$NPDES_ID`, so deriving the crosswalk from
+# it instead would silently miss events recorded under a facility's OTHER
+# (general/minor) permits -- a real bug caught by comparing against the
+# originally-verified step-07 correction numbers (2,381 facilities extended);
+# this full crosswalk reproduces them exactly.
+xwalk <- build_facility_crosswalk(raw_dir = RAW_DIR)
 
 # ------------------------------------------------------------------------------
 # STEP 5: Facility-level eligibility and permit-only window.
@@ -320,9 +313,9 @@ fac_attr <- unique(fac, by = "facility_id")[
 # had ANY row -- no counting, no type/agency/code breakouts (those remain the
 # job of scripts 02/04/05/06).
 event_months <- function(file, date_cols) {
-  d <- rd(file, c("NPDES_ID", date_cols))
+  d <- rd(file, c("NPDES_ID", date_cols), raw_dir = RAW_DIR)
   d[, NPDES_ID := trimws(NPDES_ID)]
-  d[, edate := do.call(fcoalesce, lapply(date_cols, function(cc) mdy(d[[cc]], quiet = TRUE)))]
+  d[, edate := coalesce_date_priority(d, date_cols)]
   d <- d[!is.na(edate)]
   d[, `:=`(YEAR = year(edate), MONTH = month(edate))]
   d <- d[YEAR >= YEAR_MIN & YEAR <= YEAR_MAX]

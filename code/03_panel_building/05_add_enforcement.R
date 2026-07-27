@@ -1,6 +1,11 @@
 # Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, ...)
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
+# Shared cleaning helpers used by every step of this pipeline: rd() (safe raw-file
+# reads), build_facility_crosswalk() (NPDES_ID -> facility_id), and the two
+# coalesce_date_*() date-combining functions. See code/02_cleaning/module_README.md.
+source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
+
 # ==============================================================================
 # 05_add_enforcement.R
 # ------------------------------------------------------------------------------
@@ -139,14 +144,6 @@ RAW_DIR  <- file.path(CWA_ROOT, "data/raw/npdes_downloads")
 IN_PATH  <- file.path(CWA_ROOT, "data/processed/04_facility_month_panel_major_individual_violations_2005_2025.csv")
 OUT_PATH <- file.path(CWA_ROOT, "data/processed/05_facility_month_panel_major_individual_enforcement_2005_2025.csv")
 
-# Small helper: read only the columns we need, everything as plain text
-# (character) so ID and code columns are never silently reinterpreted as numbers.
-rd <- function(file, cols) {
-  class_map <- setNames(rep("character", length(cols)), cols)
-  fread(file.path(RAW_DIR, file), select = cols,
-        colClasses = class_map, showProgress = FALSE)
-}
-
 # Parse a text money field to whole-dollar numeric. A BLANK or non-numeric amount
 # is NOT $0 -- it means no penalty was assessed / recorded, so it becomes NA and
 # stays distinct from a genuine assessed $0 (see ASSUMPTION 5).
@@ -167,16 +164,11 @@ panel <- fread(IN_PATH, colClasses = "character", showProgress = FALSE)
 panel[, `:=`(YEAR = as.integer(YEAR), MONTH = as.integer(MONTH))]
 
 # ------------------------------------------------------------------------------
-# STEP 2: Rebuild the NPDES_ID -> facility_id crosswalk (same rule as scripts 01-04).
+# STEP 2: Build the NPDES_ID -> facility_id crosswalk (same rule as scripts
+# 01-04; ASSUMPTION 6). See build_facility_crosswalk() in
+# code/02_cleaning/cleaning_helpers.R for the full explanation.
 # ------------------------------------------------------------------------------
-# A facility's id is its FACILITY_UIN when present, else the permit's own
-# NPDES_ID. We reproduce that EXACTLY so each action resolves to the same id the
-# panel is keyed on (ASSUMPTION 6).
-fac <- rd("ICIS_FACILITIES.csv", c("NPDES_ID", "FACILITY_UIN"))
-fac[, NPDES_ID     := trimws(NPDES_ID)]
-fac[, FACILITY_UIN := trimws(FACILITY_UIN)]
-fac[, facility_id  := fifelse(FACILITY_UIN != "", FACILITY_UIN, NPDES_ID)]
-xwalk <- unique(fac[NPDES_ID != "", .(NPDES_ID, facility_id)])
+xwalk <- build_facility_crosswalk(raw_dir = RAW_DIR)
 
 # Shared prep: date each action, keep the window, route NPDES_ID -> facility_id.
 # Returns the enforcement table with YEAR/MONTH/facility_id, plus the count of
@@ -200,7 +192,8 @@ prep_actions <- function(dt, date_col) {
 f_raw <- rd("NPDES_FORMAL_ENFORCEMENT_ACTIONS.csv",
             c("NPDES_ID", "ENF_IDENTIFIER", "ACTIVITY_TYPE_CODE", "ENF_TYPE_CODE",
               "AGENCY", "SETTLEMENT_ENTERED_DATE",
-              "FED_PENALTY_ASSESSED_AMT", "STATE_LOCAL_PENALTY_AMT"))
+              "FED_PENALTY_ASSESSED_AMT", "STATE_LOCAL_PENALTY_AMT"),
+            raw_dir = RAW_DIR)
 fp <- prep_actions(f_raw, "SETTLEMENT_ENTERED_DATE")
 formal <- fp$dt
 
@@ -241,7 +234,8 @@ formal_pen <- formal_pen_action[, .(
 # ------------------------------------------------------------------------------
 i_raw <- rd("NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv",
             c("NPDES_ID", "ENF_IDENTIFIER", "ENF_TYPE_CODE",
-              "ACHIEVED_DATE", "OFFICIAL_FLG"))
+              "ACHIEVED_DATE", "OFFICIAL_FLG"),
+            raw_dir = RAW_DIR)
 ip <- prep_actions(i_raw, "ACHIEVED_DATE")
 informal <- ip$dt
 

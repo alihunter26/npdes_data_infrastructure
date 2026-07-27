@@ -1,6 +1,11 @@
 # Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, PROC_DIR, ...)
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
+# Shared cleaning helpers used by every step of this pipeline: rd() (safe raw-file
+# reads), build_facility_crosswalk() (NPDES_ID -> facility_id), and the two
+# coalesce_date_*() date-combining functions. See code/02_cleaning/module_README.md.
+source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
+
 # ==============================================================================
 # 06_add_effluent_violations.R
 # ------------------------------------------------------------------------------
@@ -120,14 +125,6 @@ MONTHLY_AVG    <- "A"           # STATISTICAL_BASE_MONTHLY_AVG flag = monthly av
 tss_cols <- c("N_TSS_EFF_VIOLATIONS", "N_TSS_EFF_D90", "N_TSS_EFF_D80", "N_TSS_EFF_E90")
 nd_cols  <- c("n_D80", "n_D90", "n_E90")
 
-# Small helper: read only the columns we need, everything as plain text
-# (character) so ID columns are never silently reinterpreted as numbers.
-rd <- function(file, cols) {
-  class_map <- setNames(rep("character", length(cols)), cols)
-  fread(file.path(RAW_DIR, file), select = cols,
-        colClasses = class_map, showProgress = FALSE)
-}
-
 # ------------------------------------------------------------------------------
 # STEP 1: Read the facility-by-month panel (output of script 05).
 # ------------------------------------------------------------------------------
@@ -137,16 +134,11 @@ panel <- fread(IN_PATH, colClasses = "character", showProgress = FALSE)
 panel[, `:=`(YEAR = as.integer(YEAR), MONTH = as.integer(MONTH))]
 
 # ------------------------------------------------------------------------------
-# STEP 2: Rebuild the NPDES_ID -> facility_id crosswalk (same rule as scripts 01-05).
+# STEP 2: Build the NPDES_ID -> facility_id crosswalk (same rule as scripts
+# 01-05; ASSUMPTION 4). See build_facility_crosswalk() in
+# code/02_cleaning/cleaning_helpers.R for the full explanation.
 # ------------------------------------------------------------------------------
-# A facility's id is its FACILITY_UIN when present, else the permit's own NPDES_ID.
-# We reproduce that EXACTLY so each source row resolves to the same id the panel is
-# keyed on (ASSUMPTION 4).
-fac <- rd("ICIS_FACILITIES.csv", c("NPDES_ID", "FACILITY_UIN"))
-fac[, NPDES_ID     := trimws(NPDES_ID)]
-fac[, FACILITY_UIN := trimws(FACILITY_UIN)]
-fac[, facility_id  := fifelse(FACILITY_UIN != "", FACILITY_UIN, NPDES_ID)]
-xwalk <- unique(fac[NPDES_ID != "", .(NPDES_ID, facility_id)])
+xwalk <- build_facility_crosswalk(raw_dir = RAW_DIR)
 
 # ------------------------------------------------------------------------------
 # STEP 3: ALL-PARAMETER counts from the condensed effluent month panel.

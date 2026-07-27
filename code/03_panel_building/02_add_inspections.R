@@ -1,6 +1,11 @@
 # Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, ...)
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
+# Shared cleaning helpers used by every step of this pipeline: rd() (safe raw-file
+# reads), build_facility_crosswalk() (NPDES_ID -> facility_id), and the two
+# coalesce_date_*() date-combining functions. See code/02_cleaning/module_README.md.
+source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
+
 # ==============================================================================
 # 02_add_inspections.R
 # ------------------------------------------------------------------------------
@@ -82,14 +87,6 @@ OUT_PATH <- file.path(CWA_ROOT, "data/processed/02_facility_month_panel_major_in
 #   CEI = Evaluation | ROS = Reconnaissance w/o Sampling | SA1 = Sampling | AU1 = Audit
 TYPE_CODES <- c(N_CEI = "CEI", N_ROS = "ROS", N_SA1 = "SA1", N_AU1 = "AU1")
 
-# Small helper: read only the columns we need, everything as plain text
-# (character) so ID columns are never silently reinterpreted as numbers.
-rd <- function(file, cols) {
-  class_map <- setNames(rep("character", length(cols)), cols)
-  fread(file.path(RAW_DIR, file), select = cols,
-        colClasses = class_map, showProgress = FALSE)
-}
-
 # ------------------------------------------------------------------------------
 # STEP 1: Read the base facility-by-month panel (output of script 01).
 # ------------------------------------------------------------------------------
@@ -101,29 +98,23 @@ panel <- fread(IN_PATH, colClasses = "character", showProgress = FALSE)
 panel[, `:=`(YEAR = as.integer(YEAR), MONTH = as.integer(MONTH))]
 
 # ------------------------------------------------------------------------------
-# STEP 2: Rebuild the NPDES_ID -> facility_id crosswalk (same rule as script 01).
+# STEP 2: Build the NPDES_ID -> facility_id crosswalk (same rule as script 01;
+# see build_facility_crosswalk() in code/02_cleaning/cleaning_helpers.R for the
+# full explanation of the FACILITY_UIN-with-NPDES_ID-fallback rule).
 # ------------------------------------------------------------------------------
-# ICIS_FACILITIES has one row per NPDES_ID and carries the FRS FACILITY_UIN.
-# Script 01 defines a facility's id as its FACILITY_UIN when present, and falls
-# back to the permit's own NPDES_ID when the UIN is blank. We reproduce that
-# EXACTLY so each inspection resolves to the same id the panel is keyed on.
-fac <- rd("ICIS_FACILITIES.csv", c("NPDES_ID", "FACILITY_UIN"))
-fac[, NPDES_ID     := trimws(NPDES_ID)]
-fac[, FACILITY_UIN := trimws(FACILITY_UIN)]
-fac[, facility_id  := fifelse(FACILITY_UIN != "", FACILITY_UIN, NPDES_ID)]
-xwalk <- unique(fac[NPDES_ID != "", .(NPDES_ID, facility_id)])
+xwalk <- build_facility_crosswalk(raw_dir = RAW_DIR)
 
 # ------------------------------------------------------------------------------
 # STEP 3: Read inspections, date them, and route each to its facility_id.
 # ------------------------------------------------------------------------------
 insp <- rd("NPDES_INSPECTIONS.csv",
            c("NPDES_ID", "ACTIVITY_ID", "COMP_MONITOR_TYPE_CODE",
-             "STATE_EPA_FLAG", "ACTUAL_BEGIN_DATE", "ACTUAL_END_DATE"))
+             "STATE_EPA_FLAG", "ACTUAL_BEGIN_DATE", "ACTUAL_END_DATE"),
+           raw_dir = RAW_DIR)
 insp[, NPDES_ID := trimws(NPDES_ID)]
 
 # Place each inspection in a calendar month by its begin date (fallback: end).
-insp[, insp_date := fcoalesce(mdy(ACTUAL_BEGIN_DATE, quiet = TRUE),
-                              mdy(ACTUAL_END_DATE,   quiet = TRUE))]
+insp[, insp_date := coalesce_date_priority(insp, c("ACTUAL_BEGIN_DATE", "ACTUAL_END_DATE"))]
 insp <- insp[!is.na(insp_date)]
 insp[, `:=`(YEAR = year(insp_date), MONTH = month(insp_date))]
 insp <- insp[YEAR >= YEAR_MIN & YEAR <= YEAR_MAX]

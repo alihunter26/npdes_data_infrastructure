@@ -37,7 +37,7 @@ CWA/
 ├── code/
 │   ├── 00_setup/            # package/directory checks (run_all.R's first step)
 │   ├── 01_data_download/    # scripted ECHO bulk-file downloader
-│   ├── 02_cleaning/         # reserved — no dedicated module yet; see its module_README.md
+│   ├── 02_cleaning/         # shared cleaning helpers used by 03_panel_building/; see its module_README.md
 │   ├── 03_panel_building/   # facility-by-month panel pipeline (01–06); see its READMEs/
 │   ├── summary/             # per-dataset Excel summary sheets
 │   └── diagnostics/         # data-quality checks, grouped by topic; see its README.md

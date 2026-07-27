@@ -1,6 +1,11 @@
 # Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, ...)
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
+# Shared cleaning helpers used by every step of this pipeline: rd() (safe raw-file
+# reads), build_facility_crosswalk() (NPDES_ID -> facility_id), and the two
+# coalesce_date_*() date-combining functions. See code/02_cleaning/module_README.md.
+source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
+
 # ==============================================================================
 # 04_add_violations.R
 # ------------------------------------------------------------------------------
@@ -82,14 +87,6 @@ RAW_DIR  <- file.path(CWA_ROOT, "data/raw/npdes_downloads")
 IN_PATH  <- file.path(CWA_ROOT, "data/processed/03_facility_month_panel_major_individual_naics_sic_2005_2025.csv")
 OUT_PATH <- file.path(CWA_ROOT, "data/processed/04_facility_month_panel_major_individual_violations_2005_2025.csv")
 
-# Small helper: read only the columns we need, everything as plain text
-# (character) so ID columns are never silently reinterpreted as numbers.
-rd <- function(file, cols) {
-  class_map <- setNames(rep("character", length(cols)), cols)
-  fread(file.path(RAW_DIR, file), select = cols,
-        colClasses = class_map, showProgress = FALSE)
-}
-
 # ------------------------------------------------------------------------------
 # STEP 1: Read the facility-by-month panel (output of script 03).
 # ------------------------------------------------------------------------------
@@ -99,16 +96,11 @@ panel <- fread(IN_PATH, colClasses = "character", showProgress = FALSE)
 panel[, `:=`(YEAR = as.integer(YEAR), MONTH = as.integer(MONTH))]
 
 # ------------------------------------------------------------------------------
-# STEP 2: Rebuild the NPDES_ID -> facility_id crosswalk (same rule as scripts 01-02).
+# STEP 2: Build the NPDES_ID -> facility_id crosswalk (same rule as scripts
+# 01-02; ASSUMPTION 3). See build_facility_crosswalk() in
+# code/02_cleaning/cleaning_helpers.R for the full explanation.
 # ------------------------------------------------------------------------------
-# A facility's id is its FACILITY_UIN when present, else the permit's own
-# NPDES_ID. We reproduce that EXACTLY so each violation resolves to the same id
-# the panel is keyed on (ASSUMPTION 3).
-fac <- rd("ICIS_FACILITIES.csv", c("NPDES_ID", "FACILITY_UIN"))
-fac[, NPDES_ID     := trimws(NPDES_ID)]
-fac[, FACILITY_UIN := trimws(FACILITY_UIN)]
-fac[, facility_id  := fifelse(FACILITY_UIN != "", FACILITY_UIN, NPDES_ID)]
-xwalk <- unique(fac[NPDES_ID != "", .(NPDES_ID, facility_id)])
+xwalk <- build_facility_crosswalk(raw_dir = RAW_DIR)
 
 # ------------------------------------------------------------------------------
 # STEP 3: Helper -- read one violation file and count it to facility-months.
@@ -117,7 +109,7 @@ xwalk <- unique(fac[NPDES_ID != "", .(NPDES_ID, facility_id)])
 # the 2005-2025 window, routes NPDES_ID -> facility_id, and returns one row per
 # (facility_id, YEAR, MONTH) with a DISTINCT-violation count named `out_col`.
 count_violations <- function(file, date_col, out_col) {
-  v <- rd(file, c("NPDES_ID", "NPDES_VIOLATION_ID", date_col))
+  v <- rd(file, c("NPDES_ID", "NPDES_VIOLATION_ID", date_col), raw_dir = RAW_DIR)
   v[, NPDES_ID := trimws(NPDES_ID)]
 
   # Place each violation in a calendar month by its violation date (ASSUMPTION 2).

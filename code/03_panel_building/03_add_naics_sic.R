@@ -1,6 +1,11 @@
 # Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, ...)
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
+# Shared cleaning helpers used by every step of this pipeline: rd() (safe raw-file
+# reads), build_facility_crosswalk() (NPDES_ID -> facility_id), and the two
+# coalesce_date_*() date-combining functions. See code/02_cleaning/module_README.md.
+source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
+
 # ==============================================================================
 # 03_add_naics_sic.R
 # ------------------------------------------------------------------------------
@@ -75,20 +80,12 @@ RAW_DIR  <- file.path(CWA_ROOT, "data/raw/npdes_downloads")
 IN_PATH  <- file.path(CWA_ROOT, "data/processed/02_facility_month_panel_major_individual_inspections_2005_2025.csv")
 OUT_PATH <- file.path(CWA_ROOT, "data/processed/03_facility_month_panel_major_individual_naics_sic_2005_2025.csv")
 
-# Small helper: read only the columns we need, everything as plain text
-# (character) so ID and code columns are never silently reinterpreted as numbers
-# (e.g. leading zeros in SIC codes or permit numbers).
-rd <- function(file, cols) {
-  class_map <- setNames(rep("character", length(cols)), cols)
-  fread(file.path(RAW_DIR, file), select = cols,
-        colClasses = class_map, showProgress = FALSE)
-}
-
 # Small helper: from a code file, return EVERY (NPDES_ID, code) row -- no
 # collapsing -- with an explicit IS_PRIMARY flag so downstream steps can order
-# primary-first without losing the other codes a permit carries.
+# primary-first without losing the other codes a permit carries. (rd() itself
+# comes from code/02_cleaning/cleaning_helpers.R, sourced above.)
 all_codes <- function(file, code_col) {
-  d <- rd(file, c("NPDES_ID", code_col, "PRIMARY_INDICATOR_FLAG"))
+  d <- rd(file, c("NPDES_ID", code_col, "PRIMARY_INDICATOR_FLAG"), raw_dir = RAW_DIR)
   d[, NPDES_ID := trimws(NPDES_ID)]
   d[, (code_col) := trimws(get(code_col))]
   d[, IS_PRIMARY := PRIMARY_INDICATOR_FLAG == "Y"]
