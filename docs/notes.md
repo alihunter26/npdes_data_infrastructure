@@ -19,9 +19,18 @@ Running notes on data quirks, analytical decisions, and findings.
 
 ## Analytical Decisions
 
-### Effluent-violations NPDES_ID × month panel (2026-07-14)
+### Effluent-violations NPDES_ID × month panel (2026-07-14; rebuilt in-repo 2026-07-27)
 Produces `data/processed/effluent_violations_npdes_month_panel_2005_2025.csv`.
-Standalone; not in `run_all.R`. Columns: `NPDES_ID, month, n_D80, n_D90, n_E90`.
+**Update 2026-07-27:** this file's producing script now lives in this repo --
+`code/03_panel_building/build_effluent_violations_npdes_month_panel.R` -- and
+`run_all.R` builds it automatically if it's missing (it's a prerequisite for
+steps 01 and 06, not an optional step). The rebuild also folds in the TSS
+gross-effluent-subset counts (`N_TSS_EFF_VIOLATIONS`/`_D90`/`_D80`/`_E90`) that
+`06_add_effluent_violations.R` used to compute separately via a second,
+python3-driven stream of the raw file -- both count sets are now produced in
+one pass. Columns: `NPDES_ID, month, n_D80, n_D90, n_E90, N_TSS_EFF_VIOLATIONS,
+N_TSS_EFF_D90, N_TSS_EFF_D80, N_TSS_EFF_E90`. The original all-parameter
+construction logic below is unchanged.
 - **Month** = calendar month of `MONITORING_PERIOD_END_DATE` (the DMR reporting
   period), not detection or receipt date.
 - **Codes** live in `VIOLATION_CODE` (D80, D90, E90); one distinct-count column each.
@@ -37,6 +46,22 @@ Standalone; not in `run_all.R`. Columns: `NPDES_ID, month, n_D80, n_D90, n_E90`.
   codes, so a period corrected to compliant in a later version is not netted out.
 - **Engine:** DuckDB out-of-core (5 GB mem cap + disk spill); the zip member is
   streamed to a ~3.9 GB gzip temp once, then parsed. ~15 min end to end.
+
+### FY2025 DMR TSS/effluent-gross/monthly-avg filter moved into repo (2026-07-27)
+Script: `build/filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` (moved from the
+external EIL Summer working folder, same precedent as the effluent panel above; an
+untouched copy remains there). Produces
+`data/processed/dmr_fy2025_exo_00530_effgross_monthlyavg.csv` — the input
+`build/filter_dmr_fy2025_effgross_major_individual.R` restricts to major/individual
+permits. Not part of `code/03_panel_building/` or `run_all.R`; the `build/` folder is
+a separate, manually-run mini-pipeline (see `code/README.md`).
+- **No path changes needed.** The script already used this repo's exact `_paths.R`
+  constants (`DMR_DIR`, `PROC_DIR`) and portable header, unlike the effluent panel
+  script, which needed real adaptation.
+- **Verified by running it end to end from its new location:** 754,033 rows, 34,797
+  distinct permits, 57/57 columns, zero filter-violation rows, internal assertions
+  (`n_param`/`n_feat`/`n_stat` each `== 1`) passed. ~24.5 min wall time (~9.68 GB raw
+  file streamed once).
 
 ### `FACILITY_OPERATING` correction — step 07 (2026-07-23)
 Script: `code/03_panel_building/07_extend_facility_operating.R` →

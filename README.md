@@ -41,7 +41,7 @@ CWA/
 │   ├── 03_panel_building/   # facility-by-month panel pipeline (01–06); see its READMEs/
 │   ├── summary/             # per-dataset Excel summary sheets
 │   └── diagnostics/         # data-quality checks, grouped by topic; see its README.md
-├── build/            # sibling pipeline: facility-year / permit-panel builder (see below)
+├── build/            # sibling pipeline: DMR row-filtering mini-pipeline (see below)
 ├── dmr analysis/     # sibling pipeline: DMR row-filtering, feeds 03_panel_building/06
 ├── output/           # generated summaries (.xlsx) and flagged/extract CSVs
 │   ├── tables/       # diagnostic CSV extracts
@@ -57,8 +57,13 @@ CWA/
 ### `build/`
 
 This repo has its own root-level `build/` folder (a sibling to `code/`, not nested
-inside it — see decision in `code/README.md`), currently holding one script,
-`filter_dmr_fy2025_effgross_major_individual.R`.
+inside it — see decision in `code/README.md`). It holds a small two-step DMR-filtering
+mini-pipeline, run manually (not part of `run_all.R`):
+
+| Step | Script | Output |
+|---|---|---|
+| 1 | `filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` (moved in from the external EIL Summer folder 2026-07-27) | `data/processed/dmr_fy2025_exo_00530_effgross_monthlyavg.csv` — FY2025 DMR rows filtered to TSS / effluent-gross / monthly-average |
+| 2 | `filter_dmr_fy2025_effgross_major_individual.R` | `data/processed/dmr_fy2025_exo_00530_effgross_monthlyavg_major_individual.csv` — step 1's output restricted to major, individually-permitted facilities |
 
 ### `code/summary/` — dataset summaries
 

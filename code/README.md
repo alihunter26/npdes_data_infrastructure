@@ -27,9 +27,12 @@ structure, so they stay as clearly-labeled siblings rather than being forced int
 - **`../dmr analysis/`** — filters the raw per-fiscal-year DMR files down to TSS /
   effluent-gross / monthly-average rows for major-individual permits. Its output CSVs
   feed `03_panel_building/06_add_effluent_violations.R`.
-- **`../build/`** — the former facility-**year** / permit-panel builder
-  (`filter_dmr_fy2025_effgross_major_individual.R`). Its output CSVs live in
-  `data/processed/`.
+- **`../build/`** — a small two-step DMR-filtering mini-pipeline (run manually, not
+  part of `run_all.R`): `filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` (moved
+  in from the external EIL Summer folder 2026-07-27) filters the raw FY2025 DMR
+  file down to the TSS/effluent-gross/monthly-average subset, then
+  `filter_dmr_fy2025_effgross_major_individual.R` restricts that to major/
+  individual permits. Both read/write `data/processed/`.
 
 ## Conventions
 
