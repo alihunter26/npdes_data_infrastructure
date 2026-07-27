@@ -50,13 +50,16 @@ construction logic below is unchanged.
   streamed to a ~3.9 GB gzip temp once, then parsed. ~15 min end to end.
 
 ### FY2025 DMR TSS/effluent-gross/monthly-avg filter moved into repo (2026-07-27)
-Script: `build/filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` (moved from the
+Script: `code/dmr/filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` (moved from the
 external EIL Summer working folder, same precedent as the effluent panel above; an
 untouched copy remains there). Produces
 `data/processed/dmr_fy2025_exo_00530_effgross_monthlyavg.csv` — the input
-`build/filter_dmr_fy2025_effgross_major_individual.R` restricts to major/individual
-permits. Not part of `code/03_panel_building/` or `run_all.R`; the `build/` folder is
-a separate, manually-run mini-pipeline (see `code/README.md`).
+`code/dmr/filter_dmr_fy2025_effgross_major_individual.R` restricts to major/individual
+permits. Not part of `code/03_panel_building/` or `run_all.R`; a manually-run
+mini-pipeline (see `code/README.md`).
+**Update 2026-07-27 (later same day):** both scripts moved again, from a root-level
+`build/` folder (now removed) into `code/dmr/`, alongside this repo's other
+DMR-specific summary/diagnostic scripts — path-only, no logic change.
 - **No path changes needed.** The script already used this repo's exact `_paths.R`
   constants (`DMR_DIR`, `PROC_DIR`) and portable header, unlike the effluent panel
   script, which needed real adaptation.

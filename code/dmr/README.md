@@ -1,10 +1,12 @@
-# `code/dmr/` — DMR-specific summary & diagnostic scripts
+# `code/dmr/` — DMR-specific summary, diagnostic & filter scripts
 
 Scripts whose primary subject is the raw per-fiscal-year DMR (Discharge Monitoring
 Report) file itself, rather than the broader ICIS-NPDES tables or the built panel.
-Grouped here 2026-07-27 — these seven previously lived split across `code/summary/`
-and `code/diagnostics/` (in `brief_generators/`, `outfalls/`, and `effluent_qc/`,
-the last of which is now empty and was removed).
+Grouped here 2026-07-27 — the seven summary/diagnostic scripts previously lived split
+across `code/summary/` and `code/diagnostics/` (in `brief_generators/`, `outfalls/`,
+and `effluent_qc/`, the last of which is now empty and was removed); the two filter
+scripts below moved in the same day from a root-level `build/` folder (also now
+removed).
 
 None of these build the facility-month panel; they summarize, diagnose, or QC the
 DMR data on the side. See the root `code/README.md` for how this folder relates to
@@ -41,6 +43,17 @@ Rscript code/dmr/eff_flagged.R <state>
 ```
 
 Output: `output/eff_flagged_<state>_<timestamp>.csv`.
+
+## FY2025 DMR filter mini-pipeline
+
+A small two-step pipeline, run manually (not part of `run_all.R`), that filters the
+raw FY2025 DMR file down to the rows `../../dmr analysis/` and `06_add_effluent_violations.R`
+actually need:
+
+| Step | Script | Output |
+|---|---|---|
+| 1 | `filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` (moved in from the external EIL Summer folder 2026-07-27) | `data/processed/dmr_fy2025_exo_00530_effgross_monthlyavg.csv` — FY2025 DMR rows filtered to TSS / effluent-gross / monthly-average |
+| 2 | `filter_dmr_fy2025_effgross_major_individual.R` | `data/processed/dmr_fy2025_exo_00530_effgross_monthlyavg_major_individual.csv` — step 1's output restricted to major, individually-permitted facilities |
 
 ## Conventions
 

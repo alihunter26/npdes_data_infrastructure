@@ -25,8 +25,9 @@ Or simply run `Rscript run_all.R` from the repo root — it sources this first.
 
 ## Notes
 
-- Package list is the union of every `library(...)` call found across `code/`,
-  `build/`, and `dmr analysis/` (verified via repo-wide grep, not guessed).
+- Package list is the union of every `library(...)` call found across `code/`
+  (including `code/dmr/`'s filter mini-pipeline) and `dmr analysis/` (verified via
+  repo-wide grep, not guessed).
 - Directories are created with `dir.create(..., showWarnings = FALSE)`, so
   re-running this script is always safe — it never overwrites or clears an
   existing directory.

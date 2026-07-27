@@ -5,8 +5,8 @@ individually-permitted NPDES facilities, 2005–2025, from the raw ECHO/ICIS-NPD
 in `data/raw/`. Each step reads the prior step's CSV from `data/processed/` and writes
 the next.
 
-> This is distinct from this repo's own root-level `build/` sibling folder (see
-> `code/README.md`).
+> This is distinct from `code/dmr/`'s FY2025 DMR filter mini-pipeline (formerly a
+> root-level `build/` sibling folder; see `code/README.md`).
 
 ## Steps
 

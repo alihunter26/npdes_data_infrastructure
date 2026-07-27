@@ -40,8 +40,8 @@ CWA/
 │   ├── 02_cleaning/         # shared cleaning helpers used by 03_panel_building/; see its module_README.md
 │   ├── 03_panel_building/   # facility-by-month panel pipeline (01–06); see its READMEs/
 │   ├── summary/             # per-dataset Excel summary sheets
-│   └── diagnostics/         # data-quality checks, grouped by topic; see its README.md
-├── build/            # sibling pipeline: DMR row-filtering mini-pipeline (see below)
+│   ├── diagnostics/         # data-quality checks, grouped by topic; see its README.md
+│   └── dmr/                 # DMR-specific summaries/diagnostics + the FY2025 filter mini-pipeline (see below)
 ├── dmr analysis/     # sibling pipeline: DMR row-filtering, feeds 03_panel_building/06
 ├── output/           # generated summaries (.xlsx) and flagged/extract CSVs
 │   ├── tables/       # diagnostic CSV extracts
@@ -54,11 +54,12 @@ CWA/
 
 ## Scripts
 
-### `build/`
+### `code/dmr/` — FY2025 DMR filter mini-pipeline
 
-This repo has its own root-level `build/` folder (a sibling to `code/`, not nested
-inside it — see decision in `code/README.md`). It holds a small two-step DMR-filtering
-mini-pipeline, run manually (not part of `run_all.R`):
+A small two-step DMR-filtering mini-pipeline, run manually (not part of `run_all.R`).
+Previously lived in its own root-level `build/` folder (a sibling to `code/`); folded
+into `code/dmr/` 2026-07-27 alongside this repo's other DMR-specific scripts (see
+`code/dmr/README.md`):
 
 | Step | Script | Output |
 |---|---|---|

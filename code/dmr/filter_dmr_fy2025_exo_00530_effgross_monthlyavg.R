@@ -10,10 +10,11 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # Its own path handling already used this repo's exact `_paths.R` constants
 # (`DMR_DIR`, `PROC_DIR`), so no path changes were needed to run it here.
 #
-# PREREQUISITE for `build/filter_dmr_fy2025_effgross_major_individual.R`, which
+# PREREQUISITE for `code/dmr/filter_dmr_fy2025_effgross_major_individual.R`, which
 # reads this script's output and restricts it to major/individual permits. Not
 # part of the `code/03_panel_building/` numbered pipeline or `run_all.R` — this
-# is the `build/` mini-pipeline's first step, run manually.
+# is the FY2025 DMR filter mini-pipeline's first step (moved here from a
+# root-level `build/` folder 2026-07-27), run manually.
 #
 # Row-filter the FY2025 DMR file down to a single, small CSV that keeps only the
 # lines matching all four criteria below. ALL 57 original columns are preserved

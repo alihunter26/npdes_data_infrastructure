@@ -38,5 +38,5 @@ and what a missing value means). See that script's "LABELED ASSUMPTIONS" section
   (and `library(lubridate)`, for the date functions) — this file only *defines*
   functions, so it doesn't need those packages loaded at the time it's sourced, only
   by the time its functions are actually called.
-- No cleaning here for `dmr analysis/` or the root-level `build/` folder — those are
-  separate, standalone pipelines and out of scope for this extraction.
+- No cleaning here for `dmr analysis/` or `code/dmr/`'s filter mini-pipeline — those
+  are separate, standalone pipelines and out of scope for this extraction.
