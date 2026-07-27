@@ -1,5 +1,7 @@
 # README — `cleaning_helpers.R`
 
+** verified by Ali 7/27 **
+
 Shared function library for the facility-by-month panel pipeline
 (`code/03_panel_building/01`–`06`, plus `use_operating_proxies.R`). Not a runnable
 script — it only *defines* functions; nothing here reads or writes a file on its own.
