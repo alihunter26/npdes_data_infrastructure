@@ -54,30 +54,11 @@ CWA/
 
 ## Scripts
 
-### `build/` and the external EIL Summer builders — two separate things, easy to conflate
+### `build/`
 
-This repo has its **own** root-level `build/` folder (a sibling to `code/`, not nested
+This repo has its own root-level `build/` folder (a sibling to `code/`, not nested
 inside it — see decision in `code/README.md`), currently holding one script,
 `filter_dmr_fy2025_effgross_major_individual.R`.
-
-That is **distinct** from the original facility-**year** / permit-panel builders, which
-genuinely still live outside this repo, in the **EIL Summer** working folder
-(`../EIL Summer/build/`):
-
-| Step | Output |
-|---|---|
-| `01_build_npdes_panel.R` | base facility-year enforcement panel |
-| `02_filter_major_individual_facilities.R` | major + individual filter of the base panel |
-| `03_build_facility_panel_major_individual.R` | FRS-facility panel (never-minor, entry/exit) |
-| `04_build_permit_panel_major_continuous.R` | permit panel: major every year (balanced) |
-| `05_build_permit_panel_major_entryexit.R` | permit panel: never-minor (entry/exit) |
-| `build_effluent_violations_npdes_month_panel.R` | condensed effluent panel feeding `code/03_panel_building/06_add_effluent_violations.R` |
-| `filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` | DMR rows (TSS / effluent-gross / monthly-avg) |
-
-Those two external scripts' output CSVs live in `data/processed/` and are still needed
-to rebuild those specific inputs — keep that external folder available. This repo's own
-`build/` is a newer, separate addition; the two are not the same folder and were never
-merged.
 
 ### `code/summary/` — dataset summaries
 

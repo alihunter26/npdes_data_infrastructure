@@ -38,11 +38,9 @@ the underlying effluent file. ☒ All data publicly available.
 | `NPDES_EFF_VIOLATIONS.csv` (inside its zip in `data/raw/`) | `.csv` in `.zip`, ~16 GB unzipped | `NPDES_ID`, `NPDES_VIOLATION_ID`, `VIOLATION_CODE`, `PARAMETER_CODE`, `MONITORING_LOCATION_CODE`, `STATISTICAL_BASE_MONTHLY_AVG`, `MONITORING_PERIOD_END_DATE` (TSS subset) |
 | `ICIS_FACILITIES.csv` | `.csv` | crosswalk |
 
-> **External dependency:** the condensed panel is built by
-> `build_effluent_violations_npdes_month_panel.R`, which lives in the **EIL Summer**
-> working folder (`../EIL Summer/build/`, outside this repository — not to be confused
-> with this repo's own root-level `build/` sibling, a separate, unrelated folder). Run
-> it there first; its output CSV lands in `data/processed/`.
+> **Not currently present:** the condensed panel
+> (`data/processed/effluent_violations_npdes_month_panel_2005_2025.csv`) has no
+> in-repo script to rebuild it — see `code/03_panel_building/README.md`.
 
 ## Dataset list
 
@@ -120,9 +118,10 @@ if not operating.
 ```bash
 Rscript "code/03_panel_building/06_add_effluent_violations.R"
 ```
-Run **after** step 05, **after** building the condensed source with
-`build_effluent_violations_npdes_month_panel.R` (now in `../EIL Summer/build/`), and with
-`python3`/`unzip` on `PATH` and the effluent zip present in `data/raw/`.
+Run **after** step 05, **after** the condensed source at
+`data/processed/effluent_violations_npdes_month_panel_2005_2025.csv` exists (see the
+note above), and with `python3`/`unzip` on `PATH` and the effluent zip present in
+`data/raw/`.
 
 ## Notes / edge cases
 

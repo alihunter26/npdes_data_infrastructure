@@ -14,8 +14,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # Output : data/processed/dmr_fy2025_exo_00530_effgross_monthlyavg_major_individual.csv
 #          (same 57 columns; row-filtered to ever-major individual permits)
 #
-# ---- Population definition (matches updated panel/01 & the external ------
-# ---- ../EIL Summer/build/03_build_facility_panel_major_individual.R) ----------
+# ---- Population definition (matches updated panel/01) -----------------------
 #   INDIVIDUAL : ICIS_PERMITS PERMIT_TYPE_CODE == "NPD".
 #   EVER MAJOR : MAJOR_MINOR_STATUS_FLAG == "M" in AT LEAST ONE version row of the
 #                permit (not "major every year"). This is the looser "ever major"

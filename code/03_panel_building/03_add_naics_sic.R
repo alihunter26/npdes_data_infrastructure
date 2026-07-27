@@ -39,10 +39,8 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #      SIC) codes. We keep EVERY code (not just the one flagged primary), but
 #      order each permit's codes so its PRIMARY_INDICATOR_FLAG == "Y" code
 #      comes first, followed by its remaining codes. (Prior to 2026-07-21 this
-#      script kept only the primary code, matching the rule in
-#      the external ../EIL Summer/build/04_build_permit_panel_major_continuous.R; per Ali's
-#      2026-07-17 question in this step's README -- "should it include all?"
-#      -- it now does.)
+#      script kept only the primary code; per Ali's 2026-07-17 question in
+#      this step's README -- "should it include all?" -- it now does.)
 #
 #   4. MULTI-VALUE FACILITIES -> SEMICOLON LIST, PRIMARY-FIRST, DEDUPED. Most
 #      facilities have exactly one individual permit with exactly one code, so

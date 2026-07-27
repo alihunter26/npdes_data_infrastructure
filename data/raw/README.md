@@ -23,7 +23,7 @@ place.** Everything downstream is rebuilt from them into `data/processed/`.
 | `Attains/` | `ATTAINS_AU_CATCHMENTS`, `NPDES_CATCHMENTS`, `NPDES_ATTAINS_AU_SUMMARIES` — dischargers ↔ receiving-water assessments |
 | `Master General Permits/` | `ICIS_MASTER_GENERAL_PERMITS.csv` (+ source zip) |
 | `npdes_outfalls_layer.csv` | Spatial layer of permitted outfalls / discharge points |
-| `reference/` | ECHO ICIS-NPDES domain/lookup tables that decode coded columns. `REF_STATISTICAL_BASE.csv` = `STATISTICAL_BASE_CODE` → description (e.g. `MK` = Monthly Average, `MN` = Monthly Maximum). Referenced by the external `../EIL Summer/build/filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` |
+| `reference/` | ECHO ICIS-NPDES domain/lookup tables that decode coded columns. `REF_STATISTICAL_BASE.csv` = `STATISTICAL_BASE_CODE` → description (e.g. `MK` = Monthly Average, `MN` = Monthly Maximum) |
 
 ## Conventions
 

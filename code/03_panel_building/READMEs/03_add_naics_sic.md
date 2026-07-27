@@ -65,9 +65,7 @@ and de-duplicated (order preserved, not alphabetical); left-join onto the panel.
    to the facility — never from other permits at the site.
 3. **All codes, primary first.** A permit can carry several NAICS (or SIC) codes; all
    are kept, ordered so the row flagged `PRIMARY_INDICATOR_FLAG == "Y"` comes first. (Prior
-   to 2026-07-21 this kept only the primary code, same rule as
-   `04_build_permit_panel_major_continuous.R`, now in `../EIL Summer/build/` — see the
-   resolved question above.)
+   to 2026-07-21 this kept only the primary code — see the resolved question above.)
 4. **Multi-value facilities ⇒ semicolon list, primary-first, deduped** — across a
    permit's multiple codes and/or a facility's multiple permits (matching step 01's
    `NPDES_ID` formatting).

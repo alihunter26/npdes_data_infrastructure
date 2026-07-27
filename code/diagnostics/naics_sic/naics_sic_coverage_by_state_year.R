@@ -3,22 +3,20 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 
 # NAICS/SIC coverage by state x year, for MAJOR INDIVIDUAL permits, 2005-2025.
 #
-# Standalone diagnostic (not part of the external ../EIL Summer/build/ pipeline or
-# run_all.R). Answers:
+# Standalone diagnostic (not part of run_all.R). Answers:
 # among permits that were major + individual in a given year, what share had
 # a NAICS code on file, and what share had a SIC code, broken out by state?
 #
-# Major-individual-by-year reconstruction is adapted from
-# the external ../EIL Summer/build/04_build_permit_panel_major_continuous.R (individual = NPD;
-# major/minor is time-varying, carried forward from each version's effective
-# year). Unlike that script, permits are NOT required to be major every year
-# here -- each year gets its own population, entry/exit allowed.
+# Major-individual-by-year reconstruction: individual = NPD; major/minor is
+# time-varying, carried forward from each version's effective year. Permits
+# are NOT required to be major every year here -- each year gets its own
+# population, entry/exit allowed.
 #
 # CLOSURE is status-aware (see STEP 1): a permit is held through YEAR_MAX unless
-# its current version is TRM (terminated) or EXP (lapsed). This DIVERGES from
-# the external ../EIL Summer/build/04-05, which close on max expiration date alone and thereby drop
-# administratively-continued (ADC) majors that are still active -- an undercount
-# this diagnostic deliberately avoids.
+# its current version is TRM (terminated) or EXP (lapsed) -- rather than closing
+# on max expiration date alone, which would drop administratively-continued
+# (ADC) majors that are still active. This diagnostic deliberately avoids that
+# undercount.
 #
 # NAICS_CODE / SIC_CODE presence (NPDES_NAICS.csv / NPDES_SICS.csv) has no
 # date field -- it's a fixed permit attribute, not time-varying.
@@ -57,8 +55,7 @@ pv[, exp_year := year(fcoalesce(mdy(EXPIRATION_DATE, quiet = TRUE),
 #   TRM -> closed at its termination year; EXP -> closed at its (lapsed) expiration
 #   year; anything else (ADC administratively-continued, EFF, ...) -> still active,
 #   held through YEAR_MAX. Using EXPIRATION_DATE alone would drop ~1,578 still-active
-#   ADC majors from recent years. (This diverges from the external ../EIL Summer/build/04-05, which
-#   still use the naive max-expiration rule and share this bug.)
+#   ADC majors from recent years.
 # Computed BEFORE the M/N filter below so every current-version row is available.
 cur <- pv[trimws(VERSION_NMBR) == "0",
           .(id,

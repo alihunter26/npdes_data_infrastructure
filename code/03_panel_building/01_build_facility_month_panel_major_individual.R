@@ -31,9 +31,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 
 # LABELED ASSUMPTIONS (read before using results):
 #   1. "EVER MAJOR", NOT "ALWAYS MAJOR". This is a broader/looser population
-#      than 03_build_facility_panel_major_individual.R (in the external
-#      ../EIL Summer/build/, not this repo's own build/),
-#      which requires a facility to be major in EVERY held year and NEVER
+#      than one requiring a facility to be major in EVERY held year and NEVER
 #      minor. Here, one "M" flag anywhere in the permit's version history is
 #      enough. (Per PI guidance.)
 #   2. PER-PERMIT WINDOW = EARLIEST POSSIBLE OPEN -> LATEST POSSIBLE CLOSE.
@@ -46,8 +44,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #      possible date for closing.")
 #   3. NO CLOSING DATE = STILL ACTIVE. If a permit has none of the three
 #      closing-date fields filled in, it is treated as active through the end
-#      of the panel window (Dec 2025). This matches the convention already
-#      used in the external ../EIL Summer/build/03_build_facility_panel_major_individual.R.
+#      of the panel window (Dec 2025).
 #   4. FACILITY WINDOW = UNION ACROSS *ALL* ITS INDIVIDUAL PERMITS. Once a
 #      facility qualifies (>=1 ever-major individual permit at some point), the
 #      facility's own month range runs from the EARLIEST opening to the LATEST

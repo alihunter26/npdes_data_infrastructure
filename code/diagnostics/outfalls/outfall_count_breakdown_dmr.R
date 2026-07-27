@@ -36,9 +36,8 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # Engine: DuckDB, out-of-core. The FY DMR CSV (~9.7GB) lives inside a zip;
 # DuckDB can't read a zip member directly (non-seekable pipe breaks its
 # sniffer), so the member is streamed out with `tar` and re-gzipped to scratch
-# once (mirrors the external ../EIL Summer/build/filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R
-# -- same GZ_TMP path/convention, so a gz already extracted by that script is
-# reused here too, and vice versa).
+# once (same GZ_TMP path/convention as other scripts that extract this file,
+# so an already-extracted gz is reused here too, and vice versa).
 #
 # Read-only on raw + processed data. Writes a timestamped CSV to output/tables/.
 # ==============================================================================
