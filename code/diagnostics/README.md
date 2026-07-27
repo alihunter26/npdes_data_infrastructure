@@ -18,7 +18,6 @@ one subfolder per topic so related scripts sit together as the list grows.
 | `outfalls/` | `outfall_count_breakdown.R`, `outfall_count_breakdown_dmr.R`, `feature_ids_per_permit.R` | Outfall / discharge-point (`PERM_FEATURE_ID`) counts per permit — permitted vs. actually reporting. |
 | `brief_generators/` | `make_dmr_funnel_fig.R`, `make_naics_sic_coverage_brief.R` | Compute the figures/tables cited in `docs/institutional_briefs/`. (`make_permit_types_brief.R` was removed when `docs/permit_types_brief.md` became the sole canonical permit-types brief — see `docs/permit_types_brief.md`.) |
 | `effluent_qc/` | `eff_flagged.R` | Flags suspicious effluent-violation rows (negative values, implausible dates/magnitudes) for one state → `output/eff_flagged_<state>_*.csv`. State via arg: `Rscript eff_flagged.R va`. |
-| `scratch/` | `preview_dmr2025.R` | One-off interactive snippet to peek inside the DMR zip. Not durable — no output written. |
 
 ## Conventions
 
