@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DMR Filter Pipeline Attrition — Clean Water Act Data Explorer</title>
+<link rel="stylesheet" href="assets/style.css?v=4">
+</head>
+<body>
+<header class="site-header">
+  <div class="bar">
+    <div class="brand">Clean Water Act Data Explorer<small>NPDES · DMR · ATTAINS Summary Data</small></div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="summaries.html">Data Summaries</a>
+      <a href="briefs.html" class="active">Briefs</a>
+      <a href="data-documentation.html">Data Documentation</a>
+      <a href="temporal-coverage.html">Temporal Coverage</a>
+      <a href="about.html">About &amp; Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="no-hero">
+  <div class="breadcrumb"><a href="index.html">Home</a> / <a href="briefs.html">Briefs</a> / DMR Filter Pipeline Attrition</div>
+
+  <div class="eyebrow">Supplementary Brief</div>
+  <h1>Row and Permit Attrition Across the DMR Filter Pipeline</h1>
+  <p class="lede">FY2009 vs. FY2025: how many observations and distinct permits survive each
+     step of the DMR filter pipeline.</p>
+  <p><a class="btn" href="assets/pdfs/dmr_filter_funnel.pdf" target="_blank" rel="noopener">Download PDF</a></p>
+
+  <h2 style="margin-top:34px;">Scope and Data</h2>
+  <p>
+    This brief tracks how many <strong>observations</strong> (DMR rows) and how many
+    <strong>distinct permits</strong> survive each step of the DMR filter pipeline,
+    comparing FY2009 against FY2025. The starting point (<strong>Stage 0</strong>) is the
+    <em>raw, completely unfiltered</em> DMR file exactly as delivered by EPA ECHO &mdash;
+    every permit (major and minor, individual and general), every parameter, feature type,
+    and monitoring location, with no restriction of any kind. Four filtering stages are then
+    applied in sequence, narrowing that raw universe down to a single
+    pollutant/monitoring-location/limit-type slice used for TSS effluent compliance analysis:
+  </p>
+  <ol>
+    <li><strong>Major-Individual</strong> &mdash; restrict to permits that are individual
+        (<code>PERMIT_TYPE_CODE = "NPD"</code>) and were flagged major in at least one permit
+        version. No parameter, feature-type, or monitoring-location restriction yet.</li>
+    <li><strong>+TSS (00530)</strong> &mdash; restrict to <code>PARAMETER_CODE = '00530'</code>
+        (Total Suspended Solids).</li>
+    <li><strong>+Effluent Gross</strong> &mdash; restrict to
+        <code>MONITORING_LOCATION_CODE IN ('1','EG')</code> (both map to "Effluent Gross" per
+        EPA's <code>REF_MONITORING_LOCATION</code> table).</li>
+    <li><strong>+C1/Q1</strong> &mdash; restrict to
+        <code>LIMIT_VALUE_TYPE_CODE IN ('C1','Q1')</code> (the concentration- and
+        mass-average value slots).</li>
+  </ol>
+  <p>
+    Each stage is built by fiscal-year-parameterized filter scripts and self-verifies column
+    counts and category cardinality before writing its output. Stage 0's summary is computed
+    directly via DuckDB SQL aggregation rather than loaded into R (the raw file is 11&ndash;27M
+    rows, too large to safely read in full on this machine). All figures below are measured
+    directly from the raw file and the four filtered CSVs for each fiscal year, not estimated.
+  </p>
+
+  <h2>Underlying Numbers</h2>
+  <p class="note">Row and permit counts at each filter stage, FY2009 vs. FY2025.</p>
+  <div id="table-funnel"></div>
+
+  <h2>Reproducibility</h2>
+  <p class="note">
+    Each stage is built by <code>dmr analysis/filter_dmr_*.R</code> (parameterized by fiscal
+    year); Stage 0 is computed by <code>scripts/summary/build_dmr_raw_summary.R</code>. See the
+    <a href="assets/pdfs/dmr_filter_funnel.pdf" target="_blank" rel="noopener">full PDF</a>
+    for the citable, formally typeset version of this brief.
+  </p>
+</main>
+
+<footer class="site-footer">
+  <div class="bar">
+    Data sourced from NPDES Data Downloads
+  </div>
+</footer>
+
+<script src="assets/table.js"></script>
+<script>
+  renderDataTable(document.getElementById("table-funnel"), [
+    { "Stage": "0. Raw / All Permits", "FY2009 Rows": "11,077,254", "FY2009 Permits": "44,230", "FY2025 Rows": "26,869,750", "FY2025 Permits": "89,954" },
+    { "Stage": "1. Major-Individual", "FY2009 Rows": "4,015,793", "FY2009 Permits": "6,555", "FY2025 Rows": "4,703,897", "FY2025 Permits": "6,701" },
+    { "Stage": "2. +TSS (00530)", "FY2009 Rows": "440,369", "FY2009 Permits": "6,426", "FY2025 Rows": "489,033", "FY2025 Permits": "6,572" },
+    { "Stage": "3. +Effluent Gross", "FY2009 Rows": "328,296", "FY2009 Permits": "6,091", "FY2025 Rows": "336,437", "FY2025 Permits": "6,117" },
+    { "Stage": "4. +C1/Q1", "FY2009 Rows": "80,196", "FY2009 Permits": "4,974", "FY2025 Rows": "75,818", "FY2025 Permits": "4,880" }
+  ], { searchable: false });
+</script>
+</body>
+</html>

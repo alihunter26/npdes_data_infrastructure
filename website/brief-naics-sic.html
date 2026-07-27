@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NAICS &amp; SIC Coverage by State — Clean Water Act Data Explorer</title>
+<link rel="stylesheet" href="assets/style.css?v=4">
+</head>
+<body>
+<header class="site-header">
+  <div class="bar">
+    <div class="brand">Clean Water Act Data Explorer<small>NPDES · DMR · ATTAINS Summary Data</small></div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="summaries.html">Data Summaries</a>
+      <a href="briefs.html" class="active">Briefs</a>
+      <a href="data-documentation.html">Data Documentation</a>
+      <a href="temporal-coverage.html">Temporal Coverage</a>
+      <a href="about.html">About &amp; Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="no-hero">
+  <div class="breadcrumb"><a href="index.html">Home</a> / <a href="briefs.html">Briefs</a> / NAICS &amp; SIC Coverage by State</div>
+
+  <div class="eyebrow">Supplementary Brief</div>
+  <h1>NAICS and SIC Industry-Code Coverage in the NPDES Major-Individual Panel, by State (2005&ndash;2025)</h1>
+  <p class="lede">How often NPDES permits carry an industry classification code, and why coverage
+     varies sharply by state for NAICS but not for SIC.</p>
+  <p><a class="btn" href="assets/pdfs/naics_sic_coverage_by_state.pdf" target="_blank" rel="noopener">Download PDF</a></p>
+
+  <h2 style="margin-top:34px;">Scope and Data</h2>
+  <p>
+    This brief measures how often EPA NPDES permits carry an industry classification code
+    &mdash; North American Industry Classification System (<strong>NAICS</strong>) and the
+    older Standard Industrial Classification (<strong>SIC</strong>) &mdash; and how that
+    coverage varies across states. The universe is the <strong>major-individual</strong>
+    permit population (individual "NPD" permits flagged <em>major</em> in a given year),
+    reconstructed by year over 2005&ndash;2025 with entry and exit allowed. The unit of
+    observation is a <em>permit-year</em>; a permit-year "has NAICS" ("has SIC") if that
+    permit appears at least once in <code>NPDES_NAICS.csv</code> (<code>NPDES_SICS.csv</code>).
+    Coverage figures pool all <strong>139,992</strong> permit-years across the <strong>56</strong>
+    reporting states and territories.
+  </p>
+  <p>
+    Two properties of the source matter. First, NAICS/SIC presence is a
+    <em>time-invariant permit attribute</em>: the code files carry no date, so within a
+    permit, coverage does not change year to year &mdash; the cross-state variation below is
+    structural, not a reporting trend. Second, "coverage" means a code is <em>on file</em>; it
+    does not assess whether the code is correct.
+  </p>
+
+  <h2>Headline Findings</h2>
+  <ul>
+    <li><strong>SIC is near-universal: 98.7% nationally</strong>, at or near 100% in almost
+        every state. Only ND, VT fall below 90%.</li>
+    <li><strong>NAICS is sparse and sharply state-dependent: 35.9% nationally.</strong> The
+        distribution is bimodal, not centered on the mean: <strong>16</strong> states and
+        territories record NAICS on essentially <em>none</em> of their major-individual
+        permits, while <strong>10</strong> record it on 95%+.</li>
+    <li><strong>The gap is administrative, not industrial.</strong> Whether a permit has a
+        NAICS code tracks the <em>permitting authority</em>, not the facility. Several of the
+        largest state programs sit at &asymp;0% (e.g. CA, IL, OH, WI, MD, WV; TX at 0.2%),
+        while neighbors of similar industrial mix (e.g. KY, OK, ID at 99&ndash;100%) are fully
+        coded.</li>
+  </ul>
+
+  <h2>General State Reporting of NAICS and SIC Codes</h2>
+  <p>
+    Industry codes enter ICIS-NPDES at permit issuance and are maintained by the administering
+    authority &mdash; the state environmental agency in delegated (authorized) states, or the
+    EPA Region otherwise. Because SIC long predates NAICS and was the required classification
+    when most of these permits and their legacy records were created, virtually every
+    major-individual permit carries a SIC code: coverage is 98.7% pooled and effectively
+    saturated in all but a couple of jurisdictions. NAICS adoption, by contrast, was never
+    uniformly back-filled. A state's ICIS-NPDES records either systematically include NAICS
+    (yielding near-100% coverage) or they do not (yielding near-0%), producing the two-cluster
+    pattern in the state table below rather than a smooth gradient. The modest national upward
+    drift over the window &mdash; from 33.6% (2005) to 38.9% (2025) in the year table below,
+    against flat SIC &mdash; reflects newer permits in already-coded states, not laggard states
+    beginning to report.
+  </p>
+  <p>
+    <strong>Implication for analysis.</strong> For any cross-state industry classification, use
+    <strong>SIC</strong>: its coverage is uniform, so it does not confound industry with state.
+    Pooled NAICS is unusable, and conditioning on NAICS presence would silently select on state
+    (dropping entire programs such as CA, OH, and IL). This is recorded in the project's data
+    documentation as the operative guidance for the panel.
+  </p>
+
+  <p class="note">Table 1. NAICS and SIC coverage of major-individual NPDES permits, pooled
+     2005&ndash;2025, by state/territory. <em>n</em> = permit-years with a code on file;
+     % = share of that state's permit-years. Click any column header to sort.</p>
+  <div id="table-state"></div>
+
+  <p class="note">Table 2. National coverage by year (pooled across states).</p>
+  <div id="table-year"></div>
+
+  <h2>Caveats</h2>
+  <ul>
+    <li>Figures are <em>permit-year</em> shares pooled over the window; a state's permit count
+        is its total active major-individual permit-years, not distinct permits. Because
+        coverage is time-invariant within a permit, pooling does not distort the shares.</li>
+    <li>Coverage measures <em>presence</em> of a code, not its accuracy or its match to the
+        facility's true activity.</li>
+    <li>"States" includes DC and U.S. territories (56 units); the smallest have very few
+        permit-years, so their percentages are noisy.</li>
+    <li>ND, VT are the only sub-90% SIC jurisdictions and warrant a look before use &mdash;
+        atypical against the otherwise saturated SIC pattern.</li>
+  </ul>
+
+  <h2>Reproducibility</h2>
+  <p class="note">
+    Coverage is computed by <code>scripts/diagnostics/naics_sic_coverage_by_state_year.R</code>
+    (writes a state &times; year CSV to <code>output/tables/</code>). This brief's tables are
+    generated from the newest such CSV
+    (<code>naics_sic_coverage_by_state_year_2026-07-13_1219.csv</code>). Rerun that generator
+    after any data refresh. See the
+    <a href="assets/pdfs/naics_sic_coverage_by_state.pdf" target="_blank" rel="noopener">full PDF</a>
+    for the citable, formally typeset version of this brief.
+  </p>
+</main>
+
+<footer class="site-footer">
+  <div class="bar">
+    Data sourced from NPDES Data Downloads
+  </div>
+</footer>
+
+<script src="assets/table.js"></script>
+<script>
+  const stateData = [{"State": "AK", "Permit-years": "887", "NAICS n": "873", "NAICS %": 98.4, "SIC n": "866", "SIC %": 97.6}, {"State": "AL", "Permit-years": "3,846", "NAICS n": "2,809", "NAICS %": 73.0, "SIC n": "3,835", "SIC %": 99.7}, {"State": "AR", "Permit-years": "2,440", "NAICS n": "2,370", "NAICS %": 97.1, "SIC n": "2,440", "SIC %": 100.0}, {"State": "AS", "Permit-years": "81", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "81", "SIC %": 100.0}, {"State": "AZ", "Permit-years": "1,495", "NAICS n": "67", "NAICS %": 4.5, "SIC n": "1,368", "SIC %": 91.5}, {"State": "CA", "Permit-years": "4,909", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "4,909", "SIC %": 100.0}, {"State": "CO", "Permit-years": "2,608", "NAICS n": "63", "NAICS %": 2.4, "SIC n": "2,608", "SIC %": 100.0}, {"State": "CT", "Permit-years": "1,904", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "1,865", "SIC %": 98.0}, {"State": "DC", "Permit-years": "84", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "84", "SIC %": 100.0}, {"State": "DE", "Permit-years": "328", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "328", "SIC %": 100.0}, {"State": "FL", "Permit-years": "6,759", "NAICS n": "6,532", "NAICS %": 96.6, "SIC n": "6,759", "SIC %": 100.0}, {"State": "GA", "Permit-years": "4,175", "NAICS n": "3,937", "NAICS %": 94.3, "SIC n": "4,101", "SIC %": 98.2}, {"State": "GU", "Permit-years": "97", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "97", "SIC %": 100.0}, {"State": "HI", "Permit-years": "393", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "373", "SIC %": 94.9}, {"State": "IA", "Permit-years": "2,761", "NAICS n": "2,714", "NAICS %": 98.3, "SIC n": "2,714", "SIC %": 98.3}, {"State": "ID", "Permit-years": "820", "NAICS n": "820", "NAICS %": 100.0, "SIC n": "820", "SIC %": 100.0}, {"State": "IL", "Permit-years": "5,685", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "5,685", "SIC %": 100.0}, {"State": "IN", "Permit-years": "4,038", "NAICS n": "1,621", "NAICS %": 40.1, "SIC n": "4,038", "SIC %": 100.0}, {"State": "KS", "Permit-years": "1,065", "NAICS n": "980", "NAICS %": 92.0, "SIC n": "1,058", "SIC %": 99.3}, {"State": "KY", "Permit-years": "2,874", "NAICS n": "2,864", "NAICS %": 99.7, "SIC n": "2,874", "SIC %": 100.0}, {"State": "LA", "Permit-years": "4,965", "NAICS n": "24", "NAICS %": 0.5, "SIC n": "4,965", "SIC %": 100.0}, {"State": "MA", "Permit-years": "2,420", "NAICS n": "63", "NAICS %": 2.6, "SIC n": "2,420", "SIC %": 100.0}, {"State": "MD", "Permit-years": "1,853", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "1,853", "SIC %": 100.0}, {"State": "ME", "Permit-years": "1,546", "NAICS n": "396", "NAICS %": 25.6, "SIC n": "1,546", "SIC %": 100.0}, {"State": "MI", "Permit-years": "3,834", "NAICS n": "3,490", "NAICS %": 91.0, "SIC n": "3,834", "SIC %": 100.0}, {"State": "MN", "Permit-years": "2,076", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "1,996", "SIC %": 96.1}, {"State": "MO", "Permit-years": "3,677", "NAICS n": "670", "NAICS %": 18.2, "SIC n": "3,677", "SIC %": 100.0}, {"State": "MP", "Permit-years": "42", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "42", "SIC %": 100.0}, {"State": "MS", "Permit-years": "1,894", "NAICS n": "1,752", "NAICS %": 92.5, "SIC n": "1,894", "SIC %": 100.0}, {"State": "MT", "Permit-years": "709", "NAICS n": "23", "NAICS %": 3.2, "SIC n": "706", "SIC %": 99.6}, {"State": "NC", "Permit-years": "4,542", "NAICS n": "21", "NAICS %": 0.5, "SIC n": "4,487", "SIC %": 98.8}, {"State": "ND", "Permit-years": "500", "NAICS n": "385", "NAICS %": 77.0, "SIC n": "406", "SIC %": 81.2}, {"State": "NE", "Permit-years": "1,045", "NAICS n": "65", "NAICS %": 6.2, "SIC n": "1,045", "SIC %": 100.0}, {"State": "NH", "Permit-years": "1,010", "NAICS n": "189", "NAICS %": 18.7, "SIC n": "1,010", "SIC %": 100.0}, {"State": "NJ", "Permit-years": "2,379", "NAICS n": "621", "NAICS %": 26.1, "SIC n": "2,375", "SIC %": 99.8}, {"State": "NM", "Permit-years": "717", "NAICS n": "84", "NAICS %": 11.7, "SIC n": "717", "SIC %": 100.0}, {"State": "NV", "Permit-years": "298", "NAICS n": "144", "NAICS %": 48.3, "SIC n": "298", "SIC %": 100.0}, {"State": "NY", "Permit-years": "6,736", "NAICS n": "1,376", "NAICS %": 20.4, "SIC n": "6,736", "SIC %": 100.0}, {"State": "OH", "Permit-years": "6,011", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "6,011", "SIC %": 100.0}, {"State": "OK", "Permit-years": "2,199", "NAICS n": "2,196", "NAICS %": 99.9, "SIC n": "2,199", "SIC %": 100.0}, {"State": "OR", "Permit-years": "1,518", "NAICS n": "21", "NAICS %": 1.4, "SIC n": "1,427", "SIC %": 94.0}, {"State": "PA", "Permit-years": "8,072", "NAICS n": "1,417", "NAICS %": 17.6, "SIC n": "7,796", "SIC %": 96.6}, {"State": "PR", "Permit-years": "1,433", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "1,433", "SIC %": 100.0}, {"State": "RI", "Permit-years": "499", "NAICS n": "399", "NAICS %": 80.0, "SIC n": "499", "SIC %": 100.0}, {"State": "SC", "Permit-years": "3,289", "NAICS n": "3,077", "NAICS %": 93.6, "SIC n": "3,224", "SIC %": 98.0}, {"State": "SD", "Permit-years": "558", "NAICS n": "548", "NAICS %": 98.2, "SIC n": "558", "SIC %": 100.0}, {"State": "TN", "Permit-years": "3,327", "NAICS n": "3,150", "NAICS %": 94.7, "SIC n": "3,327", "SIC %": 100.0}, {"State": "TX", "Permit-years": "14,739", "NAICS n": "35", "NAICS %": 0.2, "SIC n": "14,713", "SIC %": 99.8}, {"State": "UT", "Permit-years": "846", "NAICS n": "841", "NAICS %": 99.4, "SIC n": "841", "SIC %": 99.4}, {"State": "VA", "Permit-years": "3,043", "NAICS n": "2,706", "NAICS %": 88.9, "SIC n": "3,043", "SIC %": 100.0}, {"State": "VI", "Permit-years": "121", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "121", "SIC %": 100.0}, {"State": "VT", "Permit-years": "650", "NAICS n": "629", "NAICS %": 96.8, "SIC n": "0", "SIC %": 0.0}, {"State": "WA", "Permit-years": "1,424", "NAICS n": "283", "NAICS %": 19.9, "SIC n": "1,313", "SIC %": 92.2}, {"State": "WI", "Permit-years": "2,468", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "2,468", "SIC %": 100.0}, {"State": "WV", "Permit-years": "1,905", "NAICS n": "0", "NAICS %": 0.0, "SIC n": "1,905", "SIC %": 100.0}, {"State": "WY", "Permit-years": "398", "NAICS n": "15", "NAICS %": 3.8, "SIC n": "382", "SIC %": 96.0}, {"State": "All", "Permit-years": "139,992", "NAICS n": "50,270", "NAICS %": 35.9, "SIC n": "138,170", "SIC %": 98.7}];
+
+  const yearData = [{"Year": "2005", "Permit-years": "5,864", "NAICS %": 33.6, "SIC %": 99.1}, {"Year": "2006", "Permit-years": "6,180", "NAICS %": 33.7, "SIC %": 98.9}, {"Year": "2007", "Permit-years": "6,422", "NAICS %": 33.4, "SIC %": 98.9}, {"Year": "2008", "Permit-years": "6,554", "NAICS %": 33.7, "SIC %": 98.8}, {"Year": "2009", "Permit-years": "6,650", "NAICS %": 33.6, "SIC %": 98.8}, {"Year": "2010", "Permit-years": "6,713", "NAICS %": 33.7, "SIC %": 98.7}, {"Year": "2011", "Permit-years": "6,810", "NAICS %": 34.5, "SIC %": 98.5}, {"Year": "2012", "Permit-years": "6,822", "NAICS %": 34.7, "SIC %": 98.5}, {"Year": "2013", "Permit-years": "6,851", "NAICS %": 35.1, "SIC %": 98.5}, {"Year": "2014", "Permit-years": "6,839", "NAICS %": 35.3, "SIC %": 98.5}, {"Year": "2015", "Permit-years": "6,819", "NAICS %": 35.6, "SIC %": 98.6}, {"Year": "2016", "Permit-years": "6,880", "NAICS %": 36.5, "SIC %": 98.6}, {"Year": "2017", "Permit-years": "6,892", "NAICS %": 36.9, "SIC %": 98.6}, {"Year": "2018", "Permit-years": "6,870", "NAICS %": 37.2, "SIC %": 98.6}, {"Year": "2019", "Permit-years": "6,826", "NAICS %": 37.3, "SIC %": 98.6}, {"Year": "2020", "Permit-years": "6,795", "NAICS %": 37.6, "SIC %": 98.7}, {"Year": "2021", "Permit-years": "6,773", "NAICS %": 37.8, "SIC %": 98.7}, {"Year": "2022", "Permit-years": "6,750", "NAICS %": 37.9, "SIC %": 98.7}, {"Year": "2023", "Permit-years": "6,676", "NAICS %": 37.9, "SIC %": 98.7}, {"Year": "2024", "Permit-years": "6,544", "NAICS %": 38.6, "SIC %": 98.8}, {"Year": "2025", "Permit-years": "6,462", "NAICS %": 38.9, "SIC %": 98.8}];
+
+  renderDataTable(document.getElementById("table-state"), stateData);
+  renderDataTable(document.getElementById("table-year"), yearData, { searchable: false });
+</script>
+</body>
+</html>

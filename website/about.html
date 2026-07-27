@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About &amp; Methodology — Clean Water Act Data Explorer</title>
+<link rel="stylesheet" href="assets/style.css?v=4">
+</head>
+<body>
+<header class="site-header">
+  <div class="bar">
+    <div class="brand">Clean Water Act Data Explorer<small>NPDES · DMR · ATTAINS Summary Data</small></div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="summaries.html">Data Summaries</a>
+      <a href="briefs.html">Briefs</a>
+      <a href="data-documentation.html">Data Documentation</a>
+      <a href="temporal-coverage.html">Temporal Coverage</a>
+      <a href="about.html" class="active">About &amp; Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="no-hero">
+  <div class="breadcrumb"><a href="index.html">Home</a> / About &amp; Methodology</div>
+  <h1>About &amp; Methodology</h1>
+
+  <h2>Data Sources</h2>
+  <p class="lede">
+    The underlying data comes from EPA's public Clean Water Act compliance and monitoring
+    systems: ICIS-NPDES (permits, facilities, violations, enforcement actions, and Discharge
+    Monitoring Reports) and ATTAINS (state water quality assessments). Raw files are downloaded
+    directly from EPA's public data distribution.
+  </p>
+
+  <h2>How These Summaries Are Built</h2>
+  <p>
+    Each dataset is processed by a registry-driven summary script that computes, per variable:
+  </p>
+  <ul>
+    <li>Percent of values missing</li>
+    <li>For categorical variables: the number of distinct categories and the top 5 most
+        frequent values, with share and count</li>
+    <li>For numeric and date variables: minimum, 5th percentile, median, mean, 95th
+        percentile, and maximum</li>
+  </ul>
+  <p>
+    These per-dataset summary tables are generated on a snapshot of the raw data and are not
+    live-updated in real time; each dataset page notes its source file.
+  </p>
+
+  <h2>Interpreting the Tables</h2>
+  <p>
+    A high "% Missing" value means that variable was frequently blank or not reported in the
+    underlying records &mdash; not necessarily an error. Some fields are intentionally optional
+    depending on facility or permit type. The "Distinct Categories" / "Distinct Facilities"
+    counts describe how many unique values exist across the entire dataset, while "top values"
+    show only the five most common.
+  </p>
+
+  <h2>Feedback</h2>
+  <p>
+    This site presents dataset-level summaries only, not facility-specific reports. For
+    facility-level lookups, see EPA's own
+    <a href="https://echo.epa.gov/" target="_blank" rel="noopener">ECHO</a> tool.
+  </p>
+</main>
+
+<footer class="site-footer">
+  <div class="bar">
+    Data sourced from NPDES Data Downloads
+  </div>
+</footer>
+</body>
+</html>

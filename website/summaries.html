@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Summaries — Clean Water Act Data Explorer</title>
+<link rel="stylesheet" href="assets/style.css?v=4">
+</head>
+<body>
+<header class="site-header">
+  <div class="bar">
+    <div class="brand">Clean Water Act Data Explorer<small>NPDES · DMR · ATTAINS Summary Data</small></div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="summaries.html" class="active">Data Summaries</a>
+      <a href="briefs.html">Briefs</a>
+      <a href="data-documentation.html">Data Documentation</a>
+      <a href="temporal-coverage.html">Temporal Coverage</a>
+      <a href="about.html">About &amp; Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="no-hero">
+  <div class="breadcrumb"><a href="index.html">Home</a> / Data Summaries</div>
+  <h1>Data Summaries</h1>
+  <p class="lede">Select a dataset to view its variable-level summary: missing data rates,
+     most frequent category values, and numeric/date distributions.</p>
+
+  <div class="card-grid" id="cards"></div>
+</main>
+
+<footer class="site-footer">
+  <div class="bar">
+    Data sourced from NPDES Data Downloads
+  </div>
+</footer>
+
+<script src="assets/datasets.js"></script>
+<script>
+  const grid = document.getElementById("cards");
+  DATASETS.forEach(d => {
+    const card = document.createElement("a");
+    card.href = `dataset.html?key=${encodeURIComponent(d.key)}`;
+    card.className = "card";
+    card.style.display = "block";
+    card.innerHTML = `<h3>${d.name}</h3><p>${d.blurb}</p><div class="meta">${d.source}</div>`;
+    grid.appendChild(card);
+  });
+</script>
+</body>
+</html>

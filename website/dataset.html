@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dataset Summary — Clean Water Act Data Explorer</title>
+<link rel="stylesheet" href="assets/style.css?v=4">
+</head>
+<body>
+<header class="site-header">
+  <div class="bar">
+    <div class="brand">Clean Water Act Data Explorer<small>NPDES · DMR · ATTAINS Summary Data</small></div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="summaries.html" class="active">Data Summaries</a>
+      <a href="briefs.html">Briefs</a>
+      <a href="data-documentation.html">Data Documentation</a>
+      <a href="temporal-coverage.html">Temporal Coverage</a>
+      <a href="about.html">About &amp; Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="no-hero">
+  <div class="breadcrumb"><a href="index.html">Home</a> / <a href="summaries.html">Data Summaries</a> / <span id="crumb-name">…</span></div>
+  <div id="content">Loading…</div>
+</main>
+
+<footer class="site-footer">
+  <div class="bar">
+    Data sourced from NPDES Data Downloads
+  </div>
+</footer>
+
+<script src="assets/datasets.js"></script>
+<script src="assets/table.js"></script>
+<script>
+async function main() {
+  const params = new URLSearchParams(location.search);
+  const key = params.get("key");
+  const content = document.getElementById("content");
+  const meta = DATASETS.find(d => d.key === key);
+
+  if (!key || !meta) {
+    content.innerHTML = "<h1>Dataset not found</h1><p>Choose a dataset from the <a href='summaries.html'>Data Summaries</a> page.</p>";
+    return;
+  }
+  document.title = `${meta.name} — Clean Water Act Data Explorer`;
+  document.getElementById("crumb-name").textContent = meta.name;
+
+  let data;
+  try {
+    const res = await fetch(`data/${key}.json`);
+    if (!res.ok) throw new Error(res.status);
+    data = await res.json();
+  } catch (e) {
+    content.innerHTML = `<h1>${meta.name}</h1><p>Could not load data file (data/${key}.json). ${e}</p>`;
+    return;
+  }
+
+  const sheetNames = Object.keys(data.sheets);
+  content.innerHTML = "";
+
+  const h1 = document.createElement("h1");
+  h1.textContent = meta.name;
+  content.appendChild(h1);
+
+  const lede = document.createElement("p");
+  lede.className = "lede";
+  lede.textContent = meta.blurb;
+  content.appendChild(lede);
+
+  const tabs = document.createElement("div");
+  tabs.className = "sheet-tabs";
+  if (sheetNames.length > 1) content.appendChild(tabs);
+
+  const sheetContainer = document.createElement("div");
+  content.appendChild(sheetContainer);
+
+  function renderSheet(sheetName) {
+    const s = data.sheets[sheetName];
+    sheetContainer.innerHTML = "";
+
+    const metaBox = document.createElement("div");
+    metaBox.className = "dataset-meta";
+    metaBox.innerHTML = `
+      <div><strong>${s.title || sheetName}</strong></div>
+      ${s.highlevel ? `<div style="margin-top:6px;">${s.highlevel}</div>` : ""}
+      <div style="margin-top:8px;">${s.summary || ""}</div>
+      <div class="note">Source file: ${data.source_file} &nbsp;|&nbsp; Sheet: ${sheetName}</div>
+    `;
+    sheetContainer.appendChild(metaBox);
+
+    if (s.categorical && s.categorical.length) {
+      const h2 = document.createElement("h2");
+      h2.textContent = "Categorical Variables";
+      sheetContainer.appendChild(h2);
+      const p = document.createElement("p");
+      p.className = "note";
+      p.textContent = "Top values shown per variable, with % missing and distinct-category counts.";
+      sheetContainer.appendChild(p);
+      const div = document.createElement("div");
+      sheetContainer.appendChild(div);
+      renderDataTable(div, s.categorical);
+    }
+
+    if (s.numeric_date && s.numeric_date.length) {
+      const h2 = document.createElement("h2");
+      h2.textContent = "Numeric & Date Variables";
+      sheetContainer.appendChild(h2);
+      const p = document.createElement("p");
+      p.className = "note";
+      p.textContent = "Five-number summary (min, 5th percentile, median, mean, 95th percentile, max) plus % missing.";
+      sheetContainer.appendChild(p);
+      const div = document.createElement("div");
+      sheetContainer.appendChild(div);
+      renderDataTable(div, s.numeric_date, { searchable: false });
+    }
+  }
+
+  sheetNames.forEach((name, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = name;
+    if (i === 0) btn.classList.add("active");
+    btn.addEventListener("click", () => {
+      tabs.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderSheet(name);
+    });
+    tabs.appendChild(btn);
+  });
+
+  renderSheet(sheetNames[0]);
+}
+main();
+</script>
+</body>
+</html>

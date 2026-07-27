@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Documentation — Clean Water Act Data Explorer</title>
+<link rel="stylesheet" href="assets/style.css?v=4">
+</head>
+<body>
+<header class="site-header">
+  <div class="bar">
+    <div class="brand">Clean Water Act Data Explorer<small>NPDES · DMR · ATTAINS Summary Data</small></div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="summaries.html">Data Summaries</a>
+      <a href="briefs.html">Briefs</a>
+      <a href="data-documentation.html" class="active">Data Documentation</a>
+      <a href="temporal-coverage.html">Temporal Coverage</a>
+      <a href="about.html">About &amp; Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="no-hero">
+  <div class="breadcrumb"><a href="index.html">Home</a> / Data Documentation</div>
+
+  <div class="eyebrow">Reference</div>
+  <h1>Data Documentation</h1>
+  <p class="lede">
+    A file-by-file reference for the raw EPA source data behind this site: what each table
+    contains, its key variables, row counts, and how the tables join together. For which
+    years each date/year variable actually has data, see
+    <a href="temporal-coverage.html">Temporal Coverage</a>.
+  </p>
+
+  <h2 style="margin-top:34px;">Key Fields &amp; Joins</h2>
+  <p>
+    Key field columns are present in all CSV files and may be used to join and relate data
+    between files. The following table describes how the tables may be joined:
+  </p>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>#</th><th>Key Field(s)</th><th>Tables</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><code>NPDES_ID</code> or <code>EXTERNAL_PERMIT_NMBR</code></td>
+          <td>All tables (except violation enforcement)</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><code>REGISTRY_ID</code> or <code>FACILITY_UIN</code></td>
+          <td><code>ICIS_FACILITIES</code>, <code>NPDES_INSPECTIONS</code>, <code>NPDES_INFORMAL_ENFORCEMENT_ACTIONS</code></td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><code>NPDES_VIOLATION_ID</code></td>
+          <td>{<code>NPDES_PS_VIOLATIONS</code>, <code>NPDES_CS_VIOLATIONS</code>, <code>NPDES_SE_VIOLATIONS</code>, <code>NPDES_EFF_VIOLATIONS</code>}*, <code>NPDES_VIOLATION_ENFORCEMENTS</code></td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><code>VERSION_NMBR</code></td>
+          <td><code>ICIS_PERMITS</code>, <code>NPDES_EFF_VIOLATIONS</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="dataset-meta" style="margin-top:18px;">
+    <div><strong>NPDES ID</strong> &mdash; EPA's internal ID number, at the permit level.</div>
+    <div style="margin-top:8px;"><strong>External Permit Number</strong> &mdash; assigned by the
+      state agency; format varies by state and can change over time or across permit numbers.</div>
+  </div>
+
+  <div class="sheet-tabs" id="keyfield-filter" style="margin-top:36px;">
+    <button class="active" data-filter="all">All datasets</button>
+    <button data-filter="npdes_id">Uses NPDES_ID</button>
+    <button data-filter="external_permit_nmbr">Uses EXTERNAL_PERMIT_NMBR</button>
+    <button data-filter="other">Other key</button>
+  </div>
+  <p class="note" id="keyfield-count"></p>
+
+  <h2>ICIS-NPDES &mdash; ICIS-Water Datasets</h2>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>ICIS_FACILITIES.csv</h3><span class="rows-badge">1.19M rows</span></div>
+    <p>Facility/source-level identifying data. Contains basic information about every regulated
+       facility, including its name, location, and whether it discharges into impaired waters.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>FACILITY_NAME</code>
+       <code>STATE_CODE</code> <code>CITY</code> <code>GEOCODE_LATITUDE/LONGITUDE</code> <code>IMPAIRED_WATERS</code></p>
+    <p class="fc-note">Notes: missing values in county code, latitude, and longitude.</p>
+  </div>
+
+  <div class="field-card" data-keyfield="external_permit_nmbr">
+    <div class="field-card-head"><h3>ICIS_PERMITS.csv</h3><span class="rows-badge">1.69M rows</span></div>
+    <p>Permits. Contains detailed information about each permit, including its status, flow
+       levels, the water body it affects, and all relevant dates.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>EXTERNAL_PERMIT_NMBR</code> <code>PERMIT_STATUS_CODE</code>
+       <code>MAJOR_MINOR_STATUS_FLAG</code> <code>EXPIRATION_DATE</code> <code>STATE_WATER_BODY_NAME</code>
+       <code>TOTAL_DESIGN_FLOW_NMBR</code></p>
+    <p class="fc-note">Notes: missing values for total design flow (only collected for large facilities
+       treating a measurable, continuous body of water). High NA rate is because they're not
+       applicable, not because they're missing.</p>
+  </div>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>NPDES_CS_VIOLATIONS.csv</h3><span class="rows-badge">81K rows</span></div>
+    <p>Compliance schedule violations. Records instances where a facility failed to meet a
+       deadline outlined in its compliance schedule.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>VIOLATION_DESC</code>
+       <code>SCHEDULE_DATE</code> <code>ACTUAL_DATE</code> <code>RNC_RESOLUTION_DATE</code></p>
+    <p class="fc-note">Notes: NaN resolution code means it's still in progress.</p>
+  </div>
+
+  <div class="field-card" data-keyfield="external_permit_nmbr">
+    <div class="field-card-head"><h3>NPDES_DATA_GROUPS.csv</h3><span class="rows-badge">1.18M rows</span></div>
+    <p>Data groups. Categorizes permits into data groups, which is useful for filtering and
+       organizing permit types &mdash; the map of the database. Refer to it before downloading and
+       merging ICIS tables to make sure you're pulling the right data for your research question.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>EXTERNAL_PERMIT_NMBR</code>
+       <code>NPDES_DATA_GROUP_CODE</code> <code>NPDES_DATA_GROUP_DESC</code></p>
+  </div>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>NPDES_FORMAL_ENFORCEMENT_ACTIONS.csv</h3><span class="rows-badge">111K rows</span></div>
+    <p>Formal enforcement actions. Records serious legal actions taken against facilities, such
+       as court orders and financial penalties.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>ENF_TYPE_DESC</code>
+       <code>AGENCY</code> <code>FED_PENALTY_ASSESSED_AMT</code> <code>STATE_LOCAL_PENALTY_AMT</code></p>
+    <p class="fc-note">Notes: EPA and state level; most actions are not penalty-bearing, especially
+       most don't have federal and state penalties.</p>
+  </div>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv</h3><span class="rows-badge">821K rows</span></div>
+    <p>Informal enforcement actions. Records lower-level enforcement actions, such as warning
+       letters and notices of violation.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>ENF_TYPE_DESC</code>
+       <code>AGENCY</code> <code>ACHIEVED_DATE</code> <code>OFFICIAL_FLG</code></p>
+  </div>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>NPDES_INSPECTIONS.csv</h3><span class="rows-badge">1.89M rows</span></div>
+    <p>Inspections. Logs all facility inspections, including who conducted the inspection and
+       what the outcome was.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>COMP_MONITOR_TYPE_DESC</code>
+       <code>STATE_EPA_FLAG</code> <code>ACTUAL_BEGIN_DATE</code> <code>ACTIVITY_OUTCOME_DESC</code></p>
+    <p class="fc-note">Notes: many missing end date (still ongoing).</p>
+  </div>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>NPDES_NAICS.csv</h3><span class="rows-badge">318K rows</span></div>
+    <p>NAICS industry type. Links each permit to its industry type using the modern NAICS
+       classification system.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>NAICS_CODE</code>
+       <code>NAICS_DESC</code> <code>PRIMARY_INDICATOR_FLAG</code></p>
+  </div>
+
+  <div class="field-card" data-keyfield="external_permit_nmbr">
+    <div class="field-card-head"><h3>NPDES_PERM_COMPONENTS.csv</h3><span class="rows-badge">757K rows</span></div>
+    <p>Permit components. Describes the individual components that make up each permit.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>EXTERNAL_PERMIT_NMBR</code>
+       <code>COMPONENT_TYPE_CODE</code> <code>COMPONENT_TYPE_DESC</code></p>
+  </div>
+
+  <div class="field-card" data-keyfield="external_permit_nmbr">
+    <div class="field-card-head"><h3>NPDES_PERM_FEATURE_COORDS.csv</h3><span class="rows-badge">628K rows</span></div>
+    <p>Permit feature coordinates. Provides geographic coordinates for specific permit features,
+       such as discharge outfall points.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>EXTERNAL_PERMIT_NMBR</code>
+       <code>PERM_FEATURE_NMBR</code> <code>LATITUDE_MEASURE</code> <code>LONGITUDE_MEASURE</code></p>
+  </div>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>NPDES_PS_VIOLATIONS.csv</h3><span class="rows-badge">395K rows</span></div>
+    <p>Permit schedule violations. Records instances where a facility failed to meet a milestone
+       outlined in its permit schedule.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>VIOLATION_DESC</code>
+       <code>SCHEDULE_DATE</code> <code>RNC_DETECTION_DATE</code> <code>RNC_RESOLUTION_DATE</code></p>
+  </div>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>NPDES_QNCR_HISTORY.csv</h3><span class="rows-badge">7.87M rows</span></div>
+    <p>Quarterly noncompliance records. Contains quarterly noncompliance records for each
+       facility over time, making it the best dataset for identifying trends.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>YEARQTR</code>
+       <code>HLRNC</code> <code>NUME90Q</code> <code>NUMCVDT</code> <code>NUMSVCD</code></p>
+  </div>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>NPDES_SE_VIOLATIONS.csv</h3><span class="rows-badge">329K rows</span></div>
+    <p>Schedule event violations. Records individual violation events, such as spills or
+       bypasses, and includes a free-text comment field for additional detail.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>VIOLATION_DESC</code>
+       <code>SINGLE_EVENT_VIOLATION_DATE</code> <code>SINGLE_EVENT_VIOLATION_COMMENT</code></p>
+  </div>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>NPDES_SICS.csv</h3><span class="rows-badge">785K rows</span></div>
+    <p>SICS industry type. Links each permit to its industry type using the older SIC
+       classification system.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>SIC_CODE</code>
+       <code>SIC_DESC</code> <code>PRIMARY_INDICATOR_FLAG</code></p>
+  </div>
+
+  <div class="field-card" data-keyfield="other">
+    <div class="field-card-head"><h3>NPDES_VIOLATION_ENFORCEMENTS.csv</h3><span class="rows-badge">4.91M rows</span></div>
+    <p>Violation enforcement. Connects violation records to enforcement actions, serving as the
+       key linking table between those two datasets.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_VIOLATION_ID</code> <code>VIOLATION_DESC</code>
+       <code>ACTIVITY_TYPE_DESC</code> <code>ENF_IDENTIFIER</code></p>
+    <p class="fc-note">Notes: does not contain <code>NPDES_ID</code> or <code>EXTERNAL_PERMIT_NMBR</code>;
+       join with individual violation files through <code>NPDES_VIOLATION_ID</code> to uncover <code>NPDES_ID</code>.</p>
+  </div>
+
+  <h2>Other NPDES Datasets</h2>
+
+  <div class="field-card" data-keyfield="external_permit_nmbr">
+    <div class="field-card-head"><h3>NPDES_DMRS_FY2025.csv</h3><span class="rows-badge">26.9M rows</span></div>
+    <p>DMR data. Every self-reported discharge measurement in fiscal year 2025, each paired with
+       the permit limit it's measured against. One row per pollutant, per discharge point, per
+       monitoring period.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>EXTERNAL_PERMIT_NMBR</code> <code>PERM_FEATURE_NMBR</code>
+       <code>PARAMETER_DESC</code> <code>LIMIT_VALUE_NMBR</code> <code>DMR_VALUE_NMBR</code>
+       <code>MONITORING_PERIOD_END_DATE</code></p>
+    <p class="fc-note">Notes: limit and reported value sit side by side, so exceedances can be
+       computed directly. No facility names/locations or industry type. FY2025 only.</p>
+  </div>
+
+  <div class="field-card" data-keyfield="external_permit_nmbr">
+    <div class="field-card-head"><h3>NPDES_LIMITS.csv</h3><span class="rows-badge">17.1M rows</span></div>
+    <p>Permit limits. The numeric discharge limits written into each permit. One row per limit
+       &mdash; one pollutant, at one discharge point, under one permit, during one time period.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>EXTERNAL_PERMIT_NMBR</code> <code>PERM_FEATURE_NMBR</code>
+       <code>PARAMETER_DESC</code> <code>LIMIT_VALUE_NMBR</code> / <code>LIMIT_UNIT_DESC</code>
+       <code>STATISTICAL_BASE_CODE</code> (daily max vs. monthly avg) <code>LIMIT_BEGIN_DATE</code> / <code>LIMIT_END_DATE</code></p>
+    <p class="fc-note">Notes: includes seasonal applicability by month (JAN&ndash;DEC columns). No
+       reported discharge &mdash; pair with DMR for actual-vs-allowed.</p>
+  </div>
+
+  <div class="field-card" data-keyfield="external_permit_nmbr">
+    <div class="field-card-head"><h3>npdes_outfalls_layer.csv</h3><span class="rows-badge">819K rows</span></div>
+    <p>Discharge points. A pre-joined, analysis-ready spatial layer combining facility info,
+       permit details, compliance status, and coordinates into one flat table. One row per
+       permitted discharge point (outfall).</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>EXTERNAL_PERMIT_NMBR</code> <code>PERM_FEATURE_NMBR</code>
+       <code>FACILITY_NAME</code> <code>LATITUDE83</code> / <code>LONGITUDE83</code> <code>MAJOR_MINOR_FLAG</code>
+       <code>CWP_CURRENT_SNC_STATUS</code></p>
+    <p class="fc-note">Notes: coordinates are per discharge point, not facility. Snapshot at time
+       of download &mdash; no dates, not time-series. Little violation/water-quality detail.</p>
+  </div>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>NPDES_CATCHMENTS.csv</h3><span class="rows-badge">1.25M rows</span></div>
+    <p>Catchment index &mdash; permits to catchments. Links each permitted discharger to the
+       NHDPlus catchment and HUC-12 watershed it sits in &mdash; the spatial crosswalk from
+       permits to the hydrologic network.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>NHDPLUSID</code>
+       <code>WBD_HU12</code> / <code>WBD_HU12NAME</code> <code>REACHCODE</code> <code>LATITUDE83</code> / <code>LONGITUDE83</code></p>
+    <p class="fc-note">Notes: join key to ATTAINS water-body assessments via <code>NHDPLUSID</code>.</p>
+  </div>
+
+  <div class="field-card" data-keyfield="npdes_id">
+    <div class="field-card-head"><h3>NPDES_ATTAINS_AU_SUMMARIES.csv</h3><span class="rows-badge">813K rows</span></div>
+    <p>Catchment index &mdash; ATTAINS AU summaries. Links dischargers to the condition of their
+       receiving waters, summarizing each assessment unit's impairment status and
+       designated-use support under ATTAINS.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NPDES_ID</code> <code>ASSESSMENTUNITIDENTIFIER</code>
+       <code>WATER_CONDITION</code> <code>CAUSE_GROUPS_IMPAIRED</code> <code>E90_POT_IMP_PARAMETERS</code>
+       designated-use flags (<code>DRINKINGWATER_USE</code>, <code>RECREATION_USE</code>, &hellip;)</p>
+    <p class="fc-note">Notes: <code>E90_POT_IMP_PARAMETERS</code> ties measured exceedances to
+       impairment causes. Joins to permits via <code>NPDES_ID</code>, to catchments via
+       <code>ASSESSMENTUNITIDENTIFIER</code>.</p>
+  </div>
+
+  <div class="field-card" data-keyfield="other">
+    <div class="field-card-head"><h3>ATTAINS_AU_CATCHMENTS.csv</h3><span class="rows-badge">0 rows</span></div>
+    <p>Catchment index &mdash; ATTAINS AU catchments. Intended as the crosswalk between ATTAINS
+       assessment units and NHDPlus catchments (impairment status, TMDL flags, water-body
+       geometry).</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>NHDPLUSID</code> <code>ASSESSMENTUNITIDENTIFIER</code>
+       <code>OVERALLSTATUS</code> / <code>ISIMPAIRED</code> <code>ON303DLIST</code> <code>HASTMDL</code></p>
+    <p class="fc-note">Notes: empty file &mdash; header only, 0 data rows. The download appears to
+       have failed and needs to be re-pulled.</p>
+  </div>
+
+  <div class="field-card" data-keyfield="external_permit_nmbr">
+    <div class="field-card-head"><h3>ICIS_MASTER_GENERAL_PERMITS.csv</h3><span class="rows-badge">2.8K rows</span></div>
+    <p>Master general permits. Permits covering entire categories of similar facilities (e.g.,
+       stormwater, agricultural) rather than individual sites &mdash; facility type, permit, and
+       issuing agency for each master general permit.</p>
+    <p class="keyvars"><strong>Key Variables:</strong> <code>EXTERNAL_PERMIT_NMBR</code> <code>FACILITY_TYPE_INDICATOR</code>
+       <code>MAJOR_MINOR_STATUS_FLAG</code> <code>ISSUING_AGENCY</code> <code>ISSUE_DATE</code> / <code>EXPIRATION_DATE</code></p>
+    <p class="fc-note">Notes: no geographic/location data or affected water bodies. Small reference table.</p>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <div class="bar">
+    Data sourced from NPDES Data Downloads
+  </div>
+</footer>
+
+<script>
+  const filterBar = document.getElementById("keyfield-filter");
+  const countEl = document.getElementById("keyfield-count");
+  const cards = Array.from(document.querySelectorAll(".field-card"));
+
+  function applyFilter(filter) {
+    let shown = 0;
+    cards.forEach(card => {
+      const match = filter === "all" || card.dataset.keyfield === filter;
+      card.style.display = match ? "" : "none";
+      if (match) shown++;
+    });
+    countEl.textContent = `Showing ${shown} of ${cards.length} datasets`;
+  }
+
+  filterBar.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      filterBar.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      applyFilter(btn.dataset.filter);
+    });
+  });
+
+  applyFilter("all");
+</script>
+</body>
+</html>
