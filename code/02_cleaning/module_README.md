@@ -7,14 +7,9 @@
 file (via `CWA_ROOT`, right after it sources `_paths.R`) instead of carrying its own
 local copy.
 
-**Also here (2026-07-27, moved from `code/03_panel_building/`, per request):**
+**Also here** (moved from `code/03_panel_building/` 2026-07-27, per request):
 [`build_effluent_violations_npdes_month_panel.R`](build_effluent_violations_npdes_month_panel.R)
-(README: [`build_effluent_violations_npdes_month_panel.md`](build_effluent_violations_npdes_month_panel.md)).
-This is **not** a shared helper function like everything else in this folder — it's a
-standalone, executable prerequisite script for the facility-by-month pipeline (must
-run before step 01; see `code/03_panel_building/README.md`). It was moved here as a
-plain relocation, not because its logic belongs to the "cleaning helpers" category
-described below.
+— see "`build_effluent_violations_npdes_month_panel.R`" below.
 
 ## What moved here, and why
 
@@ -32,6 +27,30 @@ closing date at all — are labeled, PI-guided assumptions that stay inline in
 to the comments that justify them. This module only holds the reusable mechanics
 (*how* to combine date columns), never the domain-specific choices (*which* columns,
 and what a missing value means). See that script's "LABELED ASSUMPTIONS" section.
+
+## `build_effluent_violations_npdes_month_panel.R`
+
+**Not** a shared helper function like everything above — it's a standalone,
+executable script, moved into this folder as a plain relocation (2026-07-27, per
+request), not because its logic belongs to the "cleaning helpers" category. Full
+details: [`build_effluent_violations_npdes_month_panel.md`](build_effluent_violations_npdes_month_panel.md).
+
+- **What it does:** reads EPA's raw effluent-violations file (`NPDES_EFF_VIOLATIONS.csv`,
+  ~15.9 GB uncompressed, inside a zip in `data/raw/`) via DuckDB out-of-core, and
+  condenses it into one row per (`NPDES_ID`, calendar month) with two count sets: all-
+  parameter violation counts (`n_D80`/`n_D90`/`n_E90`) and a TSS/gross-effluent/monthly-
+  average subset (`N_TSS_EFF_VIOLATIONS`, `N_TSS_EFF_D90`/`_D80`/`_E90`). Both are
+  computed in a single pass over the raw file.
+- **Output:** `data/processed/effluent_violations_npdes_month_panel_2005_2025.csv`.
+- **Genuine prerequisite, not an optional step.** `01_build_facility_month_panel_
+  major_individual.R` and `06_add_effluent_violations.R` both read its output, so it
+  must run *before step 01* — not just before step 06. `run_all.R` runs it
+  automatically if that output file isn't already on disk (~15-20 min if it has to
+  rebuild).
+- **Not sourced by, and doesn't source, `cleaning_helpers.R`** — it uses its own
+  DuckDB pipeline rather than `rd()`/`build_facility_crosswalk()`, since it never
+  needs to route rows to a facility (it stays keyed by `NPDES_ID`, not `facility_id`,
+  until `01`/`06` join it in).
 
 ## Conventions
 
