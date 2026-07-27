@@ -1,5 +1,7 @@
 # `code/01_data_download/` — ECHO bulk-file downloader
 
+** verified by Ali 7/27 **
+
 **Purpose:** fetches every EPA ECHO / ICIS-NPDES bulk data file this repo's
 pipeline depends on into `data/raw/`, replacing the previously-manual "click
 through the downloads page" step. See
