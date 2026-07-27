@@ -1,10 +1,11 @@
 # `code/02_cleaning/` — shared cleaning helpers for the panel pipeline
 
-**What's here:** primarily one file, [`cleaning_helpers.R`](cleaning_helpers.R),
-holding the pieces of "cleaning" logic that used to be copy-pasted into every one of
-the six scripts in `code/03_panel_building/` (`01` through `06`). Each of those
-scripts now sources this file (via `CWA_ROOT`, right after it sources `_paths.R`)
-instead of carrying its own local copy.
+**What's here:** primarily one file, [`cleaning_helpers.R`](cleaning_helpers.R)
+(README: [`cleaning_helpers.md`](cleaning_helpers.md)), holding the pieces of
+"cleaning" logic that used to be copy-pasted into every one of the six scripts in
+`code/03_panel_building/` (`01` through `06`). Each of those scripts now sources this
+file (via `CWA_ROOT`, right after it sources `_paths.R`) instead of carrying its own
+local copy.
 
 **Also here (2026-07-27, moved from `code/03_panel_building/`, per request):**
 [`build_effluent_violations_npdes_month_panel.R`](build_effluent_violations_npdes_month_panel.R)
