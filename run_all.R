@@ -41,14 +41,20 @@
 # Locate the repo root and load path config (defines CWA_ROOT, RAW_DIR, ...)
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
+message("\n===== running 00_setup.R =====")
 source(file.path(CWA_ROOT, "code/00_setup/00_setup.R"))
+message("done: 00_setup.R")
 
 # Set TRUE to (re-)fetch the ECHO bulk files before rebuilding. Off by default:
 # slow (multi-GB downloads) and data/raw/ is normally already populated.
 DOWNLOAD_DATA <- FALSE
 if (DOWNLOAD_DATA) {
+  message("\n===== running 01_download_echo_bulk_files.R =====")
   source(file.path(CWA_ROOT, "code/01_data_download/01_download_echo_bulk_files.R"),
          local = new.env())
+  message("done: 01_download_echo_bulk_files.R")
+} else {
+  message("\n===== skipping 01_download_echo_bulk_files.R (DOWNLOAD_DATA = FALSE) =====")
 }
 
 # Build the condensed effluent-violations panel if it's not already there. This
@@ -61,6 +67,10 @@ if (!file.exists(EFF_PANEL_PATH)) {
   message("\n===== condensed effluent panel not found; building it first (~15-20 min) =====")
   source(file.path(CWA_ROOT, "code/02_cleaning/build_effluent_violations_npdes_month_panel.R"),
          local = new.env())
+  message("done: build_effluent_violations_npdes_month_panel.R")
+} else {
+  message("\n===== skipping build_effluent_violations_npdes_month_panel.R (",
+          "condensed effluent panel already on disk at ", EFF_PANEL_PATH, ") =====")
 }
 
 steps <- c(

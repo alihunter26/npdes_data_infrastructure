@@ -44,7 +44,7 @@
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
 # Set TRUE to re-download and overwrite files that already exist locally.
-REFRESH <- TRUE
+REFRESH <- FALSE
 
 options(timeout = 1800)         # npdes_eff_downloads.zip is ~2.9GB; R's 60s default aborts mid-transfer
 
