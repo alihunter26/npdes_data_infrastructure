@@ -4,8 +4,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # ==============================================================================
 # build_effluent_violations_npdes_month_panel.R
 # ------------------------------------------------------------------------------
-# MOVED 2026-07-27 from code/03_panel_building/ to code/02_cleaning/ (per
-# request) -- no logic changed, path-only move. Still a PREREQUISITE for the
+# PREREQUISITE for the
 # facility-by-month pipeline, not one of its six numbered steps or one of
 # 02_cleaning/'s shared helper functions -- it just physically lives here now.
 # This script reads the raw effluent-violations file straight from EPA
