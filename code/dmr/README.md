@@ -12,6 +12,20 @@ None of these build the facility-month panel; they summarize, diagnose, or QC th
 DMR data on the side. See the root `code/README.md` for how this folder relates to
 `../dmr analysis/` (the sibling filter pipeline that also reads the raw DMR files).
 
+## All scripts in this folder
+
+| Script | Category (see below) |
+|---|---|
+| `build_dmr_raw_summary.R` | FY2025/FY2009 filter-pipeline trio |
+| `combine_dmr_summaries.R` | FY2025/FY2009 filter-pipeline trio |
+| `combine_dmr_summaries_fy2009.R` | FY2025/FY2009 filter-pipeline trio |
+| `summarize_dmr_coverage_major_minor.R` | Coverage, funnel, and outfall diagnostics |
+| `make_dmr_funnel_fig.R` | Coverage, funnel, and outfall diagnostics |
+| `outfall_count_breakdown_dmr.R` | Coverage, funnel, and outfall diagnostics |
+| `eff_flagged.R` | Effluent-violation value QC |
+| `filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` | FY2025 DMR filter mini-pipeline (step 1) |
+| `filter_dmr_fy2025_effgross_major_individual.R` | FY2025 DMR filter mini-pipeline (step 2) |
+
 ## The FY2025 / FY2009 DMR filter-pipeline trio
 
 These three build a *multi-tab* comparison across the stages of the DMR filter
