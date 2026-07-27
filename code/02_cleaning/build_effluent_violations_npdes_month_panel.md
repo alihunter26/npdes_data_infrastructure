@@ -1,9 +1,6 @@
 # README — `build_effluent_violations_npdes_month_panel.R`
 
-**Moved 2026-07-27** from `code/03_panel_building/` to `code/02_cleaning/`, per
-request — path-only move, no logic changed. It is not a shared "cleaning helper"
-like the rest of this folder; it just physically lives here now. See
-`code/02_cleaning/module_README.md`.
+** verified by Ali 7/27 **
 
 *Prerequisite for the facility-by-month panel build, not one of its six numbered steps.
 Must run before step 01 (not just before step 06) — both read its output. Input: the raw
