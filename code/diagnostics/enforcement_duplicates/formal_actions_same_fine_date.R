@@ -23,26 +23,32 @@ OUTFILE <- file.path(CWA_ROOT, "output/formal_actions_same_fine_date.csv")
 FINE_COL <- "FED_PENALTY_ASSESSED_AMT"
 DATE_COL <- "SETTLEMENT_ENTERED_DATE"
 
-# 1. Read the file
+# ---- STEP 1: Read the raw file (as-is; no factor conversion) -----------------
 fe <- read.csv(INFILE, stringsAsFactors = FALSE)
 
-# 2. Coerce the fine to a number and pull the date into a plain column
-#    (as.character first so it works whether read.csv gave us text or numbers)
+# ---- STEP 2: Get the fine into a comparable numeric column -------------------
+# as.character() first so this works whether read.csv gave us the fine column
+# as text or as numbers; suppressWarnings() because any genuinely non-numeric
+# value (e.g. blank) becomes NA here rather than raising a warning per row.
 fe$fine_amount <- suppressWarnings(as.numeric(as.character(fe[[FINE_COL]])))
 fe$fine_date   <- fe[[DATE_COL]]
 
-# 3. Keep fines > 1000 with a real date, then keep only groups of 2+ that
-#    share the same fine AND the same date
+# ---- STEP 3: Keep only the rows we care about, then group ---------------------
+# We only want fines that are (a) a real number greater than $1,000 (small
+# fines coinciding by chance are not interesting) and (b) have a real,
+# non-blank date. Among those, keep a row ONLY if at least one OTHER row
+# shares its exact fine amount AND exact date -- a lone fine/date combo isn't
+# a "coincidence" worth flagging.
 groups <- fe %>%
   filter(!is.na(fine_amount), fine_amount > 1000,
          !is.na(fine_date), fine_date != "") %>%
   group_by(fine_amount, fine_date) %>%
-  filter(n() > 1) %>%                 # must be a group, not a singleton
-  mutate(n_in_group = n()) %>%
+  filter(n() > 1) %>%                 # must be a group of >=2, not a singleton
+  mutate(n_in_group = n()) %>%        # record how many rows share this fine+date
   ungroup() %>%
   arrange(desc(fine_amount), fine_date)
 
-# 4. Write the grouped records to their own CSV
+# ---- STEP 4: Write the grouped records to their own CSV for manual review ----
 write.csv(groups, OUTFILE, row.names = FALSE)
 
 cat("Matching records:", nrow(groups), "\n")

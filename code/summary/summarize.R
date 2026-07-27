@@ -24,18 +24,21 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #                                      ICIS_PERMITS, etc.) instead of just only_file
 #
 # Output: a timestamped .xlsx in output/ (one sheet per input table), identical
-# in format to what the old per-dataset scripts produced. See "Standardized
-# layout" below for the one intentional layout change.
+# in format to what the old per-dataset scripts produced. See LABELED
+# ASSUMPTIONS below for the one intentional layout change.
 #
-# ------------------------------------------------------------------------------
-# Standardized layout (the single deliberate difference vs. the old scripts):
-#   Every sheet now uses the fuller 9-column numeric table and 8-column
-#   categorical table that dmrs/attains already used — i.e. a trailing, blank
-#   "Missing Explanation" annotation column. Sheets that previously lacked it
-#   (npdes, limits, master_general_permits, outfalls_layer, eff_violations,
-#   eff_violations_state) gain that blank column. No SUMMARY STATISTIC changes
-#   value — this is a cosmetic column, empty in every original script too.
-#   The "Columns:" metadata line now always lists the file's full header.
+# LABELED ASSUMPTIONS:
+#   1. STANDARDIZED LAYOUT (the single deliberate difference vs. the old,
+#      pre-registry per-dataset scripts this replaced): every sheet now uses
+#      the fuller 9-column numeric table and 8-column categorical table that
+#      dmrs/attains already used -- i.e. a trailing, blank "Missing
+#      Explanation" annotation column. Sheets that previously lacked it
+#      (npdes, limits, master_general_permits, outfalls_layer, eff_violations,
+#      eff_violations_state) gain that blank column. No summary statistic
+#      changes value -- this is a cosmetic column, empty in every original
+#      script too. The "Columns:" metadata line now always lists the file's
+#      full header, even for sheets (like limits) that drop some columns
+#      before summarizing them (see DROP_COLS handling in the `limits` entry).
 # ==============================================================================
 
 library(dplyr)

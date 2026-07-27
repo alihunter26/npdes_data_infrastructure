@@ -1,27 +1,38 @@
 # Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
+# ==============================================================================
+# naics_sic_coverage_by_state_year.R
+# ------------------------------------------------------------------------------
 # NAICS/SIC coverage by state x year, for MAJOR INDIVIDUAL permits, 2005-2025.
+# Standalone diagnostic (not part of run_all.R). Answers: among permits that
+# were major + individual in a given year, what share had a NAICS code on
+# file, and what share had a SIC code, broken out by state?
 #
-# Standalone diagnostic (not part of run_all.R). Answers:
-# among permits that were major + individual in a given year, what share had
-# a NAICS code on file, and what share had a SIC code, broken out by state?
+#   Population        : major-individual permits, reconstructed year by year
+#                        (individual = permit type "NPD"; major/minor is
+#                        time-varying, carried forward from each version's
+#                        effective year). Permits are NOT required to be major
+#                        every year -- each year gets its own population, so a
+#                        permit can enter/exit as its status changes.
+#   NAICS/SIC coverage : a fixed (time-invariant) permit attribute -- presence
+#                        in NPDES_NAICS.csv / NPDES_SICS.csv has no date field,
+#                        so "has a NAICS code" means "ever has one on file",
+#                        not "had one in that specific year".
 #
-# Major-individual-by-year reconstruction: individual = NPD; major/minor is
-# time-varying, carried forward from each version's effective year. Permits
-# are NOT required to be major every year here -- each year gets its own
-# population, entry/exit allowed.
+# LABELED ASSUMPTIONS:
+#   1. CLOSURE IS STATUS-AWARE (see STEP 1 below), not just "max expiration
+#      date". A permit is held through YEAR_MAX UNLESS its CURRENT version
+#      (VERSION_NMBR == 0) is TRM (terminated) or EXP (lapsed). Using max
+#      expiration date alone would incorrectly drop administratively-continued
+#      (ADC) majors that are still active -- this diagnostic deliberately
+#      avoids that undercount.
 #
-# CLOSURE is status-aware (see STEP 1): a permit is held through YEAR_MAX unless
-# its current version is TRM (terminated) or EXP (lapsed) -- rather than closing
-# on max expiration date alone, which would drop administratively-continued
-# (ADC) majors that are still active. This diagnostic deliberately avoids that
-# undercount.
-#
-# NAICS_CODE / SIC_CODE presence (NPDES_NAICS.csv / NPDES_SICS.csv) has no
-# date field -- it's a fixed permit attribute, not time-varying.
-#
-# Read-only on raw data. Writes a timestamped CSV to output/tables/.
+# Inputs : data/raw/npdes_downloads/ICIS_PERMITS.csv, ICIS_FACILITIES.csv,
+#          NPDES_NAICS.csv, NPDES_SICS.csv
+# Output : output/tables/naics_sic_coverage_by_state_year_<timestamp>.csv
+# Read-only on raw data; deterministic except for the output filename's timestamp.
+# ==============================================================================
 
 suppressPackageStartupMessages({
   library(data.table)

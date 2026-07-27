@@ -1,20 +1,36 @@
 # Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
-# Subset NPDES_NAICS.csv to California facilities only, annotated with permit type.
+# ==============================================================================
+# naics_california.R
+# ------------------------------------------------------------------------------
+# Subset NPDES_NAICS.csv to California facilities only, annotated with permit
+# type, so you can see at a glance whether the CA permits carrying a NAICS code
+# are general/minor/non-NPDES permits, or major individual dischargers.
 #
-# NPDES_NAICS has no state field (NPDES_ID, NAICS_CODE, NAICS_DESC,
-# PRIMARY_INDICATOR_FLAG), so state is joined from ICIS_FACILITIES.csv
-# (STATE_CODE, keyed 1:1 by NPDES_ID). California = STATE_CODE "CA".
+#   NPDES_NAICS.csv has no state field of its own (it only has NPDES_ID,
+#   NAICS_CODE, NAICS_DESC, PRIMARY_INDICATOR_FLAG), so STATE_CODE is joined in
+#   from ICIS_FACILITIES.csv (keyed 1:1 by NPDES_ID). California = "CA".
 #
-# Also merges, from ICIS_PERMITS (current version, VERSION_NMBR == 0):
-#   PERMIT_TYPE_CODE        - raw ECHO code (NPD, GPC, ...)
-#   PERMIT_VEHICLE          - General vs Individual label derived from that code
-#   MAJOR_MINOR_STATUS_FLAG - M / N (current version)
-# so you can see at a glance that the CA permits carrying NAICS are general /
-# minor / non-NPDES, not major individual dischargers.
+#   We also attach, from ICIS_PERMITS (that permit's CURRENT version,
+#   VERSION_NMBR == 0):
+#     PERMIT_TYPE_CODE        - raw ECHO code (NPD, GPC, ...)
+#     PERMIT_VEHICLE          - a friendlier "General" vs "Individual" label
+#                               we derive from that code (see the `vehicle`
+#                               lookup below)
+#     MAJOR_MINOR_STATUS_FLAG - M / N, as of the current version
 #
-# Read-only on raw data. Writes a timestamped CSV to output/tables/.
+# LABELED ASSUMPTIONS:
+#   1. "Current version" means VERSION_NMBR == 0 in ICIS_PERMITS. Both
+#      PERMIT_TYPE_CODE and MAJOR_MINOR_STATUS_FLAG are read from that one row
+#      per permit, not reconstructed across a permit's full version history --
+#      this is a present-day snapshot, not a time series.
+#
+# Inputs : data/raw/npdes_downloads/NPDES_NAICS.csv, ICIS_FACILITIES.csv,
+#          ICIS_PERMITS.csv
+# Output : output/tables/npdes_naics_california_<timestamp>.csv
+# Read-only on raw data; deterministic except for the output filename's timestamp.
+# ==============================================================================
 
 suppressPackageStartupMessages(library(data.table))
 

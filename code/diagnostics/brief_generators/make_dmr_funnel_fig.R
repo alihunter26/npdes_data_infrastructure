@@ -36,6 +36,7 @@ d <- data.table(
                  6701,   6572,   6117,   4880)
 )
 
+# x-axis tick labels: one per filter stage, matching `stage` 1-4 in `d` above.
 stage_labels <- c(
   "1\nMajor-\nIndividual",
   "2\n+TSS\n(00530)",
@@ -45,19 +46,29 @@ stage_labels <- c(
 
 theme_set(theme_minimal(base_size = 11))
 
+# One fixed color per fiscal year, shared by both panels below so the two
+# plots read as one comparison rather than two unrelated charts.
 pal <- c("2009" = "#4C72B0", "2025" = "#DD8452")
 
+# ---- Panel 1: row counts, log scale ------------------------------------------
+# Rows shrink by orders of magnitude across the funnel stages (millions ->
+# tens of thousands), so a log y-axis is needed to see stage-to-stage
+# movement at every step, not just the first one.
 p_rows <- ggplot(d, aes(x = stage, y = rows, color = fy, group = fy)) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 2.4) +
-  scale_x_continuous(breaks = 1:4, labels = stage_labels) +
-  scale_y_log10(labels = label_comma()) +
+  geom_line(linewidth = 1) +                                  # connects the 4 stages per FY
+  geom_point(size = 2.4) +                                    # marks each stage explicitly
+  scale_x_continuous(breaks = 1:4, labels = stage_labels) +   # numeric stage -> readable label
+  scale_y_log10(labels = label_comma()) +                     # log scale + comma-formatted numbers
   scale_color_manual(values = pal, name = "Fiscal Year") +
   labs(title = "Observations (rows)", x = NULL, y = "Rows (log scale)") +
   theme(legend.position = "bottom",
         plot.title = element_text(face = "bold", size = 11),
         panel.grid.minor = element_blank())
 
+# ---- Panel 2: distinct permits, linear scale ---------------------------------
+# Permit counts only shrink by ~30% end to end (not orders of magnitude), so a
+# linear y-axis (anchored at 0 via `limits`) is more honest here than log,
+# which would visually exaggerate a small relative change.
 p_permits <- ggplot(d, aes(x = stage, y = permits, color = fy, group = fy)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2.4) +
@@ -69,6 +80,10 @@ p_permits <- ggplot(d, aes(x = stage, y = permits, color = fy, group = fy)) +
         plot.title = element_text(face = "bold", size = 11),
         panel.grid.minor = element_blank())
 
+# ---- Combine: one shared legend underneath both panels -----------------------
+# Pull the legend off of p_rows (both panels use the same color mapping, so
+# either would do), then lay the two panels side by side with that one legend
+# shared beneath them, instead of a redundant legend under each panel.
 legend <- get_legend(p_rows + theme(legend.box.margin = margin(0, 0, 0, 0)))
 
 combined <- plot_grid(
@@ -76,7 +91,7 @@ combined <- plot_grid(
             p_permits + theme(legend.position = "none"),
             ncol = 2, align = "hv"),
   legend,
-  ncol = 1, rel_heights = c(1, 0.1)
+  ncol = 1, rel_heights = c(1, 0.1)   # legend strip much shorter than the plots
 )
 
 out_path <- file.path(CWA_ROOT, "docs", "institutional_briefs", "fig", "dmr_filter_funnel.pdf")

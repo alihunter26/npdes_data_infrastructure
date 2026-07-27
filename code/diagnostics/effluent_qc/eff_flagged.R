@@ -1,19 +1,34 @@
 # Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, RAW_DIR, OUT_DIR, ...)
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
+# ==============================================================================
 # eff_flagged.R
-# --------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Reads a state's effluent-violation CSV and writes out only the SUSPICIOUS
 # rows, so they are easy to review by hand.
 #
-# A row is flagged if ANY of these are true:
-#   1. DMR_VALUE_NMBR            is negative
-#   2. DMR_VALUE_STANDARD_UNITS  is negative
-#   3. the monitoring year is before 1984
-#   4. any number above 1,000,000 appears in a value column
+#   A row is flagged if ANY of these are true:
+#     1. DMR_VALUE_NMBR            is negative
+#     2. DMR_VALUE_STANDARD_UNITS  is negative
+#     3. the monitoring year is before 1984
+#     4. any number above 1,000,000 appears in a value column
 #
-# Each flagged row gets a FLAG_REASON column saying which check(s) it tripped.
-# --------------------------------------------------------------------------
+#   Each flagged row gets a FLAG_REASON column saying which check(s) it
+#   tripped, so a row failing multiple checks is still just one output row.
+#
+# LABELED ASSUMPTIONS:
+#   1. Check 4 skips ID-like columns (see `id_cols` below). Those hold large
+#      arbitrary ID numbers, not measurements, so treating them as "values"
+#      would flag nearly every row for no substantive reason.
+#   2. This script does not build the panel or alter any raw data -- it only
+#      reads an already-produced per-state effluent-violations CSV (see STEP 1)
+#      and writes a filtered extract alongside it.
+#
+# Input : the newest output/eff_violations_<state>_*.csv for the chosen state
+# Output: output/eff_flagged_<state>_<timestamp>.csv
+# Usage : Rscript eff_flagged.R va      (state defaults to "va" if omitted)
+# Read-only on its input; deterministic except for the output filename's timestamp.
+# ==============================================================================
 
 library(data.table)
 
