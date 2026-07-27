@@ -1,5 +1,7 @@
 # `code/02_cleaning/` — shared cleaning helpers for the panel pipeline
 
+** verified by Ali 7/27 **
+
 **What's here:** primarily one file, [`cleaning_helpers.R`](cleaning_helpers.R)
 (README: [`cleaning_helpers.md`](cleaning_helpers.md)), holding the pieces of
 "cleaning" logic that used to be copy-pasted into every one of the six scripts in
@@ -7,7 +9,7 @@
 file (via `CWA_ROOT`, right after it sources `_paths.R`) instead of carrying its own
 local copy.
 
-**Also here** (moved from `code/03_panel_building/` 2026-07-27, per request):
+**Also here**:
 [`build_effluent_violations_npdes_month_panel.R`](build_effluent_violations_npdes_month_panel.R)
 — see "`build_effluent_violations_npdes_month_panel.R`" below.
 
@@ -31,8 +33,7 @@ and what a missing value means). See that script's "LABELED ASSUMPTIONS" section
 ## `build_effluent_violations_npdes_month_panel.R`
 
 **Not** a shared helper function like everything above — it's a standalone,
-executable script, moved into this folder as a plain relocation (2026-07-27, per
-request), not because its logic belongs to the "cleaning helpers" category. Full
+executable script. Full
 details: [`build_effluent_violations_npdes_month_panel.md`](build_effluent_violations_npdes_month_panel.md).
 
 - **What it does:** reads EPA's raw effluent-violations file (`NPDES_EFF_VIOLATIONS.csv`,
