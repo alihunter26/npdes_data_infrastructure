@@ -1,7 +1,8 @@
 # README — `01_download_echo_bulk_files.R`
 
-*Step 1: downloads the EPA ECHO / ICIS-NPDES bulk data files into `data/raw/`,
-replacing the previously-manual "click through the downloads page" step. Input:
+** verified by Ali 7/27 **
+
+*Step 1: downloads the EPA ECHO / ICIS-NPDES bulk data files into `data/raw/`. Input:
 none (fetches over HTTP). Output: files under `data/raw/`, plus a manifest at
 `data/raw/_download_log.csv`.*
 
