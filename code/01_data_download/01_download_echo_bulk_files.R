@@ -44,7 +44,9 @@
 source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 
 # Set TRUE to re-download and overwrite files that already exist locally.
-REFRESH <- FALSE
+REFRESH <- TRUE
+
+options(timeout = 1800)         # npdes_eff_downloads.zip is ~2.9GB; R's 60s default aborts mid-transfer
 
 MIN_BYTES   <- 10 * 1024        # anything smaller than this isn't a real bulk file
 ZIP_MAGIC   <- list(as.raw(c(0x50, 0x4B, 0x03, 0x04)),   # normal zip
