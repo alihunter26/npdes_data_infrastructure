@@ -33,6 +33,11 @@ The missingness audit that used to occupy the "step 07" name lives in
 > it now runs **inside step 01** instead — `FACILITY_OPERATING` is correct from the
 > moment it's first created. See step 01's README (Assumptions 10–13) for the full
 > story, including a routing bug caught and fixed during the move (Assumption 13).
+>
+> **2026-07-27: that correction's scanning/extension logic moved again**, this time out
+> of step 01's own body and into `use_operating_proxies.R` (still called by step 01,
+> now with an on/off switch per proxy source). See `../use_operating_proxies.R` and
+> step 01's README.
 
 ## Pipeline order and conventions (shared by all steps)
 

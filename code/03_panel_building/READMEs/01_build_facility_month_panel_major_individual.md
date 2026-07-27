@@ -1,5 +1,13 @@
 # README — `01_build_facility_month_panel_major_individual.R`
 
+**updated 7/27: the Assumption 10–13 correction moved to its own file.** The
+event-scanning/window-extension logic (previously written inline as this script's
+STEP 6B/6C) now lives in `use_operating_proxies.R`, as a function,
+`use_operating_proxies()`, with an on/off switch per proxy source (all seven default
+`TRUE`, reproducing the original correction exactly). This script now just calls that
+function; see `use_operating_proxies.R`'s own header for the full explanation and for
+how to try a different mix of evidence without editing this script.
+
 ** verified by Ali 7/17 **
 
 **updated 7/21:** the panel is now **balanced**, not unbalanced (see Overview and
@@ -110,9 +118,9 @@ externally — see below). `TODO:` record download date / ECHO refresh version.
    `ICIS_FACILITIES` (every permit type, not just individual/major-eligible — see
    Assumption 13) for routing the event-existence scan.
 5. Build the facility attribute snapshot (unchanged from before 7/23).
-6. Scan the five raw event sources and the condensed effluent panel for
-   *existence only*; extend each facility's window to cover any real event, both
-   directions.
+6. Call `use_operating_proxies()` (in `use_operating_proxies.R`), which scans the six
+   raw event sources and the condensed effluent panel for *existence only* and
+   extends each facility's window to cover any real event, both directions.
 7. Build the complete facility × month grid, clip to the panel window, and compute
    both `FACILITY_OPERATING` (corrected) and `FACILITY_OPERATING_PERMIT_WINDOW`
    (original) plus the time-invariant facility attributes.
@@ -199,6 +207,16 @@ are new):
     reading `ICIS_FACILITIES` a second, unrestricted time for this crosswalk,
     matching exactly how scripts 02/04/05/06 each build theirs. Verified: reproduces
     the originally-measured 2,381/1,749,567/143,205 figures exactly.
+
+**2026-07-27: Assumptions 10–12's scanning/extension logic extracted to
+`use_operating_proxies.R`.** This script now just calls
+`use_operating_proxies(qual_fac, xwalk, raw_dir = RAW_DIR, eff_path = EFF_PATH, year_min
+= YEAR_MIN, year_max = YEAR_MAX)` with every source left at its default (`TRUE`) —
+reproducing this same correction exactly (verified: an isolated side-by-side run of the
+old inline code and the new function, on identical input, produced `identical()`
+results for every facility). The seven `use_*` arguments (one per proxy source) let a
+different mix of evidence be tried without editing this script — see that file's own
+header.
 
 **Sample / filter definitions**
 - *Major:* `MAJOR_MINOR_STATUS_FLAG == "M"` at least once in the permit's version history.

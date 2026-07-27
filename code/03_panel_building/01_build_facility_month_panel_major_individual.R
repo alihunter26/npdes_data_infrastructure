@@ -6,6 +6,11 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # coalesce_date_*() date-combining functions. See code/02_cleaning/module_README.md.
 source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 
+# use_operating_proxies(): the event-based FACILITY_OPERATING window-extension
+# logic (LABELED ASSUMPTIONS 10-13 below), with on/off switches per source. See
+# that file's header for the full explanation.
+source(file.path(CWA_ROOT, "code/03_panel_building/use_operating_proxies.R"))
+
 # ==============================================================================
 # 01_build_facility_month_panel_major_individual.R
 # ------------------------------------------------------------------------------
@@ -126,12 +131,17 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 #      TSS-subset violation while the condensed all-parameter panel shows
 #      nothing -- the condensed panel is already a complete proxy for "any
 #      effluent event" here, so this script needs neither `python3` nor `unzip`.
-#  13. ROUTED BY THE SAME CROSSWALK AS EVERY OTHER STEP. All six event sources
-#      are routed NPDES_ID -> facility_id via the identical crosswalk built in
-#      STEP 4 below (FACILITY_UIN when present, else NPDES_ID) -- reused
-#      directly here rather than rebuilt, since this script is where it
+#  13. ROUTED BY THE SAME CROSSWALK AS EVERY OTHER STEP. All seven event/proxy
+#      sources are routed NPDES_ID -> facility_id via the identical crosswalk
+#      built in STEP 4 below (FACILITY_UIN when present, else NPDES_ID) --
+#      reused directly here rather than rebuilt, since this script is where it
 #      originates; scripts 02/04/05/06 rebuild it independently, per their own
 #      READMEs.
+#
+# NOTE: ASSUMPTIONS 10-13's actual scanning/extension logic lives in
+# use_operating_proxies.R (STEP 6B/6C below), as use_operating_proxies() --
+# a configurable function, with an on/off switch per proxy source, so a
+# different mix of evidence can be tried without editing this script.
 #
 # Source: EPA ECHO bulk "ICIS-NPDES" download (ICIS_PERMITS.csv,
 # ICIS_FACILITIES.csv, NPDES_INSPECTIONS.csv, NPDES_PS/CS/SE_VIOLATIONS.csv,
@@ -305,60 +315,15 @@ fac_attr <- unique(fac, by = "facility_id")[
       FAC_LONG = GEOCODE_LONGITUDE)]
 
 # ------------------------------------------------------------------------------
-# STEP 6B: Scan every event source for EXISTENCE only (LABELED ASSUMPTIONS 10-13).
-# ------------------------------------------------------------------------------
-# For each source, read (NPDES_ID, date field(s)), parse the date the same way
-# the step that later counts it in full does, keep the panel window, route via
-# `xwalk`, and collapse to the distinct set of (facility_id, YEAR, MONTH) that
-# had ANY row -- no counting, no type/agency/code breakouts (those remain the
-# job of scripts 02/04/05/06).
-event_months <- function(file, date_cols) {
-  d <- rd(file, c("NPDES_ID", date_cols), raw_dir = RAW_DIR)
-  d[, NPDES_ID := trimws(NPDES_ID)]
-  d[, edate := coalesce_date_priority(d, date_cols)]
-  d <- d[!is.na(edate)]
-  d[, `:=`(YEAR = year(edate), MONTH = month(edate))]
-  d <- d[YEAR >= YEAR_MIN & YEAR <= YEAR_MAX]
-  d <- xwalk[d, on = "NPDES_ID", nomatch = 0]
-  unique(d[, .(facility_id, YEAR, MONTH)])
-}
-
-insp_months     <- event_months("NPDES_INSPECTIONS.csv",
-                                 c("ACTUAL_BEGIN_DATE", "ACTUAL_END_DATE"))
-ps_months       <- event_months("NPDES_PS_VIOLATIONS.csv", "SCHEDULE_DATE")
-cs_months       <- event_months("NPDES_CS_VIOLATIONS.csv", "SCHEDULE_DATE")
-se_months       <- event_months("NPDES_SE_VIOLATIONS.csv", "SINGLE_EVENT_VIOLATION_DATE")
-formal_months   <- event_months("NPDES_FORMAL_ENFORCEMENT_ACTIONS.csv", "SETTLEMENT_ENTERED_DATE")
-informal_months <- event_months("NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv", "ACHIEVED_DATE")
-
-# Effluent: the pre-built condensed all-parameter panel, not the raw 16 GB
-# stream -- verified sufficient for existence purposes (LABELED ASSUMPTION 12).
-eff <- fread(EFF_PATH, showProgress = FALSE,
-             colClasses = list(character = c("NPDES_ID", "month"),
-                               integer   = c("n_D80", "n_D90", "n_E90")))
-eff[, NPDES_ID := trimws(NPDES_ID)]
-eff[, mdate := as.Date(month)]
-eff <- eff[!is.na(mdate)]
-eff[, `:=`(YEAR = year(mdate), MONTH = month(mdate))]
-eff <- eff[YEAR >= YEAR_MIN & YEAR <= YEAR_MAX]
-eff <- eff[n_D80 > 0 | n_D90 > 0 | n_E90 > 0]
-eff <- xwalk[eff, on = "NPDES_ID", nomatch = 0]
-eff_months <- unique(eff[, .(facility_id, YEAR, MONTH)])
-
-event_ym <- unique(rbindlist(list(insp_months, ps_months, cs_months, se_months,
-                                   formal_months, informal_months, eff_months)))
-event_ym[, ym := YEAR * 12L + MONTH]
-event_bounds <- event_ym[, .(event_start = min(ym), event_end = max(ym)), by = facility_id]
-
-# ------------------------------------------------------------------------------
-# STEP 6C: Extend each qualifying facility's window over any real event
-# (LABELED ASSUMPTION 11). Facilities with no recorded events anywhere get NA
-# from the join below; pmin/pmax with na.rm = TRUE then leaves their window
-# exactly as computed in STEP 5 -- this step can only grow a window.
-# ------------------------------------------------------------------------------
-qual_fac <- event_bounds[qual_fac, on = "facility_id"]
-qual_fac[, new_start_ym := pmin(spine_start_ym, event_start, na.rm = TRUE)]
-qual_fac[, new_end_ym   := pmax(spine_end_ym,   event_end,   na.rm = TRUE)]
+# STEP 6B/6C: Extend each qualifying facility's window over any real recorded
+# event (LABELED ASSUMPTIONS 10-13), via use_operating_proxies() in
+# use_operating_proxies.R (sourced above). All seven proxy sources are left at
+# their default of TRUE here, reproducing the original correction exactly; see
+# that function's own header for what each source is and how to turn any of
+# them off (e.g. to test how much the corrected window depends on effluent
+# violations specifically).
+qual_fac <- use_operating_proxies(qual_fac, xwalk, raw_dir = RAW_DIR, eff_path = EFF_PATH,
+                                  year_min = YEAR_MIN, year_max = YEAR_MAX)
 
 # ------------------------------------------------------------------------------
 # STEP 7: Build the facility-by-month spine (BALANCED panel) + both operating flags.
