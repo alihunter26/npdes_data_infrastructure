@@ -16,7 +16,6 @@ the code in `code/` and `code/03_panel_building/`.
 | `data_issues.md` | Catalogue of known data anomalies and caveats (duplicate rows, non-ASCII filenames, blank-vs-zero, etc.). |
 | `missingness.md` | Where and why fields are missing; how blanks are interpreted. |
 | `notes.md` | Running log of decisions, findings, and open questions. |
-| `panel_questions_for_pis.md` | Design questions raised with the PIs and the guidance received. |
 
 ## Conventions
 

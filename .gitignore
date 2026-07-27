@@ -37,5 +37,7 @@ output/**/*.xlsx
 # Cloned external reference material (its own git repo; refresh with `git pull`)
 lab-guide-wiki/
 
-# Local-only reference doc, kept off the public repo
+# Local-only reference docs, kept off the public repo
 README_template.md
+CLAUDE.md
+docs/panel_questions_for_pis.md
