@@ -113,42 +113,49 @@ source(file.path(CWA_ROOT, "code/03_panel_building/use_operating_proxies.R"))
 #      FACILITY_OPERATING = 1 iff the month falls in [new_start, new_end]. This
 #      can only grow a window, never shrink one -- a facility with zero
 #      recorded events anywhere keeps its ASSUMPTION-9 window unchanged.
-#  12. "REAL EVENT" HERE MEANS EXISTENCE, NOT THE DETAILED COUNTS. This script
-#      only needs to know WHETHER and WHEN a facility had any inspection,
-#      PS/CS/SE violation, formal/informal enforcement action, or effluent
-#      violation -- not the type/agency/code breakdowns scripts 02/04/05/06
-#      still compute in full. It checks: NPDES_INSPECTIONS (begin, falling back
-#      to end date), NPDES_PS/CS_VIOLATIONS (SCHEDULE_DATE), NPDES_SE_VIOLATIONS
-#      (SINGLE_EVENT_VIOLATION_DATE), NPDES_FORMAL_ENFORCEMENT_ACTIONS
-#      (SETTLEMENT_ENTERED_DATE), NPDES_INFORMAL_ENFORCEMENT_ACTIONS
-#      (ACHIEVED_DATE) -- same date rules scripts 02/04/05 use for their own
-#      counts -- plus the pre-built condensed effluent panel (any of
-#      n_D80/n_D90/n_E90 > 0; the same source script 06 reads for its
-#      all-parameter columns). It deliberately does NOT stream the raw ~16 GB
-#      NPDES_EFF_VIOLATIONS.csv that script 06 uses for its TSS-specific
-#      subset: verified empirically (on the panel this correction was
-#      originally developed against) that ZERO facility-months have a positive
-#      TSS-subset violation while the condensed all-parameter panel shows
-#      nothing -- the condensed panel is already a complete proxy for "any
-#      effluent event" here, so this script needs neither `python3` nor `unzip`.
+#  12. "REAL EVENT" HERE MEANS EXISTENCE, NOT THE DETAILED COUNTS. This
+#      correction only needs to know WHETHER and WHEN a facility had any
+#      inspection, PS/CS/SE violation, formal/informal enforcement action, or
+#      effluent violation -- not the type/agency/code breakdowns scripts
+#      02/04/05/06 still compute in full. use_operating_proxies() (called in
+#      STEP 6B/6C below; see NOTE) checks: NPDES_INSPECTIONS (begin, falling
+#      back to end date), NPDES_PS/CS_VIOLATIONS (SCHEDULE_DATE),
+#      NPDES_SE_VIOLATIONS (SINGLE_EVENT_VIOLATION_DATE),
+#      NPDES_FORMAL_ENFORCEMENT_ACTIONS (SETTLEMENT_ENTERED_DATE),
+#      NPDES_INFORMAL_ENFORCEMENT_ACTIONS (ACHIEVED_DATE) -- same date rules
+#      scripts 02/04/05 use for their own counts -- plus the pre-built
+#      condensed effluent panel (any of n_D80/n_D90/n_E90 > 0; the same source
+#      script 06 reads for its all-parameter columns). It deliberately does
+#      NOT stream the raw ~16 GB NPDES_EFF_VIOLATIONS.csv that script 06 uses
+#      for its TSS-specific subset: verified empirically (on the panel this
+#      correction was originally developed against) that ZERO facility-months
+#      have a positive TSS-subset violation while the condensed all-parameter
+#      panel shows nothing -- the condensed panel is already a complete proxy
+#      for "any effluent event" here, so neither this script nor
+#      use_operating_proxies.R needs `python3` or `unzip`.
 #  13. ROUTED BY THE SAME CROSSWALK AS EVERY OTHER STEP. All seven event/proxy
 #      sources are routed NPDES_ID -> facility_id via the identical crosswalk
 #      built in STEP 4 below (FACILITY_UIN when present, else NPDES_ID) --
-#      reused directly here rather than rebuilt, since this script is where it
-#      originates; scripts 02/04/05/06 rebuild it independently, per their own
-#      READMEs.
+#      passed into use_operating_proxies() as an argument rather than rebuilt,
+#      since this script is where it originates; scripts 02/04/05/06 rebuild
+#      it independently, per their own READMEs.
 #
 # NOTE: ASSUMPTIONS 10-13's actual scanning/extension logic lives in
 # use_operating_proxies.R (STEP 6B/6C below), as use_operating_proxies() --
 # a configurable function, with an on/off switch per proxy source, so a
-# different mix of evidence can be tried without editing this script.
+# different mix of evidence can be tried without editing this script. This
+# script no longer reads the six raw event sources directly itself -- it
+# only reads ICIS_PERMITS.csv and ICIS_FACILITIES.csv on its own (STEPS 1-4);
+# use_operating_proxies() reads the rest when called.
 #
-# Source: EPA ECHO bulk "ICIS-NPDES" download (ICIS_PERMITS.csv,
-# ICIS_FACILITIES.csv, NPDES_INSPECTIONS.csv, NPDES_PS/CS/SE_VIOLATIONS.csv,
-# NPDES_FORMAL/INFORMAL_ENFORCEMENT_ACTIONS.csv), plus the pre-built condensed
+# Source: EPA ECHO bulk "ICIS-NPDES" download. This script reads
+# ICIS_PERMITS.csv and ICIS_FACILITIES.csv directly; use_operating_proxies()
+# (called in STEP 6B/6C) reads NPDES_INSPECTIONS.csv, NPDES_PS/CS/SE_VIOLATIONS.csv,
+# NPDES_FORMAL/INFORMAL_ENFORCEMENT_ACTIONS.csv, and the pre-built condensed
 # effluent panel (data/processed/effluent_violations_npdes_month_panel_2005_2025.csv).
 # Output: data/processed/01_facility_month_panel_major_individual_2005_2025.csv
-# Deterministic (no stochastic steps); rebuilt entirely from raw + this script.
+# Deterministic (no stochastic steps); rebuilt entirely from raw + this script
+# + use_operating_proxies.R.
 # ==============================================================================
 
 suppressPackageStartupMessages({
