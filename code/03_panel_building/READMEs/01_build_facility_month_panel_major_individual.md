@@ -71,7 +71,7 @@ externally — see below). `TODO:` record download date / ECHO refresh version.
 | `data/raw/npdes_downloads/NPDES_SE_VIOLATIONS.csv` | `.csv` | `NPDES_ID`, `SINGLE_EVENT_VIOLATION_DATE` — existence only |
 | `data/raw/npdes_downloads/NPDES_FORMAL_ENFORCEMENT_ACTIONS.csv` | `.csv` | `NPDES_ID`, `SETTLEMENT_ENTERED_DATE` — existence only |
 | `data/raw/npdes_downloads/NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv` | `.csv` | `NPDES_ID`, `ACHIEVED_DATE` — existence only |
-| `data/processed/effluent_violations_npdes_month_panel_2005_2025.csv` | `.csv` (derived; not currently present, no in-repo script to rebuild — see `code/03_panel_building/README.md`) | `NPDES_ID`, `month`, `n_D80`/`n_D90`/`n_E90` — existence only (`> 0`) |
+| `data/processed/effluent_violations_npdes_month_panel_2005_2025.csv` | `.csv` (derived; built by `build_effluent_violations_npdes_month_panel.R` — a prerequisite that must run before this step) | `NPDES_ID`, `month`, `n_D80`/`n_D90`/`n_E90` — existence only (`> 0`) |
 
 ## Dataset list
 

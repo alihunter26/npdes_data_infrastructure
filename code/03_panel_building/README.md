@@ -32,6 +32,14 @@ the next.
 **Per-script documentation** — inputs, outputs, and every decision/assumption — lives in
 [`READMEs/`](READMEs/README.md) (SSDE-style, one file per script).
 
+## Prerequisite (not one of the six numbered steps)
+
+- `build_effluent_violations_npdes_month_panel.R` — must run **before step 01**, not
+  just before step 06: both steps read its output,
+  `data/processed/effluent_violations_npdes_month_panel_2005_2025.csv`. Streams the raw
+  effluent file (via DuckDB) into a condensed permit×month summary of both all-parameter
+  and TSS-subset violation counts. See [`READMEs/build_effluent_violations_npdes_month_panel.md`](READMEs/build_effluent_violations_npdes_month_panel.md).
+
 ## Helper scripts (not part of the numbered chain)
 
 - `summarize_violation_types.R` — tabulates violation-type frequencies → `output/tables/`.
@@ -51,18 +59,15 @@ Rscript "code/03_panel_building/02_add_inspections.R"
 Rscript "code/diagnostics/missingness/missingness_audit_major_individual.R"   # diagnostic, after 06
 ```
 
-Or simply `Rscript run_all.R` from the repo root, which runs all six steps in order.
+Or simply `Rscript run_all.R` from the repo root, which builds the condensed effluent
+panel first (if it's not already on disk) and then runs all six steps in order.
 
-Step 01 needs no `python3`/`unzip` (it uses only the pre-built condensed effluent
-panel for its event-existence check — see its README, Assumption 12). Step 06 needs
-`python3` and `unzip` on `PATH` (it streams the raw effluent file), plus the condensed
-effluent panel at `data/processed/effluent_violations_npdes_month_panel_2005_2025.csv`.
-
-> **2026-07-27:** that condensed effluent panel is not currently present in
-> `data/processed/` and has no in-repo script to rebuild it. Step 06's part (A)
-> (all-parameter D80/D90/E90 counts) will need that input rebuilt or resourced before
-> it can run end to end; part (B) (the TSS gross-effluent subset, streamed from the raw
-> file) is unaffected.
+Neither step 01 nor step 06 needs `python3` or `unzip` — both read only the pre-built
+condensed effluent panel at
+`data/processed/effluent_violations_npdes_month_panel_2005_2025.csv`. That file's own
+build script (`build_effluent_violations_npdes_month_panel.R`, see above) is what needs
+`unzip` and `gzip` on `PATH`, plus the DuckDB R package, since it's the one that
+actually streams the raw ~16 GB effluent file.
 
 > Step 01's `OUT_PATH` already writes the `01_`-prefixed name step 02 expects — a
 > previously-documented mismatch here has been verified resolved in code. See

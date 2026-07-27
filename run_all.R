@@ -6,7 +6,10 @@
 # 1. Sources code/00_setup/00_setup.R (package/directory checks).
 # 2. Optionally re-downloads the ECHO bulk files (off by default — slow, large;
 #    see DOWNLOAD_DATA below).
-# 3. Runs the six-step facility-by-month pipeline in code/03_panel_building/:
+# 3. Builds the condensed effluent-violations panel if it isn't already on disk
+#    (see BUILD_EFFLUENT_PANEL below) — both step 01 and step 06 need this file
+#    to exist before they can run.
+# 4. Runs the six-step facility-by-month pipeline in code/03_panel_building/:
 #      01  base facility x month panel of major individual facilities, incl. a
 #          CORRECTED FACILITY_OPERATING flag (see step 01's README, Assumptions
 #          10-13 -- as of 2026-07-23 this correction lives here, not in a
@@ -22,10 +25,6 @@
 # The numbering encodes dependency order: each step reads the CSV the previous
 # step wrote. Steps are sourced in isolated environments so their variables
 # can't collide; data passes between them via the CSVs on disk, not R objects.
-# Step 01 additionally reads several raw event files directly (existence only)
-# to correct FACILITY_OPERATING before anything downstream uses it -- it does
-# NOT need python3/unzip (unlike step 06, which streams the raw 16 GB effluent
-# file for its own TSS-specific counts).
 #
 # Not run here (deliberately): code/diagnostics/, code/summary/, dmr analysis/,
 # build/ -- QC/reporting/sibling pipelines, not part of rebuilding the panel. See
@@ -49,6 +48,18 @@ source(file.path(CWA_ROOT, "code/00_setup/00_setup.R"))
 DOWNLOAD_DATA <- FALSE
 if (DOWNLOAD_DATA) {
   source(file.path(CWA_ROOT, "code/01_data_download/01_download_echo_bulk_files.R"),
+         local = new.env())
+}
+
+# Build the condensed effluent-violations panel if it's not already there. This
+# is a genuine prerequisite (not an optional slow step like DOWNLOAD_DATA
+# above) -- steps 01 and 06 cannot run without it -- but it takes ~15-20
+# minutes (one full pass over the ~16 GB raw effluent file), so we only rebuild
+# it when it's actually missing rather than on every run.
+EFF_PANEL_PATH <- file.path(CWA_ROOT, "data/processed/effluent_violations_npdes_month_panel_2005_2025.csv")
+if (!file.exists(EFF_PANEL_PATH)) {
+  message("\n===== condensed effluent panel not found; building it first (~15-20 min) =====")
+  source(file.path(CWA_ROOT, "code/03_panel_building/build_effluent_violations_npdes_month_panel.R"),
          local = new.env())
 }
 

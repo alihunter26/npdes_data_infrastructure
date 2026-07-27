@@ -13,6 +13,7 @@ the script that produces it.
 | `07_facility_month_panel_major_individual_operating_corrected_fy2025.csv` | **orphaned** — was `code/03_panel_building/restrict_06_to_fy2025.R`, deleted 2026-07-23 | ⚠️ static file, no longer regenerable by any script |
 | `06_facility_month_panel_major_individual_effluent_fy2025.csv` | **orphaned** — same removed script, older pre-correction output | ⚠️ static file, no longer regenerable; also pre-correction `FACILITY_OPERATING`. Kept on disk unchanged, don't use going forward |
 | `facility_month_panel_major_individual_2005_2025.csv` | `code/03_panel_building/01_*.R` (⚠️ 02 expects the `01_`-prefixed name — see `code/03_panel_building/READMEs/`) | facility × month |
+| `effluent_violations_npdes_month_panel_2005_2025.csv` | `code/03_panel_building/build_effluent_violations_npdes_month_panel.R` — prerequisite for steps 01 and 06, not a numbered step itself; `run_all.R` builds it automatically if missing | permit (`NPDES_ID`) × month |
 | `facility_uin_multiple_npdes.csv` | `code/diagnostics/facility_structure/facility_uin_multiple_npdes.R` | facilities with >1 permit |
 
 ## Conventions

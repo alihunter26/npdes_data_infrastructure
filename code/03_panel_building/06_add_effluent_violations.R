@@ -11,18 +11,12 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 # ------------------------------------------------------------------------------
 # SIXTH STEP in the facility-by-month pipeline. Reads the panel produced by
 # 05_add_enforcement.R and attaches, for every facility-month, ALL effluent (DMR)
-# violation columns. This script owns every effluent-violation count in the panel:
+# violation columns -- both count sets described below.
 #
-#   (A) ALL-PARAMETER codes, from the PRE-BUILT condensed month panel (fast):
-#         data/processed/effluent_violations_npdes_month_panel_2005_2025.csv
-#         -- one row per NPDES_ID x month, columns: NPDES_ID, month (YYYY-MM-01),
-#            n_D80, n_D90, n_E90.
-#
-#   (B) TSS gross-effluent monthly-average subset, by streaming the ~16 GB raw
-#         NPDES_EFF_VIOLATIONS.csv straight from its zip (moved here from
-#         04_add_violations.R; see ASSUMPTIONS 6-7).
-#
-#   Input  : data/processed/05_facility_month_panel_major_individual_enforcement_2005_2025.csv
+#   Input  : data/processed/effluent_violations_npdes_month_panel_2005_2025.csv
+#            (PRE-BUILT by build_effluent_violations_npdes_month_panel.R -- see
+#            that script for how it's constructed; this script just reads it)
+#            data/processed/05_facility_month_panel_major_individual_enforcement_2005_2025.csv
 #            (one row per FACILITY_UIN x YEAR x MONTH; built by scripts 01-05)
 #   Output : data/processed/06_facility_month_panel_major_individual_effluent_2005_2025.csv
 #            (the same panel + 7 new effluent-violation count columns)
@@ -36,28 +30,38 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 #   n_D90  - ALL-PARAMETER effluent violations, VIOLATION_CODE D90 (DMR value overdue, limited)
 #   n_E90  - ALL-PARAMETER effluent violations, VIOLATION_CODE E90 (numeric limit exceedance)
 #
-# NOTE: the TSS columns (N_TSS_EFF_*) were previously added in 04_add_violations.R;
-# they moved here so all effluent-violation logic lives in one script. The final
-# panel's columns and values are unchanged -- only the step that adds them moved.
+# NOTE (2026-07-27): both count sets used to be computed in two separate places
+# (all-parameter from the condensed file; TSS by this script separately
+# streaming the raw ~16 GB effluent file through a Python pre-filter). They now
+# both come from the SAME pre-built condensed file, computed together in one
+# pass by build_effluent_violations_npdes_month_panel.R -- this script no
+# longer touches the raw effluent file at all, and no longer needs python3 or
+# unzip. The columns and values this script produces are unchanged.
 #
 # ------------------------------------------------------------------------------
 # LABELED ASSUMPTIONS (read before using results):
 #
 #   1. TWO EFFLUENT COUNT SETS, KEPT SEPARATE ON PURPOSE.
 #      - n_D80/_D90/_E90 count those codes across EVERY parameter, feature, and
-#        monitoring location (from the condensed source).
+#        monitoring location.
 #      - N_TSS_EFF_D80/_D90/_E90 count the SAME codes but ONLY for the Total-
-#        Suspended-Solids gross-effluent monthly-average subset (streamed below).
+#        Suspended-Solids gross-effluent monthly-average subset (see
+#        build_effluent_violations_npdes_month_panel.R's LABELED ASSUMPTION 3
+#        for the exact filter).
 #      So n_* is broadly a SUPERSET of the TSS counts (n_D80 >= N_TSS_EFF_D80,
 #      etc.). Neither replaces the other.
 #
-#   2. ALL-PARAMETER COUNTS ALREADY DE-DUPLICATED AT SOURCE. The condensed panel
-#      counts DISTINCT underlying violations (latest DMR resubmission version only)
-#      per NPDES_ID x month x code. We do not re-dedupe; we only re-key and sum.
+#   2. BOTH COUNT SETS ALREADY DE-DUPLICATED AT SOURCE, BY TWO DIFFERENT RULES
+#      (see build_effluent_violations_npdes_month_panel.R's LABELED ASSUMPTION 4
+#      for why the two rules are deliberately different, not a bug). This
+#      script does not re-dedupe either one -- it only re-keys by facility and
+#      sums. As a result, in a vanishingly small number of facility-months the
+#      TSS count can exceed the all-parameter count by 1-2 (see the run-log
+#      cross-check at the bottom of this script) -- reported, not corrected.
 #
-#   3. DATE = DMR MONITORING-PERIOD MONTH. The condensed `month` is the calendar
-#      month of MONITORING_PERIOD_END_DATE; the TSS stream is dated the same way.
-#      We split into YEAR/MONTH integers to match the panel keys.
+#   3. DATE = DMR MONITORING-PERIOD MONTH. The condensed file's `month` is the
+#      calendar month of MONITORING_PERIOD_END_DATE. We split into YEAR/MONTH
+#      integers to match the panel keys.
 #
 #   4. ROUTED BY NPDES_ID VIA THE SAME CROSSWALK AS SCRIPTS 02, 04 & 05. Each row
 #      is keyed to a permit (NPDES_ID); we map NPDES_ID -> facility exactly the way
@@ -69,36 +73,14 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 #      source had no such violation -> filled with 0. Source rows for permits/months
 #      outside the panel (minors, general permits, pre-entry) do not match and drop.
 #
-#   6. THE TSS SUBSET IS A SINGLE, SPECIFIC LIMIT (per PI guidance). From the raw
-#      NPDES_EFF_VIOLATIONS.csv (one row per parameter/limit value on a DMR) we keep
-#      ONLY rows that are ALL of:
-#        - Total Suspended Solids : PARAMETER_CODE == "00530" (EPA's standard TSS
-#          code; other suspended-solids synonym codes are excluded).
-#        - gross effluent         : MONITORING_LOCATION_CODE == "1" (Effluent Gross;
-#          rare variants like "EG"/"E1" are excluded).
-#        - monthly average        : STATISTICAL_BASE_MONTHLY_AVG == "A" (EPA's
-#          monthly-average-equivalent flag).
-#      Each kept violation is dated by MONITORING_PERIOD_END_DATE (100% present in
-#      this subset). N_TSS_EFF_VIOLATIONS counts DISTINCT NPDES_VIOLATION_ID across
-#      all codes; the D90/D80/E90 break-outs count DISTINCT ids of that code.
-#
-#   7. THE RAW EFFLUENT FILE IS STREAMED ONCE AND PRE-FILTERED IN PYTHON.
-#      NPDES_EFF_VIOLATIONS.csv is ~16 GB uncompressed, so it is never extracted to
-#      disk: it is streamed straight out of its zip (via `unzip -p`) and piped
-#      through a small Python csv filter that keeps only the tiny TSS/gross/monthly
-#      subset and emits just the columns we need, so R never holds the whole file.
-#      REQUIRES python3 AND unzip on PATH. NOTE: the file writes empty fields as bare
-#      commas but non-empty ones quoted, so it must be parsed by a real CSV reader
-#      (Python's csv module here; fread on the R side reads the already-clean subset).
-#
-# Deterministic (no stochastic steps); rebuilt entirely from the condensed source +
-# the raw effluent file + scripts 01-05 output + this script. Non-destructive: writes
+# Deterministic (no stochastic steps); rebuilt entirely from the pre-built
+# condensed source + scripts 01-05 output + this script. Non-destructive: writes
 # a NEW file, leaves script 05's panel untouched, and is safe to re-run.
 # ==============================================================================
 
 suppressPackageStartupMessages({
   library(data.table)   # fast CSV reads + grouped sums/counts
-  library(lubridate)    # date parsing (mdy) and year()/month() extraction
+  library(lubridate)    # date parsing (as.Date) and year()/month() extraction
 })
 
 ## ---- Config (edit here if the panel window or file locations ever change) ----
@@ -108,17 +90,6 @@ RAW_DIR  <- file.path(CWA_ROOT, "data/raw/npdes_downloads")
 EFF_PATH <- file.path(CWA_ROOT, "data/processed/effluent_violations_npdes_month_panel_2005_2025.csv")
 IN_PATH  <- file.path(CWA_ROOT, "data/processed/05_facility_month_panel_major_individual_enforcement_2005_2025.csv")
 OUT_PATH <- file.path(CWA_ROOT, "data/processed/06_facility_month_panel_major_individual_effluent_2005_2025.csv")
-
-# Raw effluent-violations source for the TSS subset: a ~16 GB CSV inside a zip in
-# data/raw/ (streamed, never extracted). Filter constants define the single limit
-# we keep (see ASSUMPTION 6): TSS parameter code, gross-effluent location code, and
-# the monthly-average flag.
-EFF_ZIP        <- list.files(file.path(CWA_ROOT, "data/raw"),
-                             pattern = "eff.*zip", full.names = TRUE)[1]
-EFF_CSV        <- "NPDES_EFF_VIOLATIONS.csv"
-TSS_PARAM_CODE <- "00530"       # Solids, total suspended (standard EPA TSS code)
-GROSS_LOC_CODE <- "1"           # MONITORING_LOCATION_CODE for Effluent Gross
-MONTHLY_AVG    <- "A"           # STATISTICAL_BASE_MONTHLY_AVG flag = monthly average
 
 # New columns, in their FINAL panel order: TSS block first (it sits right after the
 # schedule/event violations from 04), then the all-parameter block at the very end.
@@ -141,12 +112,16 @@ panel[, `:=`(YEAR = as.integer(YEAR), MONTH = as.integer(MONTH))]
 xwalk <- build_facility_crosswalk(raw_dir = RAW_DIR)
 
 # ------------------------------------------------------------------------------
-# STEP 3: ALL-PARAMETER counts from the condensed effluent month panel.
+# STEP 3: Read both count sets from the pre-built condensed effluent panel.
 # ------------------------------------------------------------------------------
+# build_effluent_violations_npdes_month_panel.R computes the all-parameter and
+# TSS-subset counts together in one pass over the raw file, so this one read
+# gives us everything -- no separate stream of NPDES_EFF_VIOLATIONS.csv here.
 # Codes read as integer counts; NPDES_ID/month as text. `month` is YYYY-MM-01.
+all_new <- c(nd_cols, tss_cols)
 eff <- fread(EFF_PATH, showProgress = FALSE,
              colClasses = list(character = c("NPDES_ID", "month"),
-                               integer   = nd_cols))
+                               integer   = all_new))
 eff[, NPDES_ID := trimws(NPDES_ID)]
 eff[, mdate := as.Date(month)]
 eff <- eff[!is.na(mdate)]
@@ -157,96 +132,11 @@ n_rows_read <- nrow(eff)
 # Route NPDES_ID -> facility_id (inner join drops permits with no facility record),
 # then SUM each code across the facility's permits (ASSUMPTION 4).
 eff <- xwalk[eff, on = "NPDES_ID", nomatch = 0]
-eff_month <- eff[, lapply(.SD, sum), by = .(facility_id, YEAR, MONTH), .SDcols = nd_cols]
+counts <- eff[, lapply(.SD, sum), by = .(facility_id, YEAR, MONTH), .SDcols = all_new]
 
 # ------------------------------------------------------------------------------
-# STEP 3B: TSS gross monthly-average subset, streamed from the raw effluent file.
+# STEP 4: Attach to the panel, fill absent months with 0.
 # ------------------------------------------------------------------------------
-# Streams NPDES_EFF_VIOLATIONS.csv straight from its zip, pre-filtering to the small
-# TSS/gross/monthly subset in Python before the data reaches R, then dates, routes,
-# and counts DISTINCT violations per facility-month (total + D90/D80/E90 break-outs).
-count_effluent_violations <- function() {
-  # The raw zip's real filename contains a non-ASCII space (a narrow no-break
-  # space) that fread(cmd=) cannot encode into its shell command. Point an
-  # ASCII-named temporary symlink at the zip -- this neither copies nor modifies
-  # the immutable raw file -- and stream through that instead.
-  link <- file.path(tempdir(), "npdes_eff_downloads.zip")
-  unlink(link, force = TRUE)                 # no-op if absent; clears a stale link
-  file.symlink(EFF_ZIP, link)
-  on.exit(unlink(link, force = TRUE), add = TRUE)
-
-  # Pre-filter the ~16 GB stream in Python BEFORE it reaches R, so peak memory
-  # stays tiny on a memory-constrained machine. Python's csv module parses the
-  # file's quoting correctly (empty fields are bare commas, non-empty ones are
-  # quoted -- a naive awk/`cut` split would misalign columns), keeps only the
-  # TSS / gross-effluent / monthly-average rows, and emits just the four columns
-  # we need. fread then reads that small result. The filter values are passed as
-  # arguments so the TSS/gross/monthly definition lives in ONE place (the config
-  # constants above). Column positions are located by header name, so the filter
-  # survives any future column re-ordering in the source file.
-  python <- Sys.which("python3")
-  if (python == "") stop("python3 not found on PATH; it is required to stream the effluent file.")
-  py_code <- '
-import csv, sys
-param_code, loc_code, monthly_flag = sys.argv[1], sys.argv[2], sys.argv[3]
-reader = csv.reader(sys.stdin)
-writer = csv.writer(sys.stdout)
-header = next(reader)
-i_param = header.index("PARAMETER_CODE")
-i_loc   = header.index("MONITORING_LOCATION_CODE")
-i_ma    = header.index("STATISTICAL_BASE_MONTHLY_AVG")
-out_cols = ["NPDES_ID", "NPDES_VIOLATION_ID", "VIOLATION_CODE", "MONITORING_PERIOD_END_DATE"]
-out_idx  = [header.index(c) for c in out_cols]
-need_max = max(i_param, i_loc, i_ma, *out_idx)
-writer.writerow(out_cols)
-for row in reader:
-    if len(row) <= need_max:
-        continue
-    if row[i_param] == param_code and row[i_loc] == loc_code and row[i_ma] == monthly_flag:
-        writer.writerow([row[j] for j in out_idx])
-'
-  py_file <- tempfile(fileext = ".py")
-  writeLines(py_code, py_file)
-  on.exit(unlink(py_file, force = TRUE), add = TRUE)
-
-  read_cmd <- sprintf("unzip -p %s %s | %s %s %s %s %s",
-                      shQuote(link), shQuote(EFF_CSV),
-                      shQuote(python), shQuote(py_file),
-                      shQuote(TSS_PARAM_CODE), shQuote(GROSS_LOC_CODE), shQuote(MONTHLY_AVG))
-
-  # The Python step already applied the TSS/gross/monthly filter (ASSUMPTION 6),
-  # so fread receives only the small matching subset (its 4 columns, named).
-  eff <- fread(cmd = read_cmd, colClasses = "character", showProgress = FALSE)
-  stopifnot(nrow(eff) > 0)          # guard against a silent pipe/filter failure
-  eff[, NPDES_ID := trimws(NPDES_ID)]
-
-  # Date by the DMR monitoring period, keep the window, route to facility.
-  eff[, vdate := mdy(MONITORING_PERIOD_END_DATE, quiet = TRUE)]
-  eff <- eff[!is.na(vdate)]
-  eff[, `:=`(YEAR = year(vdate), MONTH = month(vdate))]
-  eff <- eff[YEAR >= YEAR_MIN & YEAR <= YEAR_MAX]
-  eff <- xwalk[eff, on = "NPDES_ID", nomatch = 0]
-
-  # DISTINCT violations per facility-month: total, then broken out by code.
-  eff[, .(
-      N_TSS_EFF_VIOLATIONS = uniqueN(NPDES_VIOLATION_ID),
-      N_TSS_EFF_D90        = uniqueN(NPDES_VIOLATION_ID[VIOLATION_CODE == "D90"]),
-      N_TSS_EFF_D80        = uniqueN(NPDES_VIOLATION_ID[VIOLATION_CODE == "D80"]),
-      N_TSS_EFF_E90        = uniqueN(NPDES_VIOLATION_ID[VIOLATION_CODE == "E90"])
-    ), by = .(facility_id, YEAR, MONTH)]
-}
-
-eff_tss <- count_effluent_violations()
-
-# ------------------------------------------------------------------------------
-# STEP 4: Combine both count sets, attach to the panel, fill absent months with 0.
-# ------------------------------------------------------------------------------
-# Full outer merge so a facility-month present in either source is kept; kinds not
-# present come through as NA and are set to 0 below.
-all_new <- c(nd_cols, tss_cols)
-counts  <- merge(eff_month, eff_tss, by = c("facility_id", "YEAR", "MONTH"), all = TRUE)
-for (c in all_new) counts[is.na(get(c)), (c) := 0L]
-
 # Left-join: panel key FACILITY_UIN == source key facility_id, plus YEAR/MONTH.
 panel <- counts[panel, on = c(facility_id = "FACILITY_UIN", "YEAR", "MONTH")]
 setnames(panel, "facility_id", "FACILITY_UIN")            # restore the panel's name
