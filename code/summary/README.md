@@ -26,24 +26,15 @@ distinct-count label, reader). Every sheet uses an 8-column categorical / 9-colu
 numeric layout (a trailing, always-blank **Missing Explanation** column). Output:
 timestamped `.xlsx` in `output/`.
 
-## The FY2025 / FY2009 DMR filter-pipeline trio
-
-These three build a *multi-tab* comparison across the stages of the DMR filter
-pipeline in `dmr analysis/` (01 Major-Individual → 02 TSS(00530) → 03 Effluent
-Gross → 04 C1/Q1) — a report shape `summarize.R`'s one-CSV-per-run registry doesn't
-produce, so they stay standalone rather than living in `DATASETS`:
-
-| Script | Purpose | Output |
-|---|---|---|
-| `build_dmr_raw_summary.R` | Summarizes the **raw, unfiltered** FY DMR file (every permit/parameter, no restriction at all). Uses DuckDB out-of-core — the raw file is 4.7-27M rows, too large to safely `fread` whole on an 8GB machine. Usage: `Rscript build_dmr_raw_summary.R <FY>` | `output/DMR/raw_summary_fy<FY>.rds` — **not** an `.xlsx`; a serialized summary object meant to be prepended into the workbooks below without recomputing. |
-| `combine_dmr_summaries.R` | One workbook, one tab per FY2025 pipeline stage, with the raw-file summary above spliced in as tab 0. | `output/DMR/2025_dmr_summaries_combined.xlsx` — fixed filename, overwritten each run (**not** timestamped, unlike most other scripts here). |
-| `combine_dmr_summaries_fy2009.R` | Identical logic and styling, pointed at the FY2009 pipeline stages instead (a comparison/baseline year). | `output/DMR/2009_dmr_summaries_combined.xlsx` — fixed filename, overwritten each run. |
+The FY2025/FY2009 DMR filter-pipeline trio (`build_dmr_raw_summary.R`,
+`combine_dmr_summaries.R`, `combine_dmr_summaries_fy2009.R`) and the DMR coverage
+cross-tab (`summarize_dmr_coverage_major_minor.R`) moved to `code/dmr/` 2026-07-27 —
+see its README.
 
 ## Cross-tab scripts (coverage matrices, not per-variable summaries)
 
 | Script | Purpose | Output |
 |---|---|---|
-| `summarize_dmr_coverage_major_minor.R` | FY2015-2020: how many Major vs. Minor permits (per `ICIS_PERMITS.csv`) actually reported DMR data each year — counts and coverage %, shaded by a green gradient. | `output/dmr_coverage_major_minor_<timestamp>.xlsx` |
 | `summarize_year_coverage.R` | Which years appear in which raw file's DATE/YEAR-named columns, across all of `data/raw/` (cheap column-only scan, so even multi-GB files like `NPDES_LIMITS.csv` are fast). | `output/year_coverage_<timestamp>.xlsx` |
 
 ## `summarize_panel.R` — QA check for a *built* panel, not a raw source file
@@ -64,12 +55,27 @@ Prints all four sections (panel structure/key uniqueness, coverage, numeric summ
 consistency checks) to the console, and writes
 `output/panel_summary_<panel_name>_<timestamp>.xlsx`.
 
+## `summarize_violation_types.R` — violation-type composition of a built panel
+
+Also reads a *built* panel (not a raw source file), but answers a different question
+than `summarize_panel.R`'s QA checks: of all violations tallied in the panel, what
+percent are permit-schedule vs. compliance-schedule vs. single-event vs. effluent
+(TSS gross monthly-average)? The four top-level violation-count columns are mutually
+exclusive and sum to the denominator; the effluent total is further broken out by
+VIOLATION_CODE (D90/D80/E90) as a share *of* the effluent subset, not added to it.
+
+```bash
+Rscript code/summary/summarize_violation_types.R
+#   Input : data/processed/04_facility_month_panel_major_individual_violations_2005_2025.csv
+```
+
+Prints both tables to the console and writes
+`output/tables/violation_type_summary_<timestamp>.csv`.
+
 ## Conventions
 
 - Sources `_paths.R`; reads raw as character; whitespace-only cells normalized to `NA`
   so `% Missing` stays consistent; large files streamed from their zips.
-- Raw data never modified. Most outputs are timestamped in `output/`; the DMR
-  filter-pipeline trio's combined workbooks are the exception (fixed filenames,
-  overwritten each run — see table above).
+- Raw data never modified. Most outputs are timestamped in `output/`.
 
 See the root `README.md` for the input/output table.

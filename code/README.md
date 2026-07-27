@@ -15,7 +15,8 @@ not build steps.
 | `02_cleaning/` | Shared cleaning helpers (`cleaning_helpers.R`) used by every step of `03_panel_building/`: safe raw-file reads, the permit→facility crosswalk, and date-combining mechanics. Also holds `build_effluent_violations_npdes_month_panel.R` (moved in from `03_panel_building/` 2026-07-27) — an unrelated standalone prerequisite script, not a helper function, that just happens to live here now. See its `module_README.md`. |
 | `03_panel_building/` | The core pipeline: builds the facility-by-**month** panel of major, individually-permitted NPDES facilities, 2005–2025. Steps `01`–`06` (`06` = final panel); `01` also corrects `FACILITY_OPERATING` internally. Documented per-script in `03_panel_building/READMEs/`. |
 | `summary/` | Per-dataset Excel summary generators. `summarize.R` is the single registry-driven entry point; the legacy `summarize_*.R` scripts are kept for reference. |
-| `diagnostics/` | Data-quality checks and one-off analyses, grouped by topic (NAICS/SIC coverage, enforcement duplicates, missingness, outfalls, brief generation, effluent QC). Not part of the panel build — see `diagnostics/README.md`. |
+| `diagnostics/` | Data-quality checks and one-off analyses, grouped by topic (NAICS/SIC coverage, enforcement duplicates, missingness, outfalls, brief generation). Not part of the panel build — see `diagnostics/README.md`. |
+| `dmr/` | DMR-specific summary/diagnostic scripts (raw-file summary, FY2025/FY2009 combined workbooks, DMR coverage cross-tab, DMR funnel figure, DMR-based outfall counts, effluent-value QC). Grouped together 2026-07-27 (previously split across `summary/` and `diagnostics/`) since they all center on DMR data specifically. See `dmr/README.md`. |
 
 ## Sibling pipelines (outside `code/`, at the repo root)
 

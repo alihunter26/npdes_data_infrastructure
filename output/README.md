@@ -9,8 +9,9 @@ is a source of truth; delete freely and re-run the producing script.
 | Item | Produced by |
 |---|---|
 | `*_summary_*.xlsx` (npdes, dmrs, attains, eff_violations[_state], master_general_permits, outfalls_layer, npdes_limits, panel_summary_…) | `code/summary/summarize.R` |
-| `year_coverage_*.xlsx`, `dmr_coverage_major_minor_*.xlsx` | `code/summary/summarize_year_coverage.R`, `…dmr_coverage_major_minor.R` |
-| `eff_flagged_<state>_*.csv` | `code/diagnostics/effluent_qc/eff_flagged.R` |
+| `year_coverage_*.xlsx` | `code/summary/summarize_year_coverage.R` |
+| `dmr_coverage_major_minor_*.xlsx` | `code/dmr/summarize_dmr_coverage_major_minor.R` |
+| `eff_flagged_<state>_*.csv` | `code/dmr/eff_flagged.R` |
 | Diagnostic extracts (`enforcement_by_permit_type.csv`, `facility_uin_multiple_npdes*.csv`, `formal_actions_same_fine_date.csv`, `*_multi_*`, `naics_*`, `sic_*`, `dropped_no_open_date_*`) | `code/diagnostics/enforcement_breakdowns/`, `facility_structure/`, `enforcement_duplicates/`, `naics_sic/` (grouped by topic — see `code/diagnostics/README.md`) |
 | `tables/` | Diagnostic CSV extracts (duplicates, NAICS/SIC coverage, violation-type summaries) |
 | `figures/` | Generated figures (currently empty) |

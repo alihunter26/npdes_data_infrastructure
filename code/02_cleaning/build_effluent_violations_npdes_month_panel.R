@@ -162,7 +162,7 @@ EFF_CSV <- "NPDES_EFF_VIOLATIONS.csv"
 
 # Scratch space for the one-time zip-member -> gzip conversion, and for
 # DuckDB's own disk-spill files. Same CWA_SCRATCH convention already used by
-# code/diagnostics/outfalls/outfall_count_breakdown_dmr.R, so the two scripts
+# code/dmr/outfall_count_breakdown_dmr.R, so the two scripts
 # can share a scratch root if the environment variable is set.
 SCRATCH   <- Sys.getenv("CWA_SCRATCH", file.path(tempdir(), "cwa_eff"))
 GZ_TMP    <- file.path(SCRATCH, "NPDES_EFF_VIOLATIONS.csv.gz")
