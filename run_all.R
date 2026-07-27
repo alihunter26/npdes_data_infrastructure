@@ -26,9 +26,9 @@
 # step wrote. Steps are sourced in isolated environments so their variables
 # can't collide; data passes between them via the CSVs on disk, not R objects.
 #
-# Not run here (deliberately): code/diagnostics/, code/summary/, dmr analysis/,
-# build/ -- QC/reporting/sibling pipelines, not part of rebuilding the panel. See
-# code/README.md.
+# Not run here (deliberately): code/diagnostics/, code/summary/, code/dmr/,
+# dmr analysis/ -- QC/reporting/sibling pipelines, not part of rebuilding the
+# panel. See code/README.md.
 #
 # REMOVED 2026-07-23: the FY2025 row-filter helper (restrict_06_to_fy2025.R) was
 # deleted. Its outputs (data/processed/07_facility_month_panel_major_individual_

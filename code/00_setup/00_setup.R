@@ -17,7 +17,7 @@ REQUIRED_PACKAGES <- c(
   "data.table", "DBI", "duckdb",                 # data build / large-file reads
   "ggplot2", "scales", "cowplot",                # brief-generator figures
   "dplyr", "tidyr", "lubridate",                 # a handful of scripts
-  "openxlsx"                                     # code/summary/ workbooks
+  "openxlsx"                                     # code/summary/ & code/dmr/ workbooks
 )
 
 missing_pkgs <- REQUIRED_PACKAGES[!vapply(REQUIRED_PACKAGES, requireNamespace,
