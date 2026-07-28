@@ -15,6 +15,8 @@ guidance). Each file is self-contained; export any of them to PDF from VS Code w
 > [`../../02_cleaning/build_effluent_violations_npdes_month_panel.md`](../../02_cleaning/build_effluent_violations_npdes_month_panel.md)
 > for its README.
 
+A facility-month with no violation of a given kind no longer automatically gets 0. It gets 0 only if the facility was actually operating that month (FACILITY_OPERATING == 1, from step 01, passed through step 03); if it wasn't operating and no violation was recorded, it gets NA instead. A real recorded violation always wins over the operating flag
+
 | Step | Script | README | Adds |
 |---|---|---|---|
 | 01 | `01_build_facility_month_panel_major_individual.R` | [01](01_build_facility_month_panel_major_individual.md) | base facility×month spine + facility attributes + corrected `FACILITY_OPERATING` |
