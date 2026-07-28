@@ -2,24 +2,6 @@
 
 ** verified by Ali 07/28 **
 
-**updated 7/28: formal and informal now counted the SAME way — per raw row.**
-Previously formal counted **distinct actions** (`uniqueN(ENF_IDENTIFIER)`) while
-informal counted **raw rows** (`.N`/`sum(<flag>)`) — the two were deliberately on
-different grains. Per request, formal switched to the same per-row style informal
-already used: `N_FORMAL_ACTIONS` and its breakouts (`N_AFR`, `N_JDC`, `N_SCWAAPO`,
-`N_STAOCO`, `N_SCWAAO`, `N_309A`, `N_STATE_AFR`, `N_EPA_AFR`, `N_STATE_JDC`,
-`N_EPA_JDC`) now use `.N`/`sum(<condition>)` instead of `uniqueN(ENF_IDENTIFIER[...])`.
-**Consequence:** `N_FORMAL_ACTIONS` now over-counts relative to distinct actions for
-any action spanning more than one permit or `ENF_TYPE_CODE` (the formal file has 0
-exact-duplicate rows, so — unlike informal — this over-count is entirely
-multi-permit/multi-type fan-out, not literal duplication). **The penalty dollar
-columns are unaffected** (`FED_PENALTY`, `STATE_PENALTY`, `N_FED_PENALTY_ASSESSED`,
-`N_STATE_PENALTY_ASSESSED` still de-duplicate to one row per action before summing —
-see Assumption 5) — they are now on a **different grain** than `N_FORMAL_ACTIONS` and
-should not be compared 1:1 against it. See Assumption 1 below; verified by an actual
-run (2005–2025 panel): 13,348 formal action-rows placed on the panel, run-log
-identities (`N_STATE_AFR + N_EPA_AFR == N_AFR`, etc.) still hold.
-
 *Step 5 of the facility-by-month panel build. Input: step-04 panel + raw enforcement
 files. Output: the panel with formal/informal enforcement counts and penalty dollars.*
 
@@ -72,8 +54,7 @@ operating.
 
 ## Decisions and Assumptions
 
-1. **Both formal and informal are counted PER RAW ROW** (changed 7/28, per request;
-   formal previously counted distinct `ENF_IDENTIFIER` instead). Every row of either
+1. **Both formal and informal are counted PER RAW ROW**: Every row of either
    file counts as one action — `N_FORMAL_ACTIONS`/`N_INFORMAL_ACTIONS = .N`; breakouts
    via `sum(<condition>)`; never `uniqueN(ENF_IDENTIFIER[...])`. **Consequences:**
    formal's file has multiple rows per action (one per permit and/or per
