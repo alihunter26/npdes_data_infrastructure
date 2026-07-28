@@ -1,6 +1,6 @@
 # README — `02_add_inspections.R`
 
-** verified by Ali 7/17 **
+** verified by Ali 7/28 **
 
 **updated 7/21:** a facility-month with no inspection no longer automatically gets
 `0`. It gets `0` only if the facility was actually operating that month
@@ -28,9 +28,6 @@ public domain. `TODO:` download date. ☒ All data publicly available.
 | `data/processed/01_facility_month_panel_major_individual_2005_2025.csv` | `.csv` | `FACILITY_UIN`, `YEAR`, `MONTH`, `FACILITY_OPERATING` (step-01 spine) |
 | `data/raw/npdes_downloads/ICIS_FACILITIES.csv` | `.csv` | `NPDES_ID`, `FACILITY_UIN` (to rebuild the crosswalk) |
 | `data/raw/npdes_downloads/NPDES_INSPECTIONS.csv` | `.csv` | `NPDES_ID`, `ACTIVITY_ID`, `COMP_MONITOR_TYPE_CODE`, `STATE_EPA_FLAG`, `ACTUAL_BEGIN_DATE`, `ACTUAL_END_DATE` |
-
-> **Resolved 7/21:** step 01's `OUT_PATH` already writes with the `01_` prefix this
-> script expects — no manual rename needed between steps 01 and 02.
 
 ## Dataset list
 
