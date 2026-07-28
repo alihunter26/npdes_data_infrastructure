@@ -2,7 +2,7 @@
 
 ** verified by Ali 7/28 **
 
-**updated 7/28: added a `USE_PROXIES` config flag.** A single `TRUE`/`FALSE` toggle
+** `USE_PROXIES` config flag.** A single `TRUE`/`FALSE` toggle
 near the top of the script (with `YEAR_MIN`/`YEAR_MAX`/etc.) now controls whether the
 `use_operating_proxies()` correction runs at all. `TRUE` (default) applies it with all
 seven proxy sources on, reproducing the original correction exactly. `FALSE` uses
