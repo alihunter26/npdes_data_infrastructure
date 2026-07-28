@@ -1,10 +1,6 @@
 # README — `04_add_violations.R`
 
-**updated 7/21:** a facility-month with no violation of a given kind no longer
-automatically gets `0`. It gets `0` only if the facility was actually operating that
-month (`FACILITY_OPERATING == 1`, from step 01, passed through step 03); if it
-wasn't operating **and** no violation was recorded, it gets `NA` instead. A *real*
-recorded violation always wins over the operating flag (see Assumption 4).
+** verified by Ali  7/28 **
 
 *Step 4 of the facility-by-month panel build. Input: step-03 panel + raw
 schedule/event violation files. Output: the panel with PS/CS/SE violation counts.*
@@ -12,14 +8,7 @@ schedule/event violation files. Output: the panel with PS/CS/SE violation counts
 ## Overview
 
 Attaches per-facility-month counts of three violation types: **permit-schedule (PS)**,
-**compliance-schedule (CS)**, and **single-event (SE)**.
-
-> **Effluent (DMR) violations are no longer added here.** The TSS effluent columns
-> (`N_TSS_EFF_VIOLATIONS`, `N_TSS_EFF_D90/D80/E90`) moved to
-> [`06_add_effluent_violations.R`](06_add_effluent_violations.md), which now owns all
-> effluent-violation columns. The final panel is unchanged; only the step that adds
-> those columns moved. As a result, step 04 no longer streams the ~16 GB effluent file
-> and no longer needs `python3`/`unzip`.
+**compliance-schedule (CS)**, and **single-event (SE)**. Effluent violations are added in a separate file (step 06) because of the much larger file size.
 
 ## Data Availability and Provenance Statements
 
