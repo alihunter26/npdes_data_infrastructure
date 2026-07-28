@@ -1,17 +1,11 @@
 # README — `03_add_naics_sic.R`
 
-** verified by Ali 7/17 **
+** verified by Ali 7/28 **
 
-question (7/17): how many have multiple NAICS or SIC? script currently just does primary code -- should it include all?
-**resolved (7/21): yes.** 33 facilities had >1 NAICS code and 132 had >1 SIC code under
-the old primary-only rule (out of 7,511) — but that undercounted the true multiplicity,
-since it only surfaced multi-*permit* facilities with differing primary codes, not a
-single permit carrying >1 code. The script now includes **every** code per facility
+The script includes **every** code per facility
 (semicolon-joined, primary first); 449 facilities' NAICS_CODE/SIC_CODE changed as a
 result (161 now show >1 NAICS code, 466 show >1 SIC code), all other facilities and all
-other panel columns are unchanged. Verified: every previously-single code is preserved
-as the first entry in its facility's new value; row counts and NAICS/SIC coverage % are
-identical to before across steps 03-06.
+other panel columns are unchanged. The primary NAICS and SIC codes show as the first value in the list.
 
 *Step 3 of the facility-by-month panel build. Input: step-02 panel + raw NAICS/SIC.
 Output: the panel with all NAICS and all SIC codes per facility, primary code first.*
