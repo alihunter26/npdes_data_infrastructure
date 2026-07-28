@@ -23,7 +23,8 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 #
 # COLUMNS ADDED (integer counts unless noted; counted within each facility-month):
 #   -- FORMAL (from NPDES_FORMAL_ENFORCEMENT_ACTIONS.csv) --
-#   N_FORMAL_ACTIONS      - distinct formal enforcement actions (ENF_IDENTIFIER)
+#   N_FORMAL_ACTIONS      - formal enforcement action ROWS (per-row count, NOT
+#                           distinct ENF_IDENTIFIER -- see ASSUMPTION 1)
 #   N_AFR                 - ...of ACTIVITY_TYPE_CODE "AFR" (administrative formal)
 #   N_JDC                 - ...of ACTIVITY_TYPE_CODE "JDC" (judicial)
 #   N_SCWAAPO             - ...of ENF_TYPE_CODE "SCWAAPO" (State CWA Penalty AO)
@@ -37,16 +38,19 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 #   FED_PENALTY           - dollars assessed: sum of FED_PENALTY_ASSESSED_AMT
 #                           (once per action). NA if NO action carried a federal
 #                           amount; 0 ONLY when an amount was assessed at $0.
-#   N_FED_PENALTY_ASSESSED - # distinct actions carrying a (non-blank) federal amount
+#   N_FED_PENALTY_ASSESSED - # DISTINCT actions carrying a (non-blank) federal amount
+#                           -- a different grain than N_FORMAL_ACTIONS above; see
+#                           ASSUMPTION 5.
 #   STATE_PENALTY         - dollars assessed: sum of STATE_LOCAL_PENALTY_AMT
 #                           (once per action). NA if none assessed; 0 = assessed $0.
-#   N_STATE_PENALTY_ASSESSED - # distinct actions carrying a (non-blank) state amount
+#   N_STATE_PENALTY_ASSESSED - # DISTINCT actions carrying a (non-blank) state amount
+#                           -- same grain note as N_FED_PENALTY_ASSESSED above.
 #
 #   -- INFORMAL (from NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv) --
 #   N_INFORMAL_ACTIONS    - informal enforcement action ROWS (per-row count, NOT
 #                           distinct ENF_IDENTIFIER; incl. exact-duplicate rows -- see
-#                           ASSUMPTION 1a). Contrast with N_FORMAL_ACTIONS above, which
-#                           IS a distinct-action count.
+#                           ASSUMPTION 1). Same per-row counting style as
+#                           N_FORMAL_ACTIONS above (both changed together 2026-07-28).
 #   N_LOVWL               - ...of ENF_TYPE_CODE "LOVWL" (Letter of Violation/Warning)
 #   N_NOV                 - ...of ENF_TYPE_CODE "NOV"   (Notice of Violation)
 #   N_NONC                - ...of ENF_TYPE_CODE "NONC"  (Notice of Noncompliance)
@@ -57,22 +61,33 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 # ------------------------------------------------------------------------------
 # LABELED ASSUMPTIONS (read before using results):
 #
-#   1. FORMAL ACTION GRAIN = ENF_IDENTIFIER. One formal action is one ENF_IDENTIFIER.
-#      The formal file lists SEVERAL rows per action (one per permit and/or per
-#      enforcement-type it carries): ~112k rows but only ~104k distinct
-#      ENF_IDENTIFIERs, and ZERO exact-duplicate rows. So every FORMAL count is
-#      DISTINCT ENF_IDENTIFIER, never raw rows -- counting rows would over-count
-#      multi-permit / multi-type actions.
-#
-#   1a. INFORMAL IS COUNTED PER RAW ROW (deliberate override of the rule above,
-#      per PI decision). Each row of NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv counts
-#      as one action. NOTE THE CONSEQUENCE: ~42% of informal rows (345,822 of
-#      821,977) are BYTE-IDENTICAL duplicates (all 11 fields equal), so an action
-#      recorded 3x identically counts as 3. This is an intentional choice to treat
-#      every row as a separate action, NOT an oversight -- the exact-duplicate
-#      inflation (~1.7x vs distinct actions) is expected. If distinct-action counts
-#      are ever wanted instead, switch the informal .N / sum(...) back to
-#      uniqueN(ENF_IDENTIFIER[...]) in STEP 4.
+#   1. BOTH FORMAL AND INFORMAL ARE COUNTED PER RAW ROW (changed 2026-07-28, per
+#      request; formal previously counted DISTINCT ENF_IDENTIFIER instead -- see
+#      "PRIOR BEHAVIOR" below). Each row of NPDES_FORMAL_ENFORCEMENT_ACTIONS.csv /
+#      NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv counts as one action, full stop --
+#      STEP 3a/STEP 4 use `.N` / `sum(<condition>)`, never `uniqueN(ENF_IDENTIFIER)`.
+#      CONSEQUENCES, KNOWN AND ACCEPTED:
+#        - FORMAL: the formal file lists SEVERAL rows per action (one per permit
+#          and/or per enforcement-type it carries) -- ~112k rows but only ~104k
+#          distinct ENF_IDENTIFIERs. So N_FORMAL_ACTIONS now over-counts relative
+#          to distinct actions for any action spanning >1 permit or >1 type; the
+#          formal file has ZERO exact-duplicate rows, so unlike informal below,
+#          this over-count is entirely multi-permit/multi-type fan-out, not literal
+#          duplication.
+#        - INFORMAL: ~42% of informal rows (345,822 of 821,977) are BYTE-IDENTICAL
+#          duplicates (all 11 fields equal), so an action recorded 3x identically
+#          counts as 3 (~1.7x inflation vs. distinct actions).
+#      PRIOR BEHAVIOR (before 2026-07-28): formal counted DISTINCT ENF_IDENTIFIER
+#      (to avoid the multi-permit/multi-type over-count above) while informal
+#      counted raw rows (per PI decision, to include the exact-duplicate rows) --
+#      the two were deliberately on DIFFERENT grains. If that asymmetry is ever
+#      wanted back, switch STEP 3a's `.N` / `sum(<condition>)` calls back to
+#      `uniqueN(ENF_IDENTIFIER[<condition>])`, matching STEP 4's comment for the
+#      informal-side equivalent.
+#      NOTE: this does NOT affect the penalty dollar columns (FED_PENALTY,
+#      STATE_PENALTY, N_FED_PENALTY_ASSESSED, N_STATE_PENALTY_ASSESSED) -- those
+#      still de-duplicate to one row per action (STEP 3b), since summing a shared
+#      penalty across an action's raw rows would multiply it. See ASSUMPTION 5.
 #
 #   2. TYPE / ACTIVITY BREAKOUTS CAN OVERLAP (per PI naming of the columns). A
 #      single action may carry more than one ENF_TYPE_CODE across its rows, so an
@@ -197,27 +212,34 @@ f_raw <- rd("NPDES_FORMAL_ENFORCEMENT_ACTIONS.csv",
 fp <- prep_actions(f_raw, "SETTLEMENT_ENTERED_DATE")
 formal <- fp$dt
 
-# 3a. Distinct-action counts per facility-month (ASSUMPTIONS 1-2).
+# 3a. PER-ROW counts per facility-month (ASSUMPTION 1, updated 2026-07-28 to match
+#     informal's counting style below -- see that assumption for what this changes).
 formal_counts <- formal[, .(
-    N_FORMAL_ACTIONS = uniqueN(ENF_IDENTIFIER),
-    N_AFR            = uniqueN(ENF_IDENTIFIER[ACTIVITY_TYPE_CODE == "AFR"]),
-    N_JDC            = uniqueN(ENF_IDENTIFIER[ACTIVITY_TYPE_CODE == "JDC"]),
-    N_SCWAAPO        = uniqueN(ENF_IDENTIFIER[ENF_TYPE_CODE == "SCWAAPO"]),
-    N_STAOCO         = uniqueN(ENF_IDENTIFIER[ENF_TYPE_CODE == "STAOCO"]),
-    N_SCWAAO         = uniqueN(ENF_IDENTIFIER[ENF_TYPE_CODE == "SCWAAO"]),
-    N_309A           = uniqueN(ENF_IDENTIFIER[ENF_TYPE_CODE == "309A"]),
-    N_STATE_AFR      = uniqueN(ENF_IDENTIFIER[ACTIVITY_TYPE_CODE == "AFR" & AGENCY == "State"]),
-    N_EPA_AFR        = uniqueN(ENF_IDENTIFIER[ACTIVITY_TYPE_CODE == "AFR" & AGENCY == "EPA"]),
-    N_STATE_JDC      = uniqueN(ENF_IDENTIFIER[ACTIVITY_TYPE_CODE == "JDC" & AGENCY == "State"]),
-    N_EPA_JDC        = uniqueN(ENF_IDENTIFIER[ACTIVITY_TYPE_CODE == "JDC" & AGENCY == "EPA"])
+    N_FORMAL_ACTIONS = .N,
+    N_AFR            = sum(ACTIVITY_TYPE_CODE == "AFR"),
+    N_JDC            = sum(ACTIVITY_TYPE_CODE == "JDC"),
+    N_SCWAAPO        = sum(ENF_TYPE_CODE == "SCWAAPO"),
+    N_STAOCO         = sum(ENF_TYPE_CODE == "STAOCO"),
+    N_SCWAAO         = sum(ENF_TYPE_CODE == "SCWAAO"),
+    N_309A           = sum(ENF_TYPE_CODE == "309A"),
+    N_STATE_AFR      = sum(ACTIVITY_TYPE_CODE == "AFR" & AGENCY == "State"),
+    N_EPA_AFR        = sum(ACTIVITY_TYPE_CODE == "AFR" & AGENCY == "EPA"),
+    N_STATE_JDC      = sum(ACTIVITY_TYPE_CODE == "JDC" & AGENCY == "State"),
+    N_EPA_JDC        = sum(ACTIVITY_TYPE_CODE == "JDC" & AGENCY == "EPA")
   ), by = .(facility_id, YEAR, MONTH)]
 
 # 3b. Penalties: one dollar figure per action first (ASSUMPTION 5), then sum.
-#     De-duplicate to one row per (facility, month, action) taking the max of any
-#     per-row copies of the amount (NA-preserving), so a shared penalty is counted
-#     exactly once and an action with no amount stays NA rather than $0. The sum is
-#     NA-preserving too: a facility-month becomes NA unless at least one action
-#     carried an amount. N_*_PENALTY_ASSESSED counts the actions that did.
+#     UNLIKE the per-row counts in 3a above, this step still de-duplicates to one
+#     row per (facility, month, ENF_IDENTIFIER) -- deliberately, not an oversight:
+#     the same dollar amount is repeated on every row of a multi-row action, so
+#     summing raw rows here (matching 3a) would multiply a shared penalty by
+#     however many rows/permits/types that action happened to span. Taking the max
+#     of any per-row copies of the amount (NA-preserving) keeps a shared penalty
+#     counted exactly once, and an action with no amount stays NA rather than $0.
+#     The sum is NA-preserving too: a facility-month becomes NA unless at least one
+#     action carried an amount. N_*_PENALTY_ASSESSED counts the DISTINCT actions
+#     that did -- so it is NOT on the same grain as N_FORMAL_ACTIONS (3a, per-row)
+#     and the two should not be compared 1:1.
 formal[, `:=`(fed = to_dollars(FED_PENALTY_ASSESSED_AMT),
               stt = to_dollars(STATE_LOCAL_PENALTY_AMT))]
 formal_pen_action <- formal[, .(fed = max_assessed(fed), stt = max_assessed(stt)),
@@ -239,13 +261,12 @@ i_raw <- rd("NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv",
 ip <- prep_actions(i_raw, "ACHIEVED_DATE")
 informal <- ip$dt
 
-# PER-ROW COUNT (deliberate; see ASSUMPTION 1a). UNLIKE the formal counts above,
-# informal actions are counted as RAW ROWS (.N / sum(<flag>)), NOT distinct
-# ENF_IDENTIFIERs: each row of NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv counts as one
-# action, INCLUDING the ~42% of rows that are byte-identical duplicates. The only
-# change from distinct-action counting is uniqueN(ENF_IDENTIFIER[...]) -> .N / sum(...);
-# routing, dating and windowing are untouched. (ENF_TYPE_CODE and OFFICIAL_FLG have no
-# NA/blank values in the source, so the flag sums cannot silently become NA.)
+# PER-ROW COUNT (deliberate; see ASSUMPTION 1). SAME counting style as the formal
+# counts above: informal actions are counted as RAW ROWS (.N / sum(<flag>)), NOT
+# distinct ENF_IDENTIFIERs -- each row of NPDES_INFORMAL_ENFORCEMENT_ACTIONS.csv
+# counts as one action, INCLUDING the ~42% of rows that are byte-identical
+# duplicates. (ENF_TYPE_CODE and OFFICIAL_FLG have no NA/blank values in the
+# source, so the flag sums cannot silently become NA.)
 informal_counts <- informal[, .(
     N_INFORMAL_ACTIONS    = .N,
     N_LOVWL               = sum(ENF_TYPE_CODE == "LOVWL"),
@@ -322,7 +343,7 @@ message("Informal actions dropped for no/parse date       : ", ip$n_no_date)
 # na.rm = TRUE throughout: non-operating months are now legitimately NA
 # (FACILITY_OPERATING == 0), so these sums/identities are computed over the
 # operating rows only, same as before this change for every operating row.
-message("Formal actions placed on panel                   : ", sum(panel$N_FORMAL_ACTIONS, na.rm = TRUE),
+message("Formal action ROWS on panel (per-row; multi-permit/type incl.): ", sum(panel$N_FORMAL_ACTIONS, na.rm = TRUE),
         "  (AFR ", sum(panel$N_AFR, na.rm = TRUE), " / JDC ", sum(panel$N_JDC, na.rm = TRUE), ")")
 message("  SCWAAPO / STAOCO / SCWAAO / 309A               : ",
         sum(panel$N_SCWAAPO, na.rm = TRUE), " / ", sum(panel$N_STAOCO, na.rm = TRUE), " / ",

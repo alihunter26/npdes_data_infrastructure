@@ -174,24 +174,36 @@ step 04).
 
 ## 5 · Enforcement (step 05)
 
-Formal and informal enforcement are counted **differently, by design** — this is the
-single most important thing to know about this section.
+**Updated 2026-07-28:** formal and informal are now counted the **SAME way — per raw
+row** (`.N` / `sum(<condition>)`, never `uniqueN(ENF_IDENTIFIER)`). Previously formal
+counted distinct actions while informal counted raw rows — the two were deliberately
+on different grains; per request, formal switched to informal's per-row style. This is
+the single most important thing to know about this section.
 
-- **Formal** = distinct actions (`uniqueN(ENF_IDENTIFIER)`). Dated
-  `SETTLEMENT_ENTERED_DATE` (~97% present).
+- **Formal** = **per raw row**. Dated `SETTLEMENT_ENTERED_DATE` (~97% present).
+  Consequence: the formal file has multiple rows per action (one per permit and/or
+  per `ENF_TYPE_CODE`) — 111,816 rows vs. 103,989 distinct `ENF_IDENTIFIER`s, with
+  **0 exact-duplicate rows** — so `N_FORMAL_ACTIONS` now over-counts relative to
+  distinct actions for any action spanning >1 permit or >1 type (entirely
+  multi-permit/multi-type fan-out, not literal duplication).
 - **Informal** = **per raw row** (`.N` / `sum(<flag>)`), **not** deduplicated to
   distinct `ENF_IDENTIFIER` — a deliberate PI decision, not an oversight. The informal
   source file is 42% byte-identical duplicate rows (345,822 of 821,977); under
   per-row counting an action recorded 3× identically counts as 3. This inflates
   informal totals ≈1.7× vs. distinct-action counting (93,470 informal rows vs. 56,356
-  distinct actions, on this panel). Dated `ACHIEVED_DATE` (~99% present).
+  distinct actions, on an earlier panel build). Dated `ACHIEVED_DATE` (~99% present).
+- **Penalty dollars are the one exception, still distinct-action grain:**
+  `FED_PENALTY`/`STATE_PENALTY`/`N_FED_PENALTY_ASSESSED`/`N_STATE_PENALTY_ASSESSED`
+  still de-duplicate to one row per action before summing (summing a shared penalty
+  across an action's raw rows would multiply it) — so these four are on a
+  **different grain** than `N_FORMAL_ACTIONS` and shouldn't be compared 1:1 against it.
 
 Both routed via `NPDES_ID` through the step-01 crosswalk; an action on any permit
 resolving to the facility counts.
 
 | # | Column | Type | Description |
 |---|---|---|---|
-| 34 | `N_FORMAL_ACTIONS` | integer / NA | All distinct formal enforcement actions. |
+| 34 | `N_FORMAL_ACTIONS` | integer / NA | **Raw-row count** of formal enforcement records (see design note above — not distinct actions; a multi-permit/multi-type action's rows each count separately). |
 | 35 | `N_AFR` | integer / NA | Formal actions with `ACTIVITY_TYPE_CODE == "AFR"` (administrative formal). |
 | 36 | `N_JDC` | integer / NA | Formal actions with `ACTIVITY_TYPE_CODE == "JDC"` (judicial). |
 | 37 | `N_SCWAAPO` | integer / NA | Formal actions with `ENF_TYPE_CODE == "SCWAAPO"`. |
@@ -203,9 +215,9 @@ resolving to the facility counts.
 | 43 | `N_STATE_JDC` | integer / NA | `JDC` actions led by a state agency. |
 | 44 | `N_EPA_JDC` | integer / NA | `JDC` actions led by EPA. `N_STATE_JDC + N_EPA_JDC == N_JDC`. |
 | 45 | `FED_PENALTY` | numeric $ / NA | Sum of federal penalty dollars (`FED_PENALTY_ASSESSED_AMT`) across the facility-month's formal actions, penalty de-duplicated to one value per action first. **NA means "not assessed," not "$0."** Blanks vastly outnumber true zeros (~107k blank vs. 72 genuine federal $0s). NA is independent of `FACILITY_OPERATING` — it's about whether an amount was ever assessed; unaffected by the window correction. |
-| 46 | `N_FED_PENALTY_ASSESSED` | integer | Count of distinct formal actions carrying a non-blank federal penalty amount. |
+| 46 | `N_FED_PENALTY_ASSESSED` | integer | Count of distinct formal actions carrying a non-blank federal penalty amount — a different grain than `N_FORMAL_ACTIONS` (row 34, per-row); not directly comparable. |
 | 47 | `STATE_PENALTY` | numeric $ / NA | Same as `FED_PENALTY` for `STATE_LOCAL_PENALTY_AMT` (~64k blank vs. 768 genuine state $0s). |
-| 48 | `N_STATE_PENALTY_ASSESSED` | integer | Count of distinct formal actions carrying a non-blank state penalty amount. |
+| 48 | `N_STATE_PENALTY_ASSESSED` | integer | Count of distinct formal actions carrying a non-blank state penalty amount — same different-grain note as row 46. |
 | 49 | `N_INFORMAL_ACTIONS` | integer / NA | **Raw-row count** of informal enforcement records (see design note above — not distinct actions). |
 | 50 | `N_LOVWL` | integer / NA | Informal rows, `ENF_TYPE_CODE == "LOVWL"` (Letter of Violation / Warning Letter). |
 | 51 | `N_NOV` | integer / NA | Informal rows, `"NOV"` (Notice of Violation). |
