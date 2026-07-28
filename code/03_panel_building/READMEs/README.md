@@ -2,20 +2,16 @@
 
 This folder documents the six numbered scripts in `code/03_panel_building/` that build
 the **facility-by-month panel** of major, individually-permitted NPDES facilities,
-2005–2025. There is one README per script, written to the
-[Social Science Data Editors](https://social-science-data-editors.github.io/guidance/)
-template (and the Colmer lab
-[Making-a-Replication-Package](https://github.com/jonathancolmer/lab-guide/wiki/Making-a-Replication-Package)
-guidance). Each file is self-contained; export any of them to PDF from VS Code with
+2005–2025. Each file is self-contained; export any of them to PDF from VS Code with
 *Markdown PDF: Export (pdf)*.
 
 > The prerequisite script, `build_effluent_violations_npdes_month_panel.R` (condensed
-> permit×month effluent-violation panel — must run before step 01), now lives in
-> [`code/02_cleaning/`](../../02_cleaning/) (moved 2026-07-27), not here — see
+> permit×month effluent-violation panel — must run before step 01), lives in
+> [`code/02_cleaning/`](../../02_cleaning/)— see
 > [`../../02_cleaning/build_effluent_violations_npdes_month_panel.md`](../../02_cleaning/build_effluent_violations_npdes_month_panel.md)
 > for its README.
 
-A facility-month with no violation of a given kind no longer automatically gets 0. It gets 0 only if the facility was actually operating that month (FACILITY_OPERATING == 1, from step 01, passed through step 03); if it wasn't operating and no violation was recorded, it gets NA instead. A real recorded violation always wins over the operating flag
+A facility-month with no violation of a given kind does not automatically get a 0. It gets 0 only if the facility was actually operating that month (FACILITY_OPERATING == 1, from step 01, passed through step 03); if it wasn't operating and no violation was recorded, it gets NA instead. The base 01 build script uses permit dates to determine operating status
 
 | Step | Script | README | Adds |
 |---|---|---|---|
