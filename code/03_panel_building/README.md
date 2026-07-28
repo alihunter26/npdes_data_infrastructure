@@ -27,7 +27,7 @@ the next.
 > now runs **inside step 01** — it only ever needed to know whether/when a facility had
 > *any* real event (not the full detailed counts), so it doesn't need to wait for
 > steps 02–06 to run first. See [`READMEs/01_build_facility_month_panel_major_individual.md`](READMEs/01_build_facility_month_panel_major_individual.md),
-> Assumptions 10–13.
+> Assumption 10.
 
 **Per-script documentation** — inputs, outputs, and every decision/assumption — lives in
 [`READMEs/`](READMEs/README.md) (SSDE-style, one file per script).
@@ -47,12 +47,12 @@ the next.
 
 - `summarize_violation_types.R` — tabulates violation-type frequencies → `output/tables/`.
 - `use_operating_proxies.R` — defines `use_operating_proxies()`, the event-based
-  `FACILITY_OPERATING` window-extension logic (step 01's Assumptions 10–13), factored
+  `FACILITY_OPERATING` window-extension logic (step 01's Assumption 10), factored
   out into its own function with an on/off switch per proxy source (inspections,
   PS/CS/SE violations, formal/informal enforcement, effluent — all default `TRUE`,
-  reproducing the original correction exactly). **This is the only place the six
+  reproducing the original correction exactly). **This is the only place the seven
   event/proxy sources get used** — step 01 itself builds the baseline window from
-  permit paperwork dates alone (`ICIS_PERMITS.csv`) and never reads any of these six
+  permit paperwork dates alone (`ICIS_PERMITS.csv`) and never reads any of these seven
   directly; it just calls this function afterward to extend that window. Sourced and
   called by step 01; see
   [`READMEs/01_build_facility_month_panel_major_individual.md`](READMEs/01_build_facility_month_panel_major_individual.md).

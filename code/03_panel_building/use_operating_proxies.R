@@ -11,7 +11,7 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 # Defines one function, use_operating_proxies(), which is "Layer 2" of the
 # FACILITY_OPERATING correction in
 # 01_build_facility_month_panel_major_individual.R (that script's LABELED
-# ASSUMPTIONS 10-13). It used to be written inline inside that script; it was
+# ASSUMPTION 10). It used to be written inline inside that script; it was
 # pulled out here so that WHICH sources of evidence count as "real activity"
 # can be turned on or off from wherever this function is called, without
 # editing script 01 itself.
@@ -29,7 +29,31 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 # paperwork-based window? If so, that month (and everything between it and the
 # original window) gets folded in.
 #
-# WHAT "PROXIES" MEANS HERE: none of these six sources directly measure
+# MEASURED EVIDENCE THIS IS BASED ON (not hypothetical). On an earlier build of
+# 01_build_facility_month_panel_major_individual.R that used the permit-only
+# window directly as FACILITY_OPERATING, 12.66% of its FACILITY_OPERATING==0
+# rows (32,033 of 253,028) still carried a real recorded event downstream --
+# direct proof the facility was active. 75.9% of those were >12 months outside
+# the computed window (median 31, max 250 months); 2,381 of 7,511 facilities
+# (32%) were affected. ROOT CAUSE (confirmed): permits with PERMIT_STATUS_CODE
+# == "ADC" have their EXPIRATION_DATE read as a real closing date by that
+# script's ASSUMPTION 2 anyway, since ICIS_PERMITS carries no field marking a
+# facility's true open/close independent of permit paperwork. Example:
+# facility 110006619212 / permit NH0100455, EXPIRATION_DATE = 01/29/2005,
+# PERMIT_STATUS_CODE = "ADC", no TERMINATION_DATE/RETIREMENT_DATE -- its
+# permit-only window closes at the start of the panel even though it has real
+# recorded events up to 250 months later. 86.7% of the 8,007 permits linked to
+# this panel's facilities carry ADC status at some point.
+#
+# THE FIX, PER FACILITY (per PI decision): extend the window to cover any real
+# event, in both directions --
+#   new_start = min(permit-window start, first month with a real event)
+#   new_end   = max(permit-window end,   last month with a real event)
+# FACILITY_OPERATING = 1 iff the month falls in [new_start, new_end]. This can
+# only GROW a window, never shrink one -- a facility with zero recorded events
+# anywhere keeps its permit-only window unchanged.
+#
+# WHAT "PROXIES" MEANS HERE: none of these seven sources directly measure
 # whether a facility is operating -- they're all indirect evidence
 # ("proxies") that it must have been, since none of them can happen at a
 # facility that doesn't exist or isn't active. That's also why this function

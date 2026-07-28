@@ -88,7 +88,7 @@ separate column, **`FACILITY_OPERATING_PERMIT_WINDOW`** (column 8) — see its e
 below. Full detail, every labeled assumption, and the worked example (facility
 `110006619212`) are in
 [`code/03_panel_building/READMEs/01_build_facility_month_panel_major_individual.md`](../code/03_panel_building/READMEs/01_build_facility_month_panel_major_individual.md)
-(Assumptions 10–13) and `docs/notes.md`.
+(Assumption 10; see also `code/03_panel_building/use_operating_proxies.R`) and `docs/notes.md`.
 
 **One residual limitation to know:** a facility whose panel life shows **zero**
 recorded events anywhere (no inspections, violations, enforcement, or effluent
@@ -249,7 +249,7 @@ and routed via the step-01 crosswalk.
 | 31 | `N_TSS_EFF_D90` | integer / NA | TSS subset, `D90` code. |
 | 32 | `N_TSS_EFF_D80` | integer / NA | TSS subset, `D80` code. |
 | 33 | `N_TSS_EFF_E90` | integer / NA | TSS subset, `E90` code — genuine measured exceedances of the TSS limit. |
-| 56 | `n_D80` | integer / NA | All-parameter `D80` count, from the pre-built condensed monthly panel (`effluent_violations_npdes_month_panel_2005_2025.csv`); already de-duplicated to distinct underlying violations (latest DMR resubmission version only) at source. This is the same file step 01 reads for its event-existence check (Assumption 12). |
+| 56 | `n_D80` | integer / NA | All-parameter `D80` count, from the pre-built condensed monthly panel (`effluent_violations_npdes_month_panel_2005_2025.csv`); already de-duplicated to distinct underlying violations (latest DMR resubmission version only) at source. This is the same file step 01 reads for its event-existence check (Assumption 10; see `code/03_panel_building/use_operating_proxies.R`). |
 | 57 | `n_D90` | integer / NA | All-parameter `D90` count. |
 | 58 | `n_E90` | integer / NA | All-parameter `E90` count. |
 
@@ -287,7 +287,7 @@ two effluent blocks are not adjacent in column order.
   identically in each downstream step; an event on *any* individual permit ever linked
   to the facility counts toward that facility, not just the major one(s). Step 01
   itself builds this crosswalk **twice** — once restricted (for the spine), once
-  unrestricted (for the event-existence scan) — see its README, Assumption 13.
+  unrestricted (for the event-existence scan) — see its README, Assumption 10.
 - **Two operating flags, one intended for use** — `FACILITY_OPERATING` (corrected,
   column 7) is what analysis should use; `FACILITY_OPERATING_PERMIT_WINDOW` (column 8)
   is the original permit-date-only version, kept for traceability/audit only.

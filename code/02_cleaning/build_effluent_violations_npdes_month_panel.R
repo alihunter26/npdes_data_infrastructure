@@ -14,7 +14,8 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # existing before they can run:
 #   - 01_build_facility_month_panel_major_individual.R uses it for a quick
 #     "did this facility have ANY effluent violation this month" existence
-#     check (see that script's LABELED ASSUMPTION 12).
+#     check (see that script's LABELED ASSUMPTION 10, and
+#     code/03_panel_building/use_operating_proxies.R where this check actually runs).
 #   - 06_add_effluent_violations.R uses it for the actual violation COUNTS
 #     that go into the final panel.
 # Because of that, `run_all.R` must run this script FIRST, before step 01 --

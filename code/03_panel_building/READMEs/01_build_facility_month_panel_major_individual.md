@@ -1,6 +1,6 @@
 # README — `01_build_facility_month_panel_major_individual.R`
 
-**updated 7/27: the Assumption 10–13 correction moved to its own file.** The
+**updated 7/27: the Assumption 10 correction moved to its own file.** The
 event-scanning/window-extension logic (previously written inline as this script's
 STEP 6B/6C) now lives in `use_operating_proxies.R`, as a function,
 `use_operating_proxies()`, with an on/off switch per proxy source (all seven default
@@ -21,7 +21,7 @@ every event type already assembled — but it only ever needed to know *whether 
 when* a facility had *any* real event, not the full detailed counts, so that check now
 runs here directly. `FACILITY_OPERATING` (the name downstream scripts use) is the
 **corrected** flag from the moment it's created; the original permit-only flag is
-preserved as `FACILITY_OPERATING_PERMIT_WINDOW`. See Assumptions 10–13 below. The
+preserved as `FACILITY_OPERATING_PERMIT_WINDOW`. See Assumption 10 below. The
 retired step 07 found: 12.66% of `FACILITY_OPERATING==0` rows carried a real event
 anyway (32,033 of 253,028), 2,381 of 7,511 facilities (32%) affected, root cause =
 permits in Administrative Continuance (`PERMIT_STATUS_CODE == "ADC"`). This script now
@@ -73,7 +73,7 @@ externally — see below). `TODO:` record download date / ECHO refresh version.
 | File | Format | Key fields used |
 |---|---|---|
 | `data/raw/npdes_downloads/ICIS_PERMITS.csv` | `.csv` | `EXTERNAL_PERMIT_NMBR`, `PERMIT_TYPE_CODE`, `MAJOR_MINOR_STATUS_FLAG`, `EFFECTIVE_DATE`, `ISSUE_DATE`, `ORIGINAL_ISSUE_DATE`, `EXPIRATION_DATE`, `TERMINATION_DATE`, `RETIREMENT_DATE` (one row per permit **version**) |
-| `data/raw/npdes_downloads/ICIS_FACILITIES.csv` | `.csv` | `NPDES_ID`, `FACILITY_UIN`, `FACILITY_TYPE_CODE`, `FACILITY_NAME`, `LOCATION_ADDRESS`, `CITY`, `STATE_CODE`, `ZIP`, `COUNTY_CODE`, `GEOCODE_LATITUDE`, `GEOCODE_LONGITUDE` (one row per `NPDES_ID`); also read a **second, unrestricted** time for the event-existence crosswalk (see Assumption 13) |
+| `data/raw/npdes_downloads/ICIS_FACILITIES.csv` | `.csv` | `NPDES_ID`, `FACILITY_UIN`, `FACILITY_TYPE_CODE`, `FACILITY_NAME`, `LOCATION_ADDRESS`, `CITY`, `STATE_CODE`, `ZIP`, `COUNTY_CODE`, `GEOCODE_LATITUDE`, `GEOCODE_LONGITUDE` (one row per `NPDES_ID`); also read a **second, unrestricted** time for the event-existence crosswalk (see Assumption 10) |
 | `data/raw/npdes_downloads/NPDES_INSPECTIONS.csv` | `.csv` | `NPDES_ID`, `ACTUAL_BEGIN_DATE`, `ACTUAL_END_DATE` — existence only |
 | `data/raw/npdes_downloads/NPDES_PS_VIOLATIONS.csv`, `NPDES_CS_VIOLATIONS.csv` | `.csv` | `NPDES_ID`, `SCHEDULE_DATE` — existence only |
 | `data/raw/npdes_downloads/NPDES_SE_VIOLATIONS.csv` | `.csv` | `NPDES_ID`, `SINGLE_EVENT_VIOLATION_DATE` — existence only |
@@ -101,7 +101,7 @@ externally — see below). `TODO:` record download date / ECHO refresh version.
 - **Controlled randomness:** none — no PRNG, no seed.
 - **No `python3`/`unzip` needed** — unlike step 06, this script never streams the raw
   ~16 GB `NPDES_EFF_VIOLATIONS.csv`; it uses only the pre-built condensed effluent
-  panel (see Assumption 12).
+  panel (see Assumption 10).
 - **Memory/runtime:** measured ~1:48 wall time (8 GB-RAM machine) — heavier than
   before the 7/23 change (was a few minutes) since it now also reads the five
   additional raw event sources, but far cheaper than re-running the full 02–06 chain
@@ -116,11 +116,11 @@ externally — see below). `TODO:` record download date / ECHO refresh version.
 4. Determine facility eligibility and each facility's permit-only window; also build a
    **second, unrestricted** `NPDES_ID → facility_id` crosswalk from a fresh read of
    `ICIS_FACILITIES` (every permit type, not just individual/major-eligible — see
-   Assumption 13) for routing the event-existence scan.
+   Assumption 10) for routing the event-existence scan.
 5. Build the facility attribute snapshot (unchanged from before 7/23).
-6. Call `use_operating_proxies()` (in `use_operating_proxies.R`), which scans the six
-   raw event sources and the condensed effluent panel for *existence only* and
-   extends each facility's window to cover any real event, both directions.
+6. Call `use_operating_proxies()` (in `use_operating_proxies.R`), which scans the seven
+   raw/derived event sources for *existence only* and extends each facility's window
+   to cover any real event, both directions.
 7. Build the complete facility × month grid, clip to the panel window, and compute
    both `FACILITY_OPERATING` (corrected) and `FACILITY_OPERATING_PERMIT_WINDOW`
    (original) plus the time-invariant facility attributes.
@@ -128,8 +128,9 @@ externally — see below). `TODO:` record download date / ECHO refresh version.
 
 ## Decisions and Assumptions
 
-The script states thirteen numbered assumptions (1–9 predate the 7/23 change; 10–13
-are new):
+The script states ten numbered assumptions (1–9 predate the 7/23 change; 10 is new,
+and as of 7/27 its actual scanning/extension logic lives in `use_operating_proxies.R`
+— see that file's own header for the full explanation):
 
 1. **Ever-major, not always-major.** A facility qualifies if *any* linked individual
    permit bore the `M` (major) flag in *any* version — not a requirement that it was
@@ -163,60 +164,21 @@ are new):
    latest-close window, unioned across permits and clipped to the panel window, used
    to decide facility eligibility in Assumptions 2–4). Preserved for traceability —
    **not** the column downstream scripts should use; see Assumption 10.
-10. **Why there's a second, corrected flag — measured, not hypothetical.** On the
-    build that used Assumption 9's flag directly as `FACILITY_OPERATING`, 12.66% of
-    its `FACILITY_OPERATING==0` rows (32,033 of 253,028) still carried a real
-    recorded event downstream — direct proof the facility was active. 75.9% of those
-    were >12 months outside the computed window (median 31, max 250 months); 2,381 of
-    7,511 facilities (32%) were affected. **Root cause (confirmed):** permits with
-    `PERMIT_STATUS_CODE == "ADC"` (Administrative Continuance — legally still active
-    past the nominal `EXPIRATION_DATE` while a renewal is pending) have that
-    `EXPIRATION_DATE` read as a real closing date by Assumption 2 anyway, since
-    `ICIS_PERMITS` carries no field marking a facility's true open/close independent
-    of permit paperwork. Example: facility `110006619212` / permit `NH0100455`,
-    `EXPIRATION_DATE = 01/29/2005`, `PERMIT_STATUS_CODE = "ADC"`, no
-    `TERMINATION_DATE`/`RETIREMENT_DATE` — its permit-only window closes at the start
-    of the panel even though it has real recorded events up to 250 months later. 86.7%
-    of the 8,007 permits linked to this panel's facilities carry `ADC` status at some
-    point.
-11. **The fix: extend the window to cover any real event, both directions** (per PI
-    decision). Per facility: `new_start = min(permit-window start, first month with a
-    real event)`, `new_end = max(permit-window end, last month with a real event)`.
-    `FACILITY_OPERATING = 1` iff the month falls in `[new_start, new_end]`. This can
-    only grow a window, never shrink one — a facility with zero recorded events
-    anywhere keeps its Assumption-9 window unchanged.
-12. **"Real event" means existence, not the detailed counts.** This script only needs
-    to know *whether and when* a facility had any inspection, PS/CS/SE violation,
-    formal/informal enforcement action, or effluent violation — not the type/agency/
-    code breakdowns scripts 02/04/05/06 still compute in full, and not exact counts.
-    Same date fields/rules those scripts use (see Dataset list above). Deliberately
-    does **not** stream the raw ~16 GB `NPDES_EFF_VIOLATIONS.csv` that script 06 uses
-    for its TSS-specific subset: **verified empirically** (on the panel this
-    correction was originally developed against) that zero facility-months have a
-    positive TSS-subset violation while the condensed all-parameter panel
-    (`n_D80`/`n_D90`/`n_E90`) shows nothing — the condensed panel is already a
-    complete proxy for "any effluent event," so this script needs neither `python3`
-    nor `unzip`.
-13. **Routed by a crosswalk built from the FULL, unrestricted `ICIS_FACILITIES`** —
-    every `NPDES_ID` (any permit type), not the narrower crosswalk implicit in this
-    script's own `permits`-filtered facility table. **Bug caught during
-    implementation:** an earlier version derived the event-routing crosswalk from the
-    already-individual/major-restricted facility table, which silently dropped events
-    recorded under a qualifying facility's *other* (general/minor) permits — this
-    undercounted the correction (2,305 facilities extended instead of 2,381). Fixed by
-    reading `ICIS_FACILITIES` a second, unrestricted time for this crosswalk,
-    matching exactly how scripts 02/04/05/06 each build theirs. Verified: reproduces
-    the originally-measured 2,381/1,749,567/143,205 figures exactly.
-
-**2026-07-27: Assumptions 10–12's scanning/extension logic extracted to
-`use_operating_proxies.R`.** This script now just calls
-`use_operating_proxies(qual_fac, xwalk, raw_dir = RAW_DIR, eff_path = EFF_PATH, year_min
-= YEAR_MIN, year_max = YEAR_MAX)` with every source left at its default (`TRUE`) —
-reproducing this same correction exactly (verified: an isolated side-by-side run of the
-old inline code and the new function, on identical input, produced `identical()`
-results for every facility). The seven `use_*` arguments (one per proxy source) let a
-different mix of evidence be tried without editing this script — see that file's own
-header.
+10. **`FACILITY_OPERATING` (the corrected flag) additionally extends this permit-only
+    window over any month with independent proof the facility was still operating**
+    (an inspection, PS/CS/SE violation, formal/informal enforcement action, or
+    effluent violation) — computed by `use_operating_proxies()` in
+    `use_operating_proxies.R`, called as
+    `use_operating_proxies(qual_fac, xwalk, raw_dir = RAW_DIR, eff_path = EFF_PATH,
+    year_min = YEAR_MIN, year_max = YEAR_MAX)` with every one of its seven `use_*`
+    switches left at its default (`TRUE`), reproducing the original correction exactly
+    (verified: an isolated side-by-side run of the old inline code and the new
+    function, on identical input, produced `identical()` results for every facility).
+    A different mix of evidence can be tried without editing this script — see
+    `use_operating_proxies.R`'s own header for the full explanation, the measured
+    evidence motivating this correction (12.66% of `FACILITY_OPERATING==0` rows
+    carrying a real event anyway), and its root cause (permits in Administrative
+    Continuance).
 
 **Sample / filter definitions**
 - *Major:* `MAJOR_MINOR_STATUS_FLAG == "M"` at least once in the permit's version history.
@@ -252,7 +214,7 @@ state exclusion set `{AK, HI, PR, VI, GU, AS, MP}`.
 
 `FACILITY_UIN`, `YEAR`, `MONTH`, `NPDES_ID` (semicolon list of linked individual
 permits), `MAJOR_MINOR_FLAG` (semicolon list), `PERMIT_TYPE_FLAG`, `FACILITY_OPERATING`
-(1/0, corrected — see Assumptions 10–13), `FACILITY_OPERATING_PERMIT_WINDOW` (1/0,
+(1/0, corrected — see Assumption 10), `FACILITY_OPERATING_PERMIT_WINDOW` (1/0,
 original — see Assumption 9), `FACILITY_TYPE_CODE`, `FACILITY_NAME`, `LOCATION_ADDRESS`,
 `CITY`, `STATE_CODE`, `ZIP`, `COUNTY_CODE`, `FAC_LAT`, `FAC_LONG`.
 
@@ -276,12 +238,12 @@ note above).
   2005–2025 (252 months each), regardless of when it actually held an active permit.
   `FACILITY_OPERATING_PERMIT_WINDOW` (Assumption 9) distinguishes months inside vs.
   outside the facility's *permit-only* window — 1,639,744 rows are inside it, 253,028
-  are not, out of 1,892,772 total. The **corrected** `FACILITY_OPERATING` (Assumptions
-  10–11) instead shows 1,749,567 operating / 143,205 not.
+  are not, out of 1,892,772 total. The **corrected** `FACILITY_OPERATING` (Assumption
+  10) instead shows 1,749,567 operating / 143,205 not.
 - Downstream, a real recorded event (inspection, violation, enforcement action,
   effluent violation) always wins over `FACILITY_OPERATING`: verified there are now
   **zero** rows where `FACILITY_OPERATING == 0` and a real event is recorded — the
-  correction is a mathematical guarantee of the Assumption-11 construction, not just
+  correction is a mathematical guarantee of the Assumption-10 construction, not just
   an empirical result.
 - **Gotcha (found 7/22): `FACILITY_UIN` reads in as `integer64`** (via `fread`).
   `data.table`'s `by =` grouping on an `integer64` column silently breaks (returns

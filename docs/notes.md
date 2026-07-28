@@ -128,6 +128,20 @@ what it produces.
   `07_facility_month_panel_major_individual_operating_corrected_2005_2025.csv` remains
   on disk as an orphaned, superseded artifact (see `data/processed/README.md`).
 
+**Update 2026-07-27: the correction's scanning/extension logic factored out into
+`use_operating_proxies.R`.** What used to be step 01's Assumptions 10–13 (STEP 6B/6C,
+written inline) is now one function, `use_operating_proxies()`, in its own file
+(`code/03_panel_building/use_operating_proxies.R`), with an on/off switch per proxy
+source (all seven default `TRUE`, reproducing this same correction exactly — verified
+via an isolated side-by-side run of the old inline code and the new function on
+identical input, `identical()` for every facility). Step 01's own header is now just
+Assumptions 1–9 (unchanged) plus a single Assumption 10 pointing here; all the
+measured evidence, root cause, and worked example above now live in
+`use_operating_proxies.R`'s header instead of being duplicated in both places.
+Purely a refactor — reasons: (1) letting a different mix of evidence be tried without
+editing script 01 itself, (2) not duplicating a large block of explanation across two
+files that were drifting out of sync with each other's edits.
+
 ## Findings
 
 ### Effluent D80/D90/E90 counts, 2005–2025 (2026-07-14)

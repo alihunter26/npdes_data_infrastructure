@@ -31,8 +31,8 @@ The missingness audit that used to occupy the "step 07" name lives in
 > briefly existed as step 07 (it had to run after step 06 because it needed every event
 > type already assembled). It turned out only to need *existence*, not full counts, so
 > it now runs **inside step 01** instead — `FACILITY_OPERATING` is correct from the
-> moment it's first created. See step 01's README (Assumptions 10–13) for the full
-> story, including a routing bug caught and fixed during the move (Assumption 13).
+> moment it's first created. See step 01's README (Assumption 10) for the full
+> story, including a routing bug caught and fixed during the move.
 >
 > **2026-07-27: that correction's scanning/extension logic moved again**, this time out
 > of step 01's own body and into `use_operating_proxies.R` (still called by step 01,
@@ -61,7 +61,7 @@ The missingness audit that used to occupy the "step 07" name lives in
   `NPDES_ID` itself when the UIN is blank. Step 01 itself now builds this crosswalk
   **twice**: once restricted to individual/major-eligible permits (for the spine), and
   once unrestricted (for routing the event-existence scan) — see its README,
-  Assumption 13.
+  Assumption 10.
 
 ## Resolved: 01 → 02 filename mismatch
 

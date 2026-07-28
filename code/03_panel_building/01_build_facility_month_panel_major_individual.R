@@ -7,7 +7,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 
 # use_operating_proxies(): the event-based FACILITY_OPERATING window-extension
-# logic (LABELED ASSUMPTIONS 10-13 below), with on/off switches per source. See
+# logic (LABELED ASSUMPTION 10 below), with on/off switches per source. See
 # that file's header for the full explanation.
 source(file.path(CWA_ROOT, "code/03_panel_building/use_operating_proxies.R"))
 
@@ -36,7 +36,9 @@ source(file.path(CWA_ROOT, "code/03_panel_building/use_operating_proxies.R"))
 #                       -- downstream scripts use FACILITY_OPERATING to
 #                       distinguish a true zero (operating, no event) from an
 #                       undefined one (not operating -- see LABELED ASSUMPTIONS
-#                       9-13).
+#                       9-10). The correction itself is computed by
+#                       use_operating_proxies() in use_operating_proxies.R --
+#                       see that script's own header for the full explanation.
 #
 
 # LABELED ASSUMPTIONS (read before using results):
@@ -89,64 +91,16 @@ source(file.path(CWA_ROOT, "code/03_panel_building/use_operating_proxies.R"))
 #      see ASSUMPTIONS 2-4) already used to decide which facilities/months
 #      qualify for the spine at all. This is preserved for traceability but is
 #      NOT the column downstream scripts should use -- see ASSUMPTION 10.
-#  10. WHY THERE'S A SECOND, CORRECTED FLAG -- measured, not hypothetical. On
-#      an earlier build that used ASSUMPTION 9's flag directly as
-#      FACILITY_OPERATING, 12.66% of its FACILITY_OPERATING==0 rows (32,033 of
-#      253,028) still carried a real recorded event downstream -- direct proof
-#      the facility was active. 75.9% of those were >12 months outside the
-#      computed window (median 31, max 250 months); 2,381 of 7,511 facilities
-#      (32%) were affected. ROOT CAUSE (confirmed): permits with
-#      PERMIT_STATUS_CODE == "ADC" (Administrative Continuance -- legally still
-#      active past the nominal EXPIRATION_DATE while a renewal is pending) have
-#      that EXPIRATION_DATE read as a real closing date by ASSUMPTION 2 anyway,
-#      since ICIS_PERMITS carries no field marking a facility's true open/close
-#      independent of permit paperwork. Example: facility 110006619212 / permit
-#      NH0100455, EXPIRATION_DATE = 01/29/2005, PERMIT_STATUS_CODE = "ADC", no
-#      TERMINATION_DATE/RETIREMENT_DATE -- its permit-only window closes at the
-#      start of the panel even though it has real recorded events up to 250
-#      months later. 86.7% of the 8,007 permits linked to this panel's
-#      facilities carry ADC status at some point.
-#  11. THE FIX: EXTEND THE WINDOW TO COVER ANY REAL EVENT, BOTH DIRECTIONS (per
-#      PI decision). Per facility:
-#        new_start = min(permit-window start, first month with a real event)
-#        new_end   = max(permit-window end,   last month with a real event)
-#      FACILITY_OPERATING = 1 iff the month falls in [new_start, new_end]. This
-#      can only grow a window, never shrink one -- a facility with zero
-#      recorded events anywhere keeps its ASSUMPTION-9 window unchanged.
-#  12. "REAL EVENT" HERE MEANS EXISTENCE, NOT THE DETAILED COUNTS. This
-#      correction only needs to know WHETHER and WHEN a facility had any
-#      inspection, PS/CS/SE violation, formal/informal enforcement action, or
-#      effluent violation -- not the type/agency/code breakdowns scripts
-#      02/04/05/06 still compute in full. use_operating_proxies() (called in
-#      STEP 6B/6C below; see NOTE) checks: NPDES_INSPECTIONS (begin, falling
-#      back to end date), NPDES_PS/CS_VIOLATIONS (SCHEDULE_DATE),
-#      NPDES_SE_VIOLATIONS (SINGLE_EVENT_VIOLATION_DATE),
-#      NPDES_FORMAL_ENFORCEMENT_ACTIONS (SETTLEMENT_ENTERED_DATE),
-#      NPDES_INFORMAL_ENFORCEMENT_ACTIONS (ACHIEVED_DATE) -- same date rules
-#      scripts 02/04/05 use for their own counts -- plus the pre-built
-#      condensed effluent panel (any of n_D80/n_D90/n_E90 > 0; the same source
-#      script 06 reads for its all-parameter columns). It deliberately does
-#      NOT stream the raw ~16 GB NPDES_EFF_VIOLATIONS.csv that script 06 uses
-#      for its TSS-specific subset: verified empirically (on the panel this
-#      correction was originally developed against) that ZERO facility-months
-#      have a positive TSS-subset violation while the condensed all-parameter
-#      panel shows nothing -- the condensed panel is already a complete proxy
-#      for "any effluent event" here, so neither this script nor
-#      use_operating_proxies.R needs `python3` or `unzip`.
-#  13. ROUTED BY THE SAME CROSSWALK AS EVERY OTHER STEP. All seven event/proxy
-#      sources are routed NPDES_ID -> facility_id via the identical crosswalk
-#      built in STEP 4 below (FACILITY_UIN when present, else NPDES_ID) --
-#      passed into use_operating_proxies() as an argument rather than rebuilt,
-#      since this script is where it originates; scripts 02/04/05/06 rebuild
-#      it independently, per their own READMEs.
-#
-# NOTE: ASSUMPTIONS 10-13's actual scanning/extension logic lives in
-# use_operating_proxies.R (STEP 6B/6C below), as use_operating_proxies() --
-# a configurable function, with an on/off switch per proxy source, so a
-# different mix of evidence can be tried without editing this script. This
-# script no longer reads the six raw event sources directly itself -- it
-# only reads ICIS_PERMITS.csv and ICIS_FACILITIES.csv on its own (STEPS 1-4);
-# use_operating_proxies() reads the rest when called.
+#  10. FACILITY_OPERATING (the corrected flag) additionally extends this
+#      permit-only window over any month with independent proof the facility
+#      was still operating (an inspection, PS/CS/SE violation, formal/informal
+#      enforcement action, or effluent violation) -- computed by
+#      use_operating_proxies() in use_operating_proxies.R (STEP 6B/6C below),
+#      a configurable function with an on/off switch per proxy source. This
+#      script no longer reads those raw event sources directly itself -- see
+#      the Source line below for exactly what it does vs. doesn't read. See
+#      use_operating_proxies.R's own header for the full explanation, the
+#      measured evidence motivating this correction, and its root cause.
 #
 # Source: EPA ECHO bulk "ICIS-NPDES" download. This script reads
 # ICIS_PERMITS.csv and ICIS_FACILITIES.csv directly; use_operating_proxies()
@@ -262,7 +216,7 @@ fac <- permits[fac, on = "NPDES_ID"]
 # Filter to 48 continental US states + DC (exclude Alaska, Hawaii, and US territories).
 fac <- fac[!(STATE_CODE %in% c("AK", "HI", "PR", "VI", "GU", "AS", "MP"))]
 
-# NPDES_ID -> facility_id crosswalk for STEP 6B (LABELED ASSUMPTION 13), from
+# NPDES_ID -> facility_id crosswalk for STEP 6B (LABELED ASSUMPTION 10), from
 # build_facility_crosswalk() in code/02_cleaning/cleaning_helpers.R. That
 # function always does a FRESH, UNRESTRICTED read of ICIS_FACILITIES -- every
 # NPDES_ID (any permit type, not just individual/major-eligible), matching
@@ -323,7 +277,7 @@ fac_attr <- unique(fac, by = "facility_id")[
 
 # ------------------------------------------------------------------------------
 # STEP 6B/6C: Extend each qualifying facility's window over any real recorded
-# event (LABELED ASSUMPTIONS 10-13), via use_operating_proxies() in
+# event (LABELED ASSUMPTION 10), via use_operating_proxies() in
 # use_operating_proxies.R (sourced above). All seven proxy sources are left at
 # their default of TRUE here, reproducing the original correction exactly; see
 # that function's own header for what each source is and how to turn any of
@@ -400,7 +354,7 @@ message("Qualifying facilities (ever major, ever indiv.): ", nrow(qual_fac))
 message("Facilities with >1 linked NPDES_ID             : ",
         sum(lengths(strsplit(qual_fac$NPDES_ID, "; ")) > 1))
 message("Panel rows (balanced facility x month, all ", YEAR_MIN, "-", YEAR_MAX, " months): ", nrow(panel))
-message("--- Window correction (ASSUMPTIONS 10-13) ---")
+message("--- Window correction (ASSUMPTION 10; see use_operating_proxies.R) ---")
 n_extended <- sum(qual_fac$new_start_ym < qual_fac$spine_start_ym |
                    qual_fac$new_end_ym   > qual_fac$spine_end_ym)
 message("Facilities with window extended by a real event: ", n_extended, " of ", nrow(qual_fac))
