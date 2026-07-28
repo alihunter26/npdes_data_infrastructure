@@ -124,6 +124,14 @@ RAW_DIR  <- file.path(CWA_ROOT, "data/raw/npdes_downloads")
 EFF_PATH <- file.path(CWA_ROOT, "data/processed/effluent_violations_npdes_month_panel_2005_2025.csv")
 OUT_PATH <- file.path(CWA_ROOT, "data/processed/01_facility_month_panel_major_individual_2005_2025.csv")
 
+# Set FALSE to use permit-paperwork dates ONLY (FACILITY_OPERATING ==
+# FACILITY_OPERATING_PERMIT_WINDOW, no window extension at all). TRUE (default)
+# applies use_operating_proxies() with all seven proxy sources on, reproducing
+# the original correction. See use_operating_proxies.R's header if you want to
+# enable/disable individual sources instead of all seven at once -- override
+# the corresponding use_* argument at the call site below.
+USE_PROXIES <- TRUE
+
 # The first and last calendar months the panel can ever contain.
 WINDOW_START <- as.Date(sprintf("%d-01-01", YEAR_MIN))   # Jan 1, 2005
 WINDOW_END   <- as.Date(sprintf("%d-12-01", YEAR_MAX))   # Dec 1, 2025
@@ -278,13 +286,22 @@ fac_attr <- unique(fac, by = "facility_id")[
 # ------------------------------------------------------------------------------
 # STEP 6B/6C: Extend each qualifying facility's window over any real recorded
 # event (LABELED ASSUMPTION 10), via use_operating_proxies() in
-# use_operating_proxies.R (sourced above). All seven proxy sources are left at
-# their default of TRUE here, reproducing the original correction exactly; see
-# that function's own header for what each source is and how to turn any of
-# them off (e.g. to test how much the corrected window depends on effluent
-# violations specifically).
+# use_operating_proxies.R (sourced above). All seven proxy sources are tied to
+# the single USE_PROXIES config flag above (TRUE reproduces the original
+# correction exactly; FALSE = permit-paperwork dates only, no extension at
+# all -- the function's own "zero sources enabled" path already handles this
+# by returning the window unchanged). To toggle individual sources instead of
+# all seven at once, override the specific use_* argument below; see
+# use_operating_proxies.R's own header for what each source is.
 qual_fac <- use_operating_proxies(qual_fac, xwalk, raw_dir = RAW_DIR, eff_path = EFF_PATH,
-                                  year_min = YEAR_MIN, year_max = YEAR_MAX)
+                                  year_min = YEAR_MIN, year_max = YEAR_MAX,
+                                  use_inspections = USE_PROXIES,
+                                  use_ps_violations = USE_PROXIES,
+                                  use_cs_violations = USE_PROXIES,
+                                  use_se_violations = USE_PROXIES,
+                                  use_formal_enforcement = USE_PROXIES,
+                                  use_informal_enforcement = USE_PROXIES,
+                                  use_effluent = USE_PROXIES)
 
 # ------------------------------------------------------------------------------
 # STEP 7: Build the facility-by-month spine (BALANCED panel) + both operating flags.
@@ -355,6 +372,7 @@ message("Facilities with >1 linked NPDES_ID             : ",
         sum(lengths(strsplit(qual_fac$NPDES_ID, "; ")) > 1))
 message("Panel rows (balanced facility x month, all ", YEAR_MIN, "-", YEAR_MAX, " months): ", nrow(panel))
 message("--- Window correction (ASSUMPTION 10; see use_operating_proxies.R) ---")
+message("USE_PROXIES: ", USE_PROXIES, if (!USE_PROXIES) " (permit-paperwork dates only, no extension)" else "")
 n_extended <- sum(qual_fac$new_start_ym < qual_fac$spine_start_ym |
                    qual_fac$new_end_ym   > qual_fac$spine_end_ym)
 message("Facilities with window extended by a real event: ", n_extended, " of ", nrow(qual_fac))

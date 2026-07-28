@@ -2,6 +2,18 @@
 
 ** verified by Ali 7/28 **
 
+**updated 7/28: added a `USE_PROXIES` config flag.** A single `TRUE`/`FALSE` toggle
+near the top of the script (with `YEAR_MIN`/`YEAR_MAX`/etc.) now controls whether the
+`use_operating_proxies()` correction runs at all. `TRUE` (default) applies it with all
+seven proxy sources on, reproducing the original correction exactly. `FALSE` uses
+permit-paperwork dates only — `FACILITY_OPERATING` becomes identical to
+`FACILITY_OPERATING_PERMIT_WINDOW`, and the run skips reading all seven proxy sources
+entirely (verified: ~33s vs. ~59s wall time on an 8GB-RAM machine; run log prints
+"Facilities with window extended: 0 of 7,514" and `FACILITY_OPERATING == 1` matches
+`FACILITY_OPERATING_PERMIT_WINDOW == 1` exactly). The flag feeds all seven `use_*`
+arguments at once at the call site (STEP 6B/6C); to enable/disable individual proxy
+sources instead of all seven together, override the specific `use_*` argument there.
+
 The
 event-scanning/window-extension logic lives in `use_operating_proxies.R`, as a function,
 `use_operating_proxies()`, with an on/off switch per proxy source (all seven default
@@ -30,7 +42,10 @@ computed: `FACILITY_OPERATING_PERMIT_WINDOW` (1/0, from permit dates only) and
 recorded event** — inspections, PS/CS/SE violations, formal/informal enforcement, or
 effluent violations, checked for *existence* only here; full detailed counts remain
 the job of scripts 02/04/05/06). No detailed behavioral count columns are added here —
-only the spine, both operating flags, and time-invariant facility attributes.
+only the spine, both operating flags, and time-invariant facility attributes. The
+extension itself is gated behind the `USE_PROXIES` config flag (default `TRUE`); set
+it `FALSE` to get `FACILITY_OPERATING` == `FACILITY_OPERATING_PERMIT_WINDOW` with no
+extension at all.
 
 ## Data Availability and Provenance Statements
 
@@ -145,15 +160,17 @@ and as of 7/27 its actual scanning/extension logic lives in `use_operating_proxi
     effluent violation) — computed by `use_operating_proxies()` in
     `use_operating_proxies.R`, called as
     `use_operating_proxies(qual_fac, xwalk, raw_dir = RAW_DIR, eff_path = EFF_PATH,
-    year_min = YEAR_MIN, year_max = YEAR_MAX)` with every one of its seven `use_*`
-    switches left at its default (`TRUE`), reproducing the original correction exactly
-    (verified: an isolated side-by-side run of the old inline code and the new
-    function, on identical input, produced `identical()` results for every facility).
-    A different mix of evidence can be tried without editing this script — see
-    `use_operating_proxies.R`'s own header for the full explanation, the measured
-    evidence motivating this correction (12.66% of `FACILITY_OPERATING==0` rows
-    carrying a real event anyway), and its root cause (permits in Administrative
-    Continuance).
+    year_min = YEAR_MIN, year_max = YEAR_MAX, use_inspections = USE_PROXIES, ...)`
+    with all seven `use_*` switches tied to the single `USE_PROXIES` config flag
+    (default `TRUE`, reproducing the original correction exactly — verified: an
+    isolated side-by-side run of the old inline code and the new function, on
+    identical input, produced `identical()` results for every facility). Set
+    `USE_PROXIES <- FALSE` to skip the correction entirely (permit-paperwork dates
+    only), or override an individual `use_*` argument at the call site for a mix
+    other than all-seven-on/all-seven-off. See `use_operating_proxies.R`'s own
+    header for the full explanation, the measured evidence motivating this
+    correction (12.66% of `FACILITY_OPERATING==0` rows carrying a real event
+    anyway), and its root cause (permits in Administrative Continuance).
 
 **Sample / filter definitions**
 - *Major:* `MAJOR_MINOR_STATUS_FLAG == "M"` at least once in the permit's version history.
@@ -185,6 +202,8 @@ and as of 7/27 its actual scanning/extension logic lives in `use_operating_proxi
 **Hardcoded parameters:** `YEAR_MIN = 2005`, `YEAR_MAX = 2025`; ZIP format `"%05s"`;
 state exclusion set `{AK, HI, PR, VI, GU, AS, MP}`.
 
+**Config flag:** `USE_PROXIES` (default `TRUE`) — see Assumption 10.
+
 ## Output columns (17)
 
 `FACILITY_UIN`, `YEAR`, `MONTH`, `NPDES_ID` (semicolon list of linked individual
@@ -198,6 +217,8 @@ original — see Assumption 9), `FACILITY_TYPE_CODE`, `FACILITY_NAME`, `LOCATION
 ```bash
 Rscript "code/03_panel_building/01_build_facility_month_panel_major_individual.R"
 ```
+To skip the proxy correction (permit-paperwork dates only), set `USE_PROXIES <- FALSE`
+near the top of the script before running.
 
 ## Notes / edge cases
 
@@ -216,6 +237,10 @@ Rscript "code/03_panel_building/01_build_facility_month_panel_major_individual.R
   **zero** rows where `FACILITY_OPERATING == 0` and a real event is recorded — the
   correction is a mathematical guarantee of the Assumption-10 construction, not just
   an empirical result.
+- **Verified `USE_PROXIES <- FALSE`:** re-running with the flag off gives 0 of 7,514
+  facilities extended, and `FACILITY_OPERATING == 1` (1,643,607) exactly matches
+  `FACILITY_OPERATING_PERMIT_WINDOW == 1` (1,643,607) — confirming the flag genuinely
+  disables the correction rather than just hiding it.
 - `FACILITY_UIN` reads in as `integer64`** (via `fread`).
   `data.table`'s `by =` grouping on an `integer64` column silently breaks (returns
   wrong/`NA` groups) unless the `bit64` package is loaded — this produced a bogus "0

@@ -53,8 +53,11 @@ the next.
   reproducing the original correction exactly). **This is the only place the seven
   event/proxy sources get used** — step 01 itself builds the baseline window from
   permit paperwork dates alone (`ICIS_PERMITS.csv`) and never reads any of these seven
-  directly; it just calls this function afterward to extend that window. Sourced and
-  called by step 01; see
+  directly; it just calls this function afterward to extend that window. Step 01 ties
+  all seven switches to a single `USE_PROXIES` config flag (default `TRUE`; set
+  `FALSE` for permit-paperwork dates only, no extension) — see that flag's own
+  `use_*` arguments if you want to enable/disable individual sources instead. Sourced
+  and called by step 01; see
   [`READMEs/01_build_facility_month_panel_major_individual.md`](READMEs/01_build_facility_month_panel_major_individual.md).
 
 > **Removed 2026-07-23:** `restrict_06_to_fy2025.R` (the federal-FY2025 row filter) was
