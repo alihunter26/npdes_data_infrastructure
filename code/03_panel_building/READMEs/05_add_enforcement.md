@@ -72,35 +72,29 @@ operating.
 
 ## Decisions and Assumptions
 
-1. **Both formal and informal are counted PER RAW ROW (changed 7/28, per request;**
-   **formal previously counted distinct `ENF_IDENTIFIER` instead).** Every row of
-   either file counts as one action — `N_FORMAL_ACTIONS`/`N_INFORMAL_ACTIONS = .N`;
-   breakouts via `sum(<condition>)`; never `uniqueN(ENF_IDENTIFIER[...])`.
-   **Consequences, known and accepted:**
-   - **Formal:** the formal file has multiple rows per action (one per permit and/or
-     per `ENF_TYPE_CODE`): 111,816 rows → 103,989 actions, with **0 exact-duplicate
-     rows**. So `N_FORMAL_ACTIONS` now over-counts relative to distinct actions for
-     any action spanning >1 permit or >1 type — entirely multi-permit/multi-type
-     fan-out, not literal duplication (unlike informal below).
-   - **Informal:** the informal file is 821,977 rows but only 474,600 distinct
-     `ENF_IDENTIFIER`s, because **345,822 rows (42%) are byte-identical duplicates**
-     (all 11 fields equal). An action recorded 3× identically counts as **3** — this
-     inflates informal totals ≈1.7× vs. distinct-action counting (on an earlier
-     panel build: 93,470 informal rows vs. 56,356 distinct actions).
-
-   **Prior behavior (before 7/28):** formal counted **distinct `ENF_IDENTIFIER`** (to
-   avoid the multi-permit/multi-type over-count above) while informal counted **raw
-   rows** (PI decision, to include the exact-duplicate rows) — the two were
-   deliberately on *different* grains. To revert to that asymmetry, switch
-   `N_FORMAL_ACTIONS`/its breakouts in STEP 3a back to
+1. **Both formal and informal are counted PER RAW ROW** (changed 7/28, per request;
+   formal previously counted distinct `ENF_IDENTIFIER` instead). Every row of either
+   file counts as one action — `N_FORMAL_ACTIONS`/`N_INFORMAL_ACTIONS = .N`; breakouts
+   via `sum(<condition>)`; never `uniqueN(ENF_IDENTIFIER[...])`. **Consequences:**
+   formal's file has multiple rows per action (one per permit and/or per
+   `ENF_TYPE_CODE`) — 111,816 rows → 103,989 actions, with **0 exact-duplicate rows** —
+   so `N_FORMAL_ACTIONS` now over-counts relative to distinct actions for any action
+   spanning >1 permit or >1 type, entirely multi-permit/multi-type fan-out, not literal
+   duplication; informal's file is 821,977 rows but only 474,600 distinct
+   `ENF_IDENTIFIER`s, because **345,822 rows (42%) are byte-identical duplicates** (all
+   11 fields equal), so an action recorded 3× identically counts as **3**, inflating
+   informal totals ≈1.7× vs. distinct-action counting (on an earlier panel build:
+   93,470 informal rows vs. 56,356 distinct actions). **Prior behavior (before 7/28):**
+   formal counted distinct `ENF_IDENTIFIER` (to avoid the multi-permit/multi-type
+   over-count above) while informal counted raw rows (PI decision, to include the
+   exact-duplicate rows) — the two were deliberately on *different* grains; to revert
+   to that asymmetry, switch `N_FORMAL_ACTIONS`/its breakouts in STEP 3a back to
    `uniqueN(ENF_IDENTIFIER[<condition>])`, matching the comment at STEP 4 for the
-   informal-side equivalent.
-
-   **Does not affect penalty dollars:** `FED_PENALTY`, `STATE_PENALTY`,
-   `N_FED_PENALTY_ASSESSED`, `N_STATE_PENALTY_ASSESSED` still de-duplicate to one row
-   per action (Assumption 5) — summing a shared penalty across an action's raw rows
-   would multiply it. These four columns are therefore on a **different grain** than
-   `N_FORMAL_ACTIONS` and should not be compared 1:1 against it.
+   informal-side equivalent. **Does not affect penalty dollars:** `FED_PENALTY`,
+   `STATE_PENALTY`, `N_FED_PENALTY_ASSESSED`, `N_STATE_PENALTY_ASSESSED` still
+   de-duplicate to one row per action (Assumption 5) — summing a shared penalty across
+   an action's raw rows would multiply it — so these four columns are on a
+   **different grain** than `N_FORMAL_ACTIONS` and should not be compared 1:1 against it.
 2. **Type/activity breakouts can overlap** (PI naming). An action with several
    `ENF_TYPE_CODE`s is counted in each matching column, so the type columns are **not** a
    partition and needn't sum to the total (many codes aren't broken out). `AGENCY` **does**
