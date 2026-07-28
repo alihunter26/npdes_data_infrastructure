@@ -1,13 +1,6 @@
 # README — `05_add_enforcement.R`
 
-**updated 7/21:** a facility-month with no enforcement action no longer
-automatically gets `0` for the count columns. It gets `0` only if the facility was
-actually operating that month (`FACILITY_OPERATING == 1`, from step 01); if it
-wasn't operating **and** no action was recorded, it gets `NA` instead. A *real*
-recorded action always wins over the operating flag (see Assumption 7). The two
-penalty-dollar columns (`FED_PENALTY`/`STATE_PENALTY`) are unaffected by this change
-— they already used NA-for-"not assessed" (Assumption 5), which a non-operating
-month with no action already satisfies.
+** verified by Ali 07/28 **
 
 *Step 5 of the facility-by-month panel build. Input: step-04 panel + raw enforcement
 files. Output: the panel with formal/informal enforcement counts and penalty dollars.*
