@@ -1,20 +1,10 @@
 # README — `06_add_effluent_violations.R`
 
-**updated 7/27:** both count sets (all-parameter and TSS) now come from the same
-pre-built condensed panel, computed together by
-`build_effluent_violations_npdes_month_panel.R`. This script no longer streams the raw
-effluent file itself and no longer needs `python3` or `unzip`. The columns and values it
-produces are unchanged from before.
-
-**updated 7/21:** a facility-month with no effluent violation no longer
-automatically gets `0`. It gets `0` only if the facility was actually operating that
-month (`FACILITY_OPERATING == 1`, from step 01); if it wasn't operating **and** no
-violation was recorded, it gets `NA` instead. A *real* recorded violation always
-wins over the operating flag (see Assumption 5).
+** verified by Ali 7/28 **
 
 *Step 6 of the facility-by-month panel build (final assembly step). Input: step-05
 panel + the condensed effluent panel. Output: the panel with **all**
-effluent-violation columns.*
+effluent-violation columns. This script reads from the condensed effluent panel from the cleaning step, which pre-compiles total and TSS violation counts*
 
 ## Overview
 
