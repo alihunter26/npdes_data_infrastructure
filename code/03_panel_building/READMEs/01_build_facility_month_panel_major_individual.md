@@ -2,16 +2,13 @@
 
 ** verified by Ali 7/28 **
 
-**updated 7/28: panel membership now depends on EITHER permit-window overlap OR**
+**Panel membership now depends on EITHER permit-window overlap OR**
 **proxy evidence, not permit dates alone.** Previously, a facility whose permit
 paperwork window didn't overlap 2005–2025 was dropped entirely, before
 `use_operating_proxies()` ever ran — proxies only widened an already-admitted
 facility's window, never granted admission on their own. Now a facility is kept if
 EITHER its permit window overlaps the panel OR it has independent proxy evidence
-(inspection, violation, enforcement, effluent) anywhere in 2005–2025. Verified: 16
-facilities newly admitted via proxy evidence only (of 7,531 candidates; 1 candidate
-still dropped for having neither), bringing the final population to 7,530 and the
-panel to 1,897,560 rows (+4,032 = 16 × 252 months). A new third column,
+(inspection, violation, enforcement, effluent) anywhere in 2005–2025. A new third column,
 `FACILITY_OPERATING_PROXY_WINDOW`, reports the proxy-only-derived window
 independent of permit dates — for a proxy-only-admitted facility this is the only
 column showing *why* it's in the panel, since `FACILITY_OPERATING_PERMIT_WINDOW`
@@ -23,7 +20,7 @@ near the top of the script (with `YEAR_MIN`/`YEAR_MAX`/etc.) now controls whethe
 seven proxy sources on, reproducing the original correction exactly. `FALSE` uses
 permit-paperwork dates only — `FACILITY_OPERATING` becomes identical to
 `FACILITY_OPERATING_PERMIT_WINDOW`, and the run skips reading all seven proxy sources
-entirely (verified: ~33s vs. ~59s wall time on an 8GB-RAM machine). **Since the 7/28
+entirely. **Since the 7/28
 membership change above, `FALSE` also shrinks the panel itself** — the 16 facilities
 admitted solely via proxy evidence get dropped entirely (neither a permit-window
 overlap nor any scanned proxy evidence to qualify on), not just window-unextended.
