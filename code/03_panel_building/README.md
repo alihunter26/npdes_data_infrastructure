@@ -12,7 +12,7 @@ the next.
 
 | Step | Script | Adds |
 |---|---|---|
-| 01 | `01_build_facility_month_panel_major_individual.R` | base facility × month spine + facility attributes + `FACILITY_OPERATING`. Step 01 itself only uses **permit paperwork dates** (`ICIS_PERMITS.csv`) to build this window; the *correction* on top of it — extending that window using the six other proxy sources (inspections, PS/CS/SE violations, formal/informal enforcement) plus the pre-built effluent panel — is done by calling `use_operating_proxies()` (see Helper scripts below). |
+| 01 | `01_build_facility_month_panel_major_individual.R` | base facility × month spine + facility attributes + all three operating flags. Panel **membership** (since 2026-07-28) requires EITHER a permit-paperwork window (`ICIS_PERMITS.csv`) overlapping 2005–2025 OR independent proxy evidence anywhere in that range — permit dates alone no longer gate inclusion. The proxy scan — inspections, PS/CS/SE violations, formal/informal enforcement, effluent — is done by calling `use_operating_proxies()` (see Helper scripts below), which also produces `FACILITY_OPERATING`'s window-extension correction. |
 | 02 | `02_add_inspections.R` | inspection counts by type & conductor |
 | 03 | `03_add_naics_sic.R` | NAICS / SIC industry codes |
 | 04 | `04_add_violations.R` | PS/CS/SE violation counts |
@@ -28,6 +28,14 @@ the next.
 > *any* real event (not the full detailed counts), so it doesn't need to wait for
 > steps 02–06 to run first. See [`READMEs/01_build_facility_month_panel_major_individual.md`](READMEs/01_build_facility_month_panel_major_individual.md),
 > Assumption 10.
+
+> **2026-07-28: panel membership now depends on proxy evidence too, not permit dates**
+> **alone.** Previously, a facility whose permit-paperwork window didn't overlap
+> 2005–2025 was dropped before the proxy scan ever ran. Now it's kept if EITHER its
+> permit window overlaps OR it has independent proxy evidence anywhere in 2005–2025 —
+> verified: 16 of 7,531 candidate facilities are admitted solely via proxy evidence.
+> See [`READMEs/01_build_facility_month_panel_major_individual.md`](READMEs/01_build_facility_month_panel_major_individual.md),
+> Assumption 1B.
 
 **Per-script documentation** — inputs, outputs, and every decision/assumption — lives in
 [`READMEs/`](READMEs/README.md) (SSDE-style, one file per script).
@@ -47,17 +55,23 @@ the next.
 
 - `summarize_violation_types.R` — tabulates violation-type frequencies → `output/tables/`.
 - `use_operating_proxies.R` — defines `use_operating_proxies()`, the event-based
-  `FACILITY_OPERATING` window-extension logic (step 01's Assumption 10), factored
-  out into its own function with an on/off switch per proxy source (inspections,
+  proxy-evidence logic behind step 01's Assumptions 1B, 10, and 11, factored out
+  into its own function with an on/off switch per proxy source (inspections,
   PS/CS/SE violations, formal/informal enforcement, effluent — all default `TRUE`,
   reproducing the original correction exactly). **This is the only place the seven
   event/proxy sources get used** — step 01 itself builds the baseline window from
   permit paperwork dates alone (`ICIS_PERMITS.csv`) and never reads any of these seven
-  directly; it just calls this function afterward to extend that window. Step 01 ties
-  all seven switches to a single `USE_PROXIES` config flag (default `TRUE`; set
-  `FALSE` for permit-paperwork dates only, no extension) — see that flag's own
-  `use_*` arguments if you want to enable/disable individual sources instead. Sourced
-  and called by step 01; see
+  directly; it just calls this function to scan for proxy evidence. As of
+  2026-07-28, its return value feeds THREE things in step 01, not just one: the
+  proxy-only bounds (`FACILITY_OPERATING_PROXY_WINDOW`, Assumption 11), the union
+  bounds (`FACILITY_OPERATING`, Assumption 10), and — since a facility with proxy
+  evidence but no permit-window overlap is now admitted to the panel at all —
+  panel **membership** itself (Assumption 1B). Step 01 ties all seven switches to
+  a single `USE_PROXIES` config flag (default `TRUE`; set `FALSE` for permit-
+  paperwork dates only, no proxy evidence scanned or used at all, which also
+  collapses membership back to permit-window-overlap only) — see that flag's own
+  `use_*` arguments if you want to enable/disable individual sources instead.
+  Sourced and called by step 01; see
   [`READMEs/01_build_facility_month_panel_major_individual.md`](READMEs/01_build_facility_month_panel_major_individual.md).
 
 > **Removed 2026-07-23:** `restrict_06_to_fy2025.R` (the federal-FY2025 row filter) was

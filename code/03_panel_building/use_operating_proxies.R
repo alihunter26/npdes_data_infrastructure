@@ -71,6 +71,16 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 # asks EXISTENCE questions ("did anything happen this month, yes or no") --
 # never the full type/agency/code breakdowns scripts 02/04/05/06 go on to
 # compute in detail from these same raw sources.
+#
+# UPDATED 2026-07-28: the proxy-only bounds (`proxy_start_ym`/`proxy_end_ym`)
+# used to be a purely internal step toward the union (`new_start_ym`/
+# `new_end_ym`) and were discarded before returning. They're now a first-class
+# part of the return value -- 01_build_facility_month_panel_major_individual.R
+# uses them directly for its own FACILITY_OPERATING_PROXY_WINDOW column, AND
+# (since this same date) to decide whether a facility with no permit-window
+# overlap should still be admitted to the panel at all. This function's own
+# logic is unchanged by that -- it was already computing these bounds, just
+# not exposing them.
 # ==============================================================================
 
 
@@ -80,11 +90,18 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 # available sources you choose to trust.
 # ------------------------------------------------------------------------------
 # ARGUMENTS:
-#   qual_fac  -- the per-facility table of qualifying facilities, already
-#                carrying `facility_id`, `spine_start_ym`, and `spine_end_ym`
-#                (the permit-only window, expressed as an integer
-#                YEAR*12+MONTH key -- see 01_build_facility_month_panel_major_
-#                individual.R's STEP 5, where this table is built).
+#   qual_fac  -- the per-facility candidate table, carrying `facility_id`,
+#                `spine_start_ym`, and `spine_end_ym` (the permit-only window,
+#                expressed as an integer YEAR*12+MONTH key -- see
+#                01_build_facility_month_panel_major_individual.R's STEP 5,
+#                where this table is built). As of 2026-07-28, this is called
+#                against the FULL candidate population (every "ever major,
+#                ever individual" facility), not just facilities whose permit
+#                window already overlaps the panel -- so `spine_start_ym`/
+#                `spine_end_ym` can legitimately be NA here (permit window
+#                doesn't reach 2005-2025 at all). That's fine: the pmin()/
+#                pmax() arithmetic below already treats NA as "no permit bound
+#                to consider," falling back cleanly to the proxy-only bound.
 #   xwalk     -- the NPDES_ID -> facility_id crosswalk (from
 #                build_facility_crosswalk() in code/02_cleaning/cleaning_helpers.R).
 #   raw_dir   -- folder holding the raw ICIS-NPDES CSVs. Defaults to RAW_DIR.
@@ -111,11 +128,24 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 #        trust effluent violations as proof a facility was still operating?"
 #
 # RETURNS: a COPY of qual_fac (the table you passed in is left untouched) with
-# two new columns added: `new_start_ym` and `new_end_ym` -- the extended
-# window bounds, in the same integer YEAR*12+MONTH form as
-# `spine_start_ym`/`spine_end_ym`. A facility with no qualifying event from any
-# ENABLED source keeps `new_start_ym == spine_start_ym` and
-# `new_end_ym == spine_end_ym` exactly (nothing to extend with).
+# four new columns added, all integer YEAR*12+MONTH keys:
+#   proxy_start_ym, proxy_end_ym -- the PROXY-ONLY bounds: earliest/latest month
+#     with a real event from any ENABLED source, with NO permit-date influence
+#     at all. NA for a facility with zero qualifying events from any enabled
+#     source (there is no "earliest/latest" of an empty set) -- this is the
+#     column 01_build_facility_month_panel_major_individual.R uses for its own
+#     FACILITY_OPERATING_PROXY_WINDOW, and (since 2026-07-28) for deciding
+#     whether a facility with no permit-window overlap still belongs in the
+#     panel at all.
+#   new_start_ym, new_end_ym -- the UNION bounds: `pmin`/`pmax` of the permit
+#     window (`spine_start_ym`/`spine_end_ym`) and the proxy-only bounds above,
+#     `na.rm = TRUE` throughout so a facility missing EITHER bound (no permit
+#     overlap, or no proxy evidence) falls back cleanly to whichever bound it
+#     does have. A facility with no qualifying event from any ENABLED source
+#     keeps `new_start_ym == spine_start_ym` and `new_end_ym == spine_end_ym`
+#     exactly (nothing to extend with); a facility with no permit-window
+#     overlap instead keeps `new_start_ym == proxy_start_ym` and
+#     `new_end_ym == proxy_end_ym` exactly (nothing to union WITH).
 use_operating_proxies <- function(qual_fac, xwalk,
                                    raw_dir = RAW_DIR,
                                    eff_path = file.path(CWA_ROOT, "data/processed/effluent_violations_npdes_month_panel_2005_2025.csv"),
@@ -194,7 +224,11 @@ use_operating_proxies <- function(qual_fac, xwalk,
   if (length(sources) == 0) {
     # No proxy source enabled at all: there is no independent evidence to
     # extend the window with, so the "corrected" window is simply identical
-    # to the permit-only one from Layer 1.
+    # to the permit-only one from Layer 1, and there are no proxy-only bounds
+    # at all (NA for every facility -- matches the "zero qualifying events"
+    # case in the main path below, just for the whole population at once).
+    qual_fac[, proxy_start_ym := NA_integer_]
+    qual_fac[, proxy_end_ym   := NA_integer_]
     qual_fac[, new_start_ym := spine_start_ym]
     qual_fac[, new_end_ym   := spine_end_ym]
     return(qual_fac[])
@@ -208,14 +242,20 @@ use_operating_proxies <- function(qual_fac, xwalk,
   event_ym[, ym := YEAR * 12L + MONTH]
   event_bounds <- event_ym[, .(event_start = min(ym), event_end = max(ym)), by = facility_id]
 
-  # Extend the window (per facility) to cover any real event, in both
-  # directions. Facilities with no event from any enabled source get NA from
-  # this join; pmin()/pmax() with na.rm = TRUE then leaves their window
-  # exactly as computed in Layer 1 -- this can only GROW a window, never
-  # shrink one.
+  # Attach the proxy-only bounds. Facilities with no event from any enabled
+  # source get NA from this join -- kept as NA (not deleted) since, as of
+  # 2026-07-28, the caller uses these bounds directly (FACILITY_OPERATING_
+  # PROXY_WINDOW, and the eligibility test for facilities with no permit-
+  # window overlap), not just as an internal step toward the union below.
   qual_fac <- event_bounds[qual_fac, on = "facility_id"]
-  qual_fac[, new_start_ym := pmin(spine_start_ym, event_start, na.rm = TRUE)]
-  qual_fac[, new_end_ym   := pmax(spine_end_ym,   event_end,   na.rm = TRUE)]
-  qual_fac[, c("event_start", "event_end") := NULL]
+  setnames(qual_fac, c("event_start", "event_end"), c("proxy_start_ym", "proxy_end_ym"))
+
+  # Extend the window (per facility) to cover any real event, in both
+  # directions. na.rm = TRUE means a facility missing EITHER bound (no permit
+  # overlap, or no proxy evidence) falls back cleanly to whichever bound it
+  # does have -- this can only GROW a window relative to the permit-only one,
+  # never shrink it.
+  qual_fac[, new_start_ym := pmin(spine_start_ym, proxy_start_ym, na.rm = TRUE)]
+  qual_fac[, new_end_ym   := pmax(spine_end_ym,   proxy_end_ym,   na.rm = TRUE)]
   qual_fac[]
 }

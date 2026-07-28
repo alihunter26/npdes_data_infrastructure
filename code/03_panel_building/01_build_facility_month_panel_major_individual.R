@@ -25,18 +25,25 @@ source(file.path(CWA_ROOT, "code/03_panel_building/use_operating_proxies.R"))
 #                       version records, at any point in its history. This is
 #                       "ever major", NOT "always major" -- a facility that was
 #                       major for even one year of its history qualifies, even
-#                       if it was minor before or after.
+#                       if it was minor before or after. TEMPORAL ELIGIBILITY
+#                       (changed 2026-07-28, per request): such a facility is
+#                       included if EITHER its permit-paperwork window overlaps
+#                       2005-2025 OR it has independent proxy evidence
+#                       (inspection, violation, enforcement, effluent) anywhere
+#                       in that range -- permit dates ALONE no longer gate
+#                       membership. See LABELED ASSUMPTION 1B.
 #   Spine             : BALANCED = every qualifying facility x every (year, month)
 #                       in the full Jan 2005 - Dec 2025 window, regardless of when
-#                       that facility actually held an active permit. Two flags
-#                       mark which rows fall inside vs. outside a facility's
-#                       active window:
-#                         FACILITY_OPERATING               - CORRECTED (use this)
+#                       that facility actually held an active permit. THREE flags
+#                       (changed 2026-07-28; previously two) mark operating status
+#                       from three independent angles:
+#                         FACILITY_OPERATING               - UNION (use this)
 #                         FACILITY_OPERATING_PERMIT_WINDOW - permit-dates only
+#                         FACILITY_OPERATING_PROXY_WINDOW  - proxy evidence only
 #                       -- downstream scripts use FACILITY_OPERATING to
 #                       distinguish a true zero (operating, no event) from an
 #                       undefined one (not operating -- see LABELED ASSUMPTIONS
-#                       9-10). The correction itself is computed by
+#                       9-11). The correction itself is computed by
 #                       use_operating_proxies() in use_operating_proxies.R --
 #                       see that script's own header for the full explanation.
 #
@@ -46,6 +53,39 @@ source(file.path(CWA_ROOT, "code/03_panel_building/use_operating_proxies.R"))
 #      than one requiring a facility to be major in EVERY held year and NEVER
 #      minor. Here, one "M" flag anywhere in the permit's version history is
 #      enough. (Per PI guidance.)
+#  1B. TEMPORAL ELIGIBILITY: PERMIT-WINDOW OVERLAP **OR** PROXY EVIDENCE
+#      (changed 2026-07-28, per request; see PRIOR BEHAVIOR below for what this
+#      replaces). A candidate facility (ASSUMPTION 1) is kept in the panel if
+#      EITHER of the following holds:
+#        (a) its permit-paperwork window (ASSUMPTIONS 2-4) genuinely overlaps
+#            2005-2025 -- tested on the RAW, unclipped facility_open/
+#            facility_close, not the panel-clipped spine_start/spine_end,
+#            which would otherwise always "overlap" once clipped to the
+#            boundary; or
+#        (b) it has independent proxy evidence (an inspection, PS/CS/SE
+#            violation, formal/informal enforcement action, or effluent
+#            violation -- ASSUMPTION 10's seven sources) anywhere in
+#            2005-2025, even if its permit window does not reach that range.
+#      A candidate satisfying NEITHER is dropped entirely -- it has no
+#      connection to this panel's time period, from either source (see run
+#      log for exact counts).
+#        For a facility admitted SOLELY via (b) -- no permit-window overlap --
+#      FACILITY_OPERATING_PERMIT_WINDOW correctly reads 0 for EVERY month
+#      (ASSUMPTION 9): the permit info exists, it just says "not active this
+#      period," a genuine reported zero, not a missing value. Its window in
+#      use_operating_proxies()'s union arithmetic collapses to exactly the
+#      proxy-only bound (ASSUMPTION 11), since there is no permit bound to
+#      union it with (na.rm = TRUE in that function correctly treats an
+#      absent permit window as "nothing to consider," not as a false zero).
+#        PRIOR BEHAVIOR (before 2026-07-28): only (a) could grant admission to
+#      the panel; proxy evidence (b) only WIDENED an already-admitted
+#      facility's window (ASSUMPTION 10), it never granted admission on its
+#      own -- a facility whose permit window didn't overlap 2005-2025 was
+#      dropped before use_operating_proxies() ever ran, regardless of any
+#      proxy evidence it might have had. To revert to that behavior, restore
+#      `qual_fac <- qual_fac[spine_start <= spine_end]` (permit-overlap-only)
+#      as the eligibility filter in STEP 5 and call use_operating_proxies()
+#      only on that already-filtered population, as before.
 #   2. PER-PERMIT WINDOW = EARLIEST POSSIBLE OPEN -> LATEST POSSIBLE CLOSE.
 #      ICIS_PERMITS has several candidate date fields for when a permit
 #      started and ended. To be maximally inclusive (better to over-cover than
@@ -88,23 +128,39 @@ source(file.path(CWA_ROOT, "code/03_panel_building/use_operating_proxies.R"))
 #      [floor_date(spine_start,"month"), floor_date(spine_end,"month")] for that
 #      facility -- i.e. within the earliest-open/latest-close window (unioned
 #      across all the facility's individual permits, clipped to the panel window;
-#      see ASSUMPTIONS 2-4) already used to decide which facilities/months
-#      qualify for the spine at all. This is preserved for traceability but is
-#      NOT the column downstream scripts should use -- see ASSUMPTION 10.
+#      see ASSUMPTIONS 2-4) already used to decide facility/month eligibility
+#      (ASSUMPTION 1B). Explicitly 0 (not NA) for every month of a facility
+#      admitted solely via proxy evidence (ASSUMPTION 1B(b)), since its permit
+#      window doesn't reach the panel at all. This is preserved for
+#      traceability but is NOT the column downstream scripts should use -- see
+#      ASSUMPTION 10.
 #  10. FACILITY_OPERATING (the corrected flag) additionally extends this
 #      permit-only window over any month with independent proof the facility
 #      was still operating (an inspection, PS/CS/SE violation, formal/informal
 #      enforcement action, or effluent violation) -- computed by
-#      use_operating_proxies() in use_operating_proxies.R (STEP 6B/6C below),
-#      a configurable function with an on/off switch per proxy source. This
+#      use_operating_proxies() in use_operating_proxies.R (STEP 5 below), a
+#      configurable function with an on/off switch per proxy source. This
 #      script no longer reads those raw event sources directly itself -- see
 #      the Source line below for exactly what it does vs. doesn't read. See
 #      use_operating_proxies.R's own header for the full explanation, the
 #      measured evidence motivating this correction, and its root cause.
+#  11. FACILITY_OPERATING_PROXY_WINDOW = 1 iff the calendar month falls within
+#      [proxy_start_ym, proxy_end_ym] -- the earliest/latest month with
+#      independent proxy evidence (ASSUMPTION 10's seven sources), with NO
+#      permit-date influence at all. NA (not 0) for a facility with zero
+#      qualifying proxy events anywhere in 2005-2025 -- there is no earliest/
+#      latest of an empty set, so "not operating per proxies" and "no proxy
+#      evidence exists at all" stay distinguishable (same NA-for-undefined
+#      philosophy as the rest of this pipeline). Added 2026-07-28, alongside
+#      ASSUMPTION 1B -- for a proxy-only-admitted facility, this is the ONLY
+#      column showing why it's in the panel at all; for every other facility,
+#      it's a third, independent lens on operating status, no longer just an
+#      internal step toward FACILITY_OPERATING's union (see
+#      use_operating_proxies.R's own header for how this bound is computed).
 #
 # Source: EPA ECHO bulk "ICIS-NPDES" download. This script reads
 # ICIS_PERMITS.csv and ICIS_FACILITIES.csv directly; use_operating_proxies()
-# (called in STEP 6B/6C) reads NPDES_INSPECTIONS.csv, NPDES_PS/CS/SE_VIOLATIONS.csv,
+# (called in STEP 5) reads NPDES_INSPECTIONS.csv, NPDES_PS/CS/SE_VIOLATIONS.csv,
 # NPDES_FORMAL/INFORMAL_ENFORCEMENT_ACTIONS.csv, and the pre-built condensed
 # effluent panel (data/processed/effluent_violations_npdes_month_panel_2005_2025.csv).
 # Output: data/processed/01_facility_month_panel_major_individual_2005_2025.csv
@@ -224,7 +280,7 @@ fac <- permits[fac, on = "NPDES_ID"]
 # Filter to 48 continental US states + DC (exclude Alaska, Hawaii, and US territories).
 fac <- fac[!(STATE_CODE %in% c("AK", "HI", "PR", "VI", "GU", "AS", "MP"))]
 
-# NPDES_ID -> facility_id crosswalk for STEP 6B (LABELED ASSUMPTION 10), from
+# NPDES_ID -> facility_id crosswalk for STEP 5's proxy scan (LABELED ASSUMPTION 10), from
 # build_facility_crosswalk() in code/02_cleaning/cleaning_helpers.R. That
 # function always does a FRESH, UNRESTRICTED read of ICIS_FACILITIES -- every
 # NPDES_ID (any permit type, not just individual/major-eligible), matching
@@ -237,13 +293,13 @@ fac <- fac[!(STATE_CODE %in% c("AK", "HI", "PR", "VI", "GU", "AS", "MP"))]
 xwalk <- build_facility_crosswalk(raw_dir = RAW_DIR)
 
 # ------------------------------------------------------------------------------
-# STEP 5: Facility-level eligibility and permit-only window.
+# STEP 5: Facility-level eligibility -- permit-window overlap OR proxy evidence.
 # ------------------------------------------------------------------------------
-# A facility qualifies if ANY of its linked individual permits was ever major.
-# Its overall window spans the earliest opening to the latest closing across
-# ALL of its individual permits (LABELED ASSUMPTION 4), and we also build the
-# semicolon-separated list of every individual NPDES_ID linked to it
-# (LABELED ASSUMPTION 6).
+# A facility is a CANDIDATE if ANY of its linked individual permits was ever
+# major. Its overall permit-only window spans the earliest opening to the
+# latest closing across ALL of its individual permits (LABELED ASSUMPTION 4),
+# and we also build the semicolon-separated list of every individual NPDES_ID
+# linked to it (LABELED ASSUMPTION 6).
 fac_window <- fac[, .(
     facility_open       = min(permit_open),
     facility_close       = max(permit_close),
@@ -253,22 +309,58 @@ fac_window <- fac[, .(
     PERMIT_TYPE_FLAG    = paste(sort(unique(permit_type)), collapse = "; ")
   ), by = facility_id]
 
-qual_fac <- fac_window[facility_ever_major == TRUE]
+cand_fac <- fac_window[facility_ever_major == TRUE]
 
-# Clip each qualifying facility's window to the panel's Jan 2005 - Dec 2025
-# bounds, then drop any facility whose true window doesn't overlap that range
-# at all (e.g., a permit that closed for good before 2005).
-qual_fac[, spine_start := pmax(facility_open, WINDOW_START)]
-qual_fac[, spine_end   := pmin(facility_close, WINDOW_END)]
-qual_fac <- qual_fac[spine_start <= spine_end]
+# Does this facility's PERMIT-ONLY window genuinely overlap the panel period at
+# all (LABELED ASSUMPTION 1B)? Tested on the RAW, unclipped facility_open/
+# facility_close -- NOT the pmax()/pmin()-clipped spine_start/spine_end below,
+# which would otherwise always "overlap" by construction once clipped to the
+# panel boundary, silently hiding a facility whose true permit window (e.g.
+# closed for good in 1998) never touched 2005-2025 at all.
+cand_fac[, permit_overlaps_panel :=
+           facility_open <= WINDOW_END & facility_close >= WINDOW_START]
+
+# Permit-only window, clipped to the panel bounds -- ONLY meaningful when it
+# genuinely overlaps (above); NA otherwise, so it's correctly ignored (rather
+# than treated as a real bound) by use_operating_proxies()'s na.rm=TRUE union
+# arithmetic below, and by FACILITY_OPERATING_PERMIT_WINDOW's computation in
+# STEP 7.
+cand_fac[, spine_start := fifelse(permit_overlaps_panel,
+                                  pmax(facility_open, WINDOW_START), as.Date(NA))]
+cand_fac[, spine_end   := fifelse(permit_overlaps_panel,
+                                  pmin(facility_close, WINDOW_END),   as.Date(NA))]
 
 # Calendar-month bounds of the PERMIT-ONLY window (LABELED ASSUMPTION 9), kept
 # both as Dates (for FACILITY_OPERATING_PERMIT_WINDOW) and as an integer
-# YEAR*12+MONTH ("ym") key (for the extension arithmetic in STEP 6C).
-qual_fac[, spine_start_month := floor_date(spine_start, "month")]
-qual_fac[, spine_end_month   := floor_date(spine_end,   "month")]
-qual_fac[, spine_start_ym := year(spine_start_month) * 12L + month(spine_start_month)]
-qual_fac[, spine_end_ym   := year(spine_end_month)   * 12L + month(spine_end_month)]
+# YEAR*12+MONTH ("ym") key (for the extension arithmetic just below).
+cand_fac[, spine_start_month := floor_date(spine_start, "month")]
+cand_fac[, spine_end_month   := floor_date(spine_end,   "month")]
+cand_fac[, spine_start_ym := year(spine_start_month) * 12L + month(spine_start_month)]
+cand_fac[, spine_end_ym   := year(spine_end_month)   * 12L + month(spine_end_month)]
+
+# Scan for independent proxy evidence (LABELED ASSUMPTION 10), against EVERY
+# candidate -- not just facilities whose permit window already overlaps the
+# panel -- via use_operating_proxies() in use_operating_proxies.R (sourced
+# above). All seven proxy sources are tied to the single USE_PROXIES config
+# flag above (TRUE reproduces the original correction exactly; FALSE = permit-
+# paperwork dates only, no proxy sources scanned at all). To toggle individual
+# sources instead of all seven at once, override the specific use_* argument
+# below; see use_operating_proxies.R's own header for what each source is.
+cand_fac <- use_operating_proxies(cand_fac, xwalk, raw_dir = RAW_DIR, eff_path = EFF_PATH,
+                                  year_min = YEAR_MIN, year_max = YEAR_MAX,
+                                  use_inspections = USE_PROXIES,
+                                  use_ps_violations = USE_PROXIES,
+                                  use_cs_violations = USE_PROXIES,
+                                  use_se_violations = USE_PROXIES,
+                                  use_formal_enforcement = USE_PROXIES,
+                                  use_informal_enforcement = USE_PROXIES,
+                                  use_effluent = USE_PROXIES)
+
+# Final eligibility (LABELED ASSUMPTION 1B): keep a candidate if EITHER its
+# permit window genuinely overlaps the panel OR it has independent proxy
+# evidence somewhere in 2005-2025. A candidate with neither has no connection
+# to this panel's time period at all and is dropped (see run log for counts).
+qual_fac <- cand_fac[permit_overlaps_panel | !is.na(proxy_start_ym)]
 
 # ------------------------------------------------------------------------------
 # STEP 6: Facility attribute snapshot (one representative record per facility).
@@ -282,26 +374,6 @@ fac_attr <- unique(fac, by = "facility_id")[
       STATE_CODE, ZIP, COUNTY_CODE,
       FAC_LAT  = GEOCODE_LATITUDE,
       FAC_LONG = GEOCODE_LONGITUDE)]
-
-# ------------------------------------------------------------------------------
-# STEP 6B/6C: Extend each qualifying facility's window over any real recorded
-# event (LABELED ASSUMPTION 10), via use_operating_proxies() in
-# use_operating_proxies.R (sourced above). All seven proxy sources are tied to
-# the single USE_PROXIES config flag above (TRUE reproduces the original
-# correction exactly; FALSE = permit-paperwork dates only, no extension at
-# all -- the function's own "zero sources enabled" path already handles this
-# by returning the window unchanged). To toggle individual sources instead of
-# all seven at once, override the specific use_* argument below; see
-# use_operating_proxies.R's own header for what each source is.
-qual_fac <- use_operating_proxies(qual_fac, xwalk, raw_dir = RAW_DIR, eff_path = EFF_PATH,
-                                  year_min = YEAR_MIN, year_max = YEAR_MAX,
-                                  use_inspections = USE_PROXIES,
-                                  use_ps_violations = USE_PROXIES,
-                                  use_cs_violations = USE_PROXIES,
-                                  use_se_violations = USE_PROXIES,
-                                  use_formal_enforcement = USE_PROXIES,
-                                  use_informal_enforcement = USE_PROXIES,
-                                  use_effluent = USE_PROXIES)
 
 # ------------------------------------------------------------------------------
 # STEP 7: Build the facility-by-month spine (BALANCED panel) + both operating flags.
@@ -327,17 +399,39 @@ spine <- CJ(facility_id = unique(qual_fac$facility_id),
 spine <- all_months[spine, on = c("YEAR", "MONTH")]
 spine[, ym := YEAR * 12L + MONTH]
 
-# Attach each facility's permit-only AND extended window bounds; every
-# facility_id here has exactly one set of bounds (guaranteed by qual_fac's own
-# spine_start <= spine_end filter in STEP 5), so this join can never introduce
-# a missing bound.
-spine <- qual_fac[, .(facility_id, spine_start_ym, spine_end_ym,
+# Attach each facility's permit-only, proxy-only, AND extended (union) window
+# bounds, plus the permit-overlap flag; every facility_id here has exactly one
+# set of bounds (guaranteed by qual_fac's own facility_id-grain construction in
+# STEP 5), so this join can never introduce a missing row.
+spine <- qual_fac[, .(facility_id, permit_overlaps_panel,
+                       spine_start_ym, spine_end_ym,
+                       proxy_start_ym, proxy_end_ym,
                        new_start_ym, new_end_ym)][spine, on = "facility_id"]
+
+# FACILITY_OPERATING_PERMIT_WINDOW (LABELED ASSUMPTION 9): permit-dates-only.
+# A genuine, reported 0 -- not NA -- for every month of a facility admitted
+# SOLELY via proxy evidence (permit_overlaps_panel == FALSE): the permit info
+# does exist, it just says "not active this period." Computing this via
+# fifelse() rather than letting `ym >= NA & ym <= NA` propagate NA is what
+# makes that an explicit, reported zero instead of an accidental missing value.
 spine[, FACILITY_OPERATING_PERMIT_WINDOW :=
-        as.integer(ym >= spine_start_ym & ym <= spine_end_ym)]
+        fifelse(permit_overlaps_panel,
+                as.integer(ym >= spine_start_ym & ym <= spine_end_ym),
+                0L)]
+# FACILITY_OPERATING_PROXY_WINDOW (LABELED ASSUMPTION 11): proxy-evidence-only,
+# with NO permit-date influence. NA (not 0) for a facility with zero qualifying
+# proxy events anywhere -- there is no "earliest/latest" of an empty set, so
+# "not operating per proxies" and "no proxy evidence exists" must stay
+# distinguishable, matching this project's existing NA-for-undefined
+# philosophy (same reasoning as FACILITY_OPERATING's own NA handling).
+spine[, FACILITY_OPERATING_PROXY_WINDOW :=
+        as.integer(ym >= proxy_start_ym & ym <= proxy_end_ym)]
+# FACILITY_OPERATING (LABELED ASSUMPTION 10): the union of both -- unchanged
+# formula from before this change.
 spine[, FACILITY_OPERATING :=
         as.integer(ym >= new_start_ym & ym <= new_end_ym)]
-spine[, c("month_date", "ym", "spine_start_ym", "spine_end_ym",
+spine[, c("month_date", "ym", "permit_overlaps_panel",
+          "spine_start_ym", "spine_end_ym", "proxy_start_ym", "proxy_end_ym",
           "new_start_ym", "new_end_ym") := NULL]
 
 # ------------------------------------------------------------------------------
@@ -349,6 +443,7 @@ setnames(panel, "facility_id", "FACILITY_UIN")
 
 setcolorder(panel, c("FACILITY_UIN", "YEAR", "MONTH", "NPDES_ID", "MAJOR_MINOR_FLAG",
                      "PERMIT_TYPE_FLAG", "FACILITY_OPERATING", "FACILITY_OPERATING_PERMIT_WINDOW",
+                     "FACILITY_OPERATING_PROXY_WINDOW",
                      "FACILITY_TYPE_CODE", "FACILITY_NAME", "LOCATION_ADDRESS", "CITY",
                      "STATE_CODE", "ZIP", "COUNTY_CODE", "FAC_LAT", "FAC_LONG"))
 setorder(panel, FACILITY_UIN, YEAR, MONTH)
@@ -367,17 +462,37 @@ message("=== facility-by-month panel: ever-major, ever-individual, entry/exit al
 message("Individual (NPD) permits read                 : ", n_pm_before)
 message("...with an unplaceable opening date (dropped)  : ", n_pm_before - uniqueN(pm$NPDES_ID))
 message("Individual permits ever flagged major          : ", sum(permits$ever_major))
-message("Qualifying facilities (ever major, ever indiv.): ", nrow(qual_fac))
+message("Candidate facilities (ever major, ever indiv.) : ", nrow(cand_fac))
+message("  ...permit window overlaps 2005-2025            : ", sum(cand_fac$permit_overlaps_panel))
+message("  ...admitted ONLY via proxy evidence (no overlap): ",
+        sum(!cand_fac$permit_overlaps_panel & !is.na(cand_fac$proxy_start_ym)))
+message("  ...dropped (no permit overlap, no proxy evidence): ",
+        sum(!cand_fac$permit_overlaps_panel & is.na(cand_fac$proxy_start_ym)))
+message("Qualifying facilities (final panel population) : ", nrow(qual_fac))
 message("Facilities with >1 linked NPDES_ID             : ",
         sum(lengths(strsplit(qual_fac$NPDES_ID, "; ")) > 1))
 message("Panel rows (balanced facility x month, all ", YEAR_MIN, "-", YEAR_MAX, " months): ", nrow(panel))
-message("--- Window correction (ASSUMPTION 10; see use_operating_proxies.R) ---")
+message("--- Window correction (ASSUMPTIONS 10-11; see use_operating_proxies.R) ---")
 message("USE_PROXIES: ", USE_PROXIES, if (!USE_PROXIES) " (permit-paperwork dates only, no extension)" else "")
-n_extended <- sum(qual_fac$new_start_ym < qual_fac$spine_start_ym |
-                   qual_fac$new_end_ym   > qual_fac$spine_end_ym)
-message("Facilities with window extended by a real event: ", n_extended, " of ", nrow(qual_fac))
-message("  FACILITY_OPERATING == 1 (corrected)             : ", sum(panel$FACILITY_OPERATING == 1L))
-message("  FACILITY_OPERATING == 0 (corrected)              : ", sum(panel$FACILITY_OPERATING == 0L))
+n_extended <- sum(qual_fac$permit_overlaps_panel &
+                    (qual_fac$new_start_ym < qual_fac$spine_start_ym |
+                     qual_fac$new_end_ym   > qual_fac$spine_end_ym))
+message("Facilities with permit window extended by a real event : ", n_extended,
+        " of ", sum(qual_fac$permit_overlaps_panel))
+message("Facilities admitted via proxy evidence only (no permit window): ",
+        sum(!qual_fac$permit_overlaps_panel), " of ", nrow(qual_fac))
+message("  FACILITY_OPERATING == 1 (union, corrected)      : ", sum(panel$FACILITY_OPERATING == 1L))
+message("  FACILITY_OPERATING == 0 (union, corrected)       : ", sum(panel$FACILITY_OPERATING == 0L))
+message("  FACILITY_OPERATING_PROXY_WINDOW == 1             : ",
+        sum(panel$FACILITY_OPERATING_PROXY_WINDOW == 1L, na.rm = TRUE))
+message("  FACILITY_OPERATING_PROXY_WINDOW == 0             : ",
+        sum(panel$FACILITY_OPERATING_PROXY_WINDOW == 0L, na.rm = TRUE))
+message("  FACILITY_OPERATING_PROXY_WINDOW NA (no proxy evidence at all): ",
+        sum(is.na(panel$FACILITY_OPERATING_PROXY_WINDOW)))
+message("  Identity: FACILITY_OPERATING >= FACILITY_OPERATING_PERMIT_WINDOW : ",
+        all(panel$FACILITY_OPERATING >= panel$FACILITY_OPERATING_PERMIT_WINDOW))
+message("  Identity: FACILITY_OPERATING >= FACILITY_OPERATING_PROXY_WINDOW  : ",
+        all(panel$FACILITY_OPERATING >= panel$FACILITY_OPERATING_PROXY_WINDOW, na.rm = TRUE))
 message("  FACILITY_OPERATING_PERMIT_WINDOW == 1 (uncorrected): ",
         sum(panel$FACILITY_OPERATING_PERMIT_WINDOW == 1L))
 months_per_fac <- panel[, .N, by = FACILITY_UIN]$N

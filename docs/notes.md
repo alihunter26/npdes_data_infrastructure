@@ -142,6 +142,44 @@ Purely a refactor — reasons: (1) letting a different mix of evidence be tried 
 editing script 01 itself, (2) not duplicating a large block of explanation across two
 files that were drifting out of sync with each other's edits.
 
+**Update 2026-07-28: `USE_PROXIES` config flag added, then panel membership itself**
+**changed from permit-dates-only to permit-window-overlap OR proxy evidence.** Two
+separate changes, same day:
+- A single `USE_PROXIES` flag (default `TRUE`) now feeds all seven `use_operating_
+  proxies()` switches at once — `FALSE` skips the proxy scan entirely (permit-
+  paperwork dates only, ~45% faster since no proxy source is read).
+- Per request: previously, a facility whose permit-paperwork window didn't overlap
+  2005–2025 was dropped from the panel entirely, before `use_operating_proxies()`
+  ever ran — proxy evidence only widened an *already-admitted* facility's window,
+  never granted admission on its own. Now a facility is admitted if EITHER its
+  permit window overlaps 2005–2025 OR it has independent proxy evidence anywhere in
+  that range (step 01's new Assumption 1B). Required restructuring the eligibility
+  test to run on the raw, unclipped permit dates (not the panel-clipped ones, which
+  would otherwise always "overlap" once clipped to the boundary) and moving the
+  proxy scan earlier, against the full candidate population rather than an
+  already-filtered one.
+- A new third column, `FACILITY_OPERATING_PROXY_WINDOW`, exposes the proxy-only
+  bounds `use_operating_proxies()` was already computing internally (previously
+  discarded before returning, used only as a step toward the union). For a
+  proxy-only-admitted facility, `FACILITY_OPERATING_PERMIT_WINDOW` correctly reads
+  0 for every month (a genuine zero, not NA), and `FACILITY_OPERATING` collapses to
+  exactly `FACILITY_OPERATING_PROXY_WINDOW`.
+- **Verified** (full 01→06 rebuild): of 7,531 "ever major, ever individual"
+  candidates, 7,514 have permit-window overlap, 16 are admitted solely via proxy
+  evidence, 1 is dropped (neither) — final population 7,530 (was 7,514), panel rows
+  1,897,560 (was 1,893,528; +4,032 = 16 × 252 months). Spot-checked facility
+  `110000311485`: `FACILITY_OPERATING_PERMIT_WINDOW` 0/252 months,
+  `FACILITY_OPERATING_PROXY_WINDOW` well-defined (243/252 operating), `FACILITY_
+  OPERATING` matches it exactly everywhere. Re-running with `USE_PROXIES <- FALSE`
+  correctly collapses membership back to permit-window-overlap only (7,514
+  facilities, 0 admitted via proxy-only) — confirmed, then restored to `TRUE` and
+  re-run so the on-disk panel reflects normal default behavior.
+- Final panel is now 59 columns (was 58); `FACILITY_OPERATING_PROXY_WINDOW` is
+  physical column 9, confirmed via `head -1`. `docs/codebook.md` renumbered
+  columns 9–58 → 10–59 accordingly (these are literal physical CSV positions, not
+  just documentation ordinals, so the renumbering reflects the real file, not a
+  stylistic choice).
+
 ## Findings
 
 ### Effluent D80/D90/E90 counts, 2005–2025 (2026-07-14)

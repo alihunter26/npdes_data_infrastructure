@@ -2,7 +2,7 @@
 
 Variable definitions for the **most recent panel**:
 `data/processed/06_facility_month_panel_major_individual_effluent_2005_2025.csv`
-(built 2026-07-23; 58 columns). This is the final-assembly output of the six-step
+(built 2026-07-28; 59 columns). This is the final-assembly output of the six-step
 pipeline in `code/03_panel_building/01…06_*.R` — see
 [`code/03_panel_building/README.md`](../code/03_panel_building/README.md) for the pipeline
 and [`READMEs/`](../code/03_panel_building/READMEs/) for full per-script detail (this
@@ -19,6 +19,22 @@ The panel's columns, values, and row count are **unchanged** by this move — ve
 by a full column-by-column diff against the retired step-07 output (zero differences).
 See "The window correction" below and step 01's README for the full story.
 
+**2026-07-28: panel membership now depends on proxy evidence too, not permit dates**
+**alone, and a new column (9) reports the proxy-only window.** Previously, a facility
+whose permit-paperwork window didn't overlap 2005–2025 was dropped entirely before
+the proxy scan ever ran — proxy evidence only widened an already-admitted facility's
+window, never granted admission on its own. Now a facility is kept if EITHER its
+permit window overlaps 2005–2025 OR it has independent proxy evidence (inspection,
+violation, enforcement, effluent) anywhere in that range. Verified: of 7,531
+candidate facilities, 16 are admitted **solely** via proxy evidence (no permit-window
+overlap at all) and 1 is dropped (neither) — final population 7,530, panel rows
+1,897,560 (+4,032 = 16 × 252 months vs. the pre-7/28 baseline). The new column,
+`FACILITY_OPERATING_PROXY_WINDOW`, reports the proxy-only-derived window independent
+of permit dates — for a proxy-only-admitted facility it's the *only* column showing
+why that facility is in the panel at all, since `FACILITY_OPERATING_PERMIT_WINDOW`
+correctly reads 0 for every one of its months. See "Panel membership" below and step
+01's README, Assumption 1B.
+
 **FY2025 row-filter script removed (2026-07-23).** `restrict_06_to_fy2025.R` (which
 produced a federal-FY2025, Oct 2024–Sep 2025 extract) has been deleted. Its two prior
 outputs remain on disk as **static, non-regenerable** files — there is no longer a
@@ -30,11 +46,13 @@ fresh FY2025 (or any other window) extract, filter the current 06 panel directly
 **Grain:** facility × year × month. **Unit:** FRS facility (`FACILITY_UIN`, or
 `NPDES_ID` when `FACILITY_UIN` is blank). **Population:** facilities linked to ≥1
 individual (`NPD`) NPDES permit that was flagged **major** in at least one permit
-version, at any point in its history ("ever major," not "always major"). **Window:**
-Jan 2005–Dec 2025, 48 continental states + DC only (excludes AK, HI, PR, VI, GU, AS,
-MP). **Rows:** 1,892,772 (7,511 facilities × 252 months) — the panel is **balanced**:
-every qualifying facility has one row per month regardless of whether it was actually
-open that month.
+version, at any point in its history ("ever major," not "always major"), AND (since
+2026-07-28) either a permit-paperwork window overlapping 2005–2025 **or** independent
+proxy evidence anywhere in that range — permit dates alone no longer gate membership
+(see "Panel membership" below). **Window:** Jan 2005–Dec 2025, 48 continental states +
+DC only (excludes AK, HI, PR, VI, GU, AS, MP). **Rows:** 1,897,560 (7,530 facilities ×
+252 months) — the panel is **balanced**: every qualifying facility has one row per
+month regardless of whether it was actually open that month.
 
 ---
 
@@ -60,7 +78,7 @@ exempt — they're time-invariant attributes, not events). The two penalty-dolla
 columns (`FED_PENALTY`, `STATE_PENALTY`) use a related but separate NA rule: NA means
 "no action carried a dollar amount," not "not operating" — see their entries.
 
-Of 1,892,772 rows, **1,749,567 are operating (`=1`) and 143,205 are not (`=0`)**.
+Of 1,897,560 rows, **1,754,214 are operating (`=1`) and 143,346 are not (`=0`)**.
 
 ### The window correction (why `FACILITY_OPERATING` isn't just permit dates)
 
@@ -97,7 +115,36 @@ against, so its `FACILITY_OPERATING` still rests entirely on the original permit
 window and carries the same undiagnosed risk described above. The fix resolves every
 facility where the risk is *provable* from the panel's own data; it cannot fix a
 facility where the permit dates are wrong **and** the facility was never independently
-observed doing anything.
+observed doing anything. (Such a facility's `FACILITY_OPERATING_PROXY_WINDOW`, column
+9, is `NA` throughout — the honest signal that no independent evidence exists either
+way.)
+
+### Panel membership: permit-window overlap OR proxy evidence (2026-07-28)
+
+Before this date, a facility's admission to the panel depended **only** on its
+permit-paperwork window overlapping 2005–2025 (Assumptions 2–4 in step 01's README);
+proxy evidence only ever widened an *already-admitted* facility's operating window,
+never granted admission on its own. Now a facility is admitted if **either**:
+
+- its permit-paperwork window genuinely overlaps 2005–2025 (tested on the raw,
+  unclipped dates, not the panel-clipped ones — clipping would otherwise make every
+  facility "overlap" by construction), **or**
+- it has independent proxy evidence (inspection, PS/CS/SE violation, formal/informal
+  enforcement action, or effluent violation) anywhere in 2005–2025, even if its
+  permit window never reaches that range.
+
+**Verified:** of 7,531 "ever major, ever individual" candidates, 7,514 have permit-
+window overlap, **16 are admitted solely via proxy evidence**, and 1 is dropped
+(neither) — final population 7,530. For a proxy-only-admitted facility,
+`FACILITY_OPERATING_PERMIT_WINDOW` (column 8) correctly reads **0 for every month**
+(the permit info exists, it just says "not active this period" — a genuine reported
+zero, not a missing value), and `FACILITY_OPERATING` (column 7) collapses to exactly
+`FACILITY_OPERATING_PROXY_WINDOW` (column 9) — spot-checked on facility
+`110000311485` (0/252 months permit-window-active; 243/252 proxy-window-active;
+`FACILITY_OPERATING` matches the proxy column exactly everywhere).
+
+Full detail: step 01's README, Assumption 1B, and
+`code/03_panel_building/use_operating_proxies.R`'s own header.
 
 ---
 
@@ -111,17 +158,18 @@ observed doing anything.
 | 4 | `NPDES_ID` | text | **Semicolon-separated list** of every individual (`NPD`) permit ever linked to this facility, `sort(unique(...))`. 427 of 7,511 facilities (5.7%) have >1; max is 7. To count distinct permits per facility, split on `"; "` — grouping directly on `FACILITY_UIN` will not do it, the collapse already happened here. |
 | 5 | `MAJOR_MINOR_FLAG` | text | Semicolon list, **position-aligned with `NPDES_ID`** — one major/minor flag (`M`/`N`) per listed permit, from `ICIS_PERMITS.MAJOR_MINOR_STATUS_FLAG`. A facility qualifies for the panel if *any* entry is ever `M` at any point in that permit's version history ("ever major"); entries can legitimately mix `M` and `N` for the same facility. 875 facilities shift between major and minor at some point. |
 | 6 | `PERMIT_TYPE_FLAG` | text | Constant `"NPD"` for every row — the panel is restricted to individual permits by construction (general/`GPC` permits are out of scope). |
-| 7 | `FACILITY_OPERATING` | integer (0/1) | **Corrected** — see "Read this first" above. 1 iff the calendar month falls within the facility's window after extending it to also cover any month with a real recorded event. Facility *attribute* columns (name, address, `NPDES_ID` list, …) are **not** masked by this flag — they broadcast the same snapshot to every month regardless. |
-| 8 | `FACILITY_OPERATING_PERMIT_WINDOW` | integer (0/1) | The *original* permit-dates-only definition: 1 iff the month falls within the facility's earliest-open/latest-close window computed purely from permit dates (unioned across all its individual permits, clipped to 2005–2025) — before the correction. Preserved for traceability; use `FACILITY_OPERATING` (column 7) for analysis, not this one. |
-| 9 | `FACILITY_TYPE_CODE` | text | Raw ICIS facility-type code. Observed values in this panel: `CNG`, `COR`, `CTG`, `DIS`, `FDF`, `MWD`, `MXO`, `NON`, `POF`, `STF`, `TRB`, or blank. **No code→label lookup table exists anywhere in this repo** — don't guess at meanings (e.g. `MWD` is commonly "municipal wastewater discharge" in ICIS documentation generally, but that mapping isn't verified against a source held here). If you need this decoded, pull EPA's ICIS-NPDES facility-type reference table before using it analytically. Time-invariant snapshot. |
-| 10 | `FACILITY_NAME` | text | Snapshot, time-invariant. When a facility has >1 linked permit, the record with a non-blank name is preferred and broadcast to all months. Real name/location changes over time are **not** tracked (ICIS carries no history for these fields). |
-| 11 | `LOCATION_ADDRESS` | text | Snapshot, same caveat as `FACILITY_NAME`. |
-| 12 | `CITY` | text | Snapshot. |
-| 13 | `STATE_CODE` | text | 2-letter USPS state code. Restricted to the 48 continental states + DC (AK/HI/PR/VI/GU/AS/MP excluded from the whole panel). |
-| 14 | `ZIP` | text | Zero-padded to 5 characters (`sprintf("%05s", ZIP)`); kept as text throughout — never coerce to numeric or the leading zeros are lost. |
-| 15 | `COUNTY_CODE` | text | FIPS county code, snapshot. |
-| 16 | `FAC_LAT` | numeric | Facility latitude (`ICIS_FACILITIES.GEOCODE_LATITUDE`), snapshot. |
-| 17 | `FAC_LONG` | numeric | Facility longitude (`ICIS_FACILITIES.GEOCODE_LONGITUDE`), snapshot. |
+| 7 | `FACILITY_OPERATING` | integer (0/1) | **The union — use this.** See "Read this first" above. 1 iff the calendar month falls within the facility's window after extending it to also cover any month with independent proxy evidence. For a facility admitted solely via proxy evidence (no permit-window overlap; see "Panel membership" above), this column is identical to `FACILITY_OPERATING_PROXY_WINDOW` (column 9). Facility *attribute* columns (name, address, `NPDES_ID` list, …) are **not** masked by this flag — they broadcast the same snapshot to every month regardless. |
+| 8 | `FACILITY_OPERATING_PERMIT_WINDOW` | integer (0/1) | The *original* permit-dates-only definition: 1 iff the month falls within the facility's earliest-open/latest-close window computed purely from permit dates (unioned across all its individual permits, clipped to 2005–2025) — before the correction. **Explicitly 0 (not NA) for every month of a facility admitted solely via proxy evidence** — the permit info exists, it just doesn't reach this panel's range. Preserved for traceability; use `FACILITY_OPERATING` (column 7) for analysis, not this one. |
+| 9 | `FACILITY_OPERATING_PROXY_WINDOW` | integer (0/1) / NA | **New 2026-07-28.** 1 iff the month falls within the facility's proxy-evidence-only window (earliest to latest month with an inspection, PS/CS/SE violation, formal/informal enforcement action, or effluent violation), with **no permit-date influence at all**. `NA` (not 0) for a facility with zero qualifying proxy events anywhere in 2005–2025 — there's no earliest/latest of an empty set, so "not operating per proxies" and "no proxy evidence exists at all" stay distinguishable. For a proxy-only-admitted facility this is the *only* column showing why it's in the panel; for every other facility it's a third, independent lens on operating status. Identity: `FACILITY_OPERATING >= FACILITY_OPERATING_PROXY_WINDOW` holds for every row (ignoring NA). |
+| 10 | `FACILITY_TYPE_CODE` | text | Raw ICIS facility-type code. Observed values in this panel: `CNG`, `COR`, `CTG`, `DIS`, `FDF`, `MWD`, `MXO`, `NON`, `POF`, `STF`, `TRB`, or blank. **No code→label lookup table exists anywhere in this repo** — don't guess at meanings (e.g. `MWD` is commonly "municipal wastewater discharge" in ICIS documentation generally, but that mapping isn't verified against a source held here). If you need this decoded, pull EPA's ICIS-NPDES facility-type reference table before using it analytically. Time-invariant snapshot. |
+| 11 | `FACILITY_NAME` | text | Snapshot, time-invariant. When a facility has >1 linked permit, the record with a non-blank name is preferred and broadcast to all months. Real name/location changes over time are **not** tracked (ICIS carries no history for these fields). |
+| 12 | `LOCATION_ADDRESS` | text | Snapshot, same caveat as `FACILITY_NAME`. |
+| 13 | `CITY` | text | Snapshot. |
+| 14 | `STATE_CODE` | text | 2-letter USPS state code. Restricted to the 48 continental states + DC (AK/HI/PR/VI/GU/AS/MP excluded from the whole panel). |
+| 15 | `ZIP` | text | Zero-padded to 5 characters (`sprintf("%05s", ZIP)`); kept as text throughout — never coerce to numeric or the leading zeros are lost. |
+| 16 | `COUNTY_CODE` | text | FIPS county code, snapshot. |
+| 17 | `FAC_LAT` | numeric | Facility latitude (`ICIS_FACILITIES.GEOCODE_LATITUDE`), snapshot. |
+| 18 | `FAC_LONG` | numeric | Facility longitude (`ICIS_FACILITIES.GEOCODE_LONGITUDE`), snapshot. |
 
 ## 2 · Inspections (step 02)
 
@@ -131,13 +179,13 @@ date. Routed to a facility via `NPDES_ID` through the step-01 crosswalk.
 
 | # | Column | Type | Description |
 |---|---|---|---|
-| 18 | `N_INSPECTIONS_TOTAL` | integer / NA | All distinct inspections that facility-month, any type/conductor. |
-| 19 | `N_CEI` | integer / NA | Compliance Evaluation Inspections. |
-| 20 | `N_ROS` | integer / NA | Reconnaissance inspections (without sampling). |
-| 21 | `N_SA1` | integer / NA | Sampling inspections. |
-| 22 | `N_AU1` | integer / NA | Audit inspections. |
-| 23 | `N_STATE_INSPECTIONS` | integer / NA | Inspections conducted by a state agency. |
-| 24 | `N_EPA_INSPECTIONS` | integer / NA | Inspections conducted by EPA. |
+| 19 | `N_INSPECTIONS_TOTAL` | integer / NA | All distinct inspections that facility-month, any type/conductor. |
+| 20 | `N_CEI` | integer / NA | Compliance Evaluation Inspections. |
+| 21 | `N_ROS` | integer / NA | Reconnaissance inspections (without sampling). |
+| 22 | `N_SA1` | integer / NA | Sampling inspections. |
+| 23 | `N_AU1` | integer / NA | Audit inspections. |
+| 24 | `N_STATE_INSPECTIONS` | integer / NA | Inspections conducted by a state agency. |
+| 25 | `N_EPA_INSPECTIONS` | integer / NA | Inspections conducted by EPA. |
 
 **Not a partition:** one inspection can carry several monitoring types, so
 `N_CEI + N_ROS + N_SA1 + N_AU1` can exceed `N_INSPECTIONS_TOTAL` (rarer types aren't
@@ -152,8 +200,8 @@ Time-invariant facility attributes (the code files carry no date/version).
 
 | # | Column | Type | Description |
 |---|---|---|---|
-| 25 | `NAICS_CODE` | text | Every NAICS code across all of the facility's permits, **semicolon-joined, primary code first** (`PRIMARY_INDICATOR_FLAG == "Y"` sorts first), de-duplicated, order preserved (not alphabetical). Blank `""` (not NA) if the facility's permits never appear in the NAICS file — coverage is sparse. 161 of 7,511 facilities carry >1 code. |
-| 26 | `SIC_CODE` | text | Same construction for SIC. Near-complete coverage for the major population. 466 facilities carry >1 code. |
+| 26 | `NAICS_CODE` | text | Every NAICS code across all of the facility's permits, **semicolon-joined, primary code first** (`PRIMARY_INDICATOR_FLAG == "Y"` sorts first), de-duplicated, order preserved (not alphabetical). Blank `""` (not NA) if the facility's permits never appear in the NAICS file — coverage is sparse. 161 of 7,511 facilities carry >1 code. |
+| 27 | `SIC_CODE` | text | Same construction for SIC. Near-complete coverage for the major population. 466 facilities carry >1 code. |
 
 ## 4 · Compliance-schedule violations (step 04)
 
@@ -164,9 +212,9 @@ resolving to the facility counts.
 
 | # | Column | Type | Description |
 |---|---|---|---|
-| 27 | `N_PS_VIOLATIONS` | integer / NA | Permit-schedule violations — missed permit-schedule milestones. |
-| 28 | `N_CS_VIOLATIONS` | integer / NA | Compliance-schedule violations — missed compliance-schedule milestones. |
-| 29 | `N_SE_VIOLATIONS` | integer / NA | Single-event violations. |
+| 28 | `N_PS_VIOLATIONS` | integer / NA | Permit-schedule violations — missed permit-schedule milestones. |
+| 29 | `N_CS_VIOLATIONS` | integer / NA | Compliance-schedule violations — missed compliance-schedule milestones. |
+| 30 | `N_SE_VIOLATIONS` | integer / NA | Single-event violations. |
 
 Effluent (DMR-based) violations are **not** in this block — they live entirely in
 section 6 below (step 06 owns all effluent-violation columns; they were moved out of
@@ -203,30 +251,30 @@ resolving to the facility counts.
 
 | # | Column | Type | Description |
 |---|---|---|---|
-| 34 | `N_FORMAL_ACTIONS` | integer / NA | **Raw-row count** of formal enforcement records (see design note above — not distinct actions; a multi-permit/multi-type action's rows each count separately). |
-| 35 | `N_AFR` | integer / NA | Formal actions with `ACTIVITY_TYPE_CODE == "AFR"` (administrative formal). |
-| 36 | `N_JDC` | integer / NA | Formal actions with `ACTIVITY_TYPE_CODE == "JDC"` (judicial). |
-| 37 | `N_SCWAAPO` | integer / NA | Formal actions with `ENF_TYPE_CODE == "SCWAAPO"`. |
-| 38 | `N_STAOCO` | integer / NA | Formal actions with `ENF_TYPE_CODE == "STAOCO"`. |
-| 39 | `N_SCWAAO` | integer / NA | Formal actions with `ENF_TYPE_CODE == "SCWAAO"`. |
-| 40 | `N_309A` | integer / NA | Formal actions with `ENF_TYPE_CODE == "309A"` (CWA §309(a) actions). |
-| 41 | `N_STATE_AFR` | integer / NA | `AFR` actions led by a state agency. |
-| 42 | `N_EPA_AFR` | integer / NA | `AFR` actions led by EPA. `N_STATE_AFR + N_EPA_AFR == N_AFR` (agency is one-per-action; verified in the run log). |
-| 43 | `N_STATE_JDC` | integer / NA | `JDC` actions led by a state agency. |
-| 44 | `N_EPA_JDC` | integer / NA | `JDC` actions led by EPA. `N_STATE_JDC + N_EPA_JDC == N_JDC`. |
-| 45 | `FED_PENALTY` | numeric $ / NA | Sum of federal penalty dollars (`FED_PENALTY_ASSESSED_AMT`) across the facility-month's formal actions, penalty de-duplicated to one value per action first. **NA means "not assessed," not "$0."** Blanks vastly outnumber true zeros (~107k blank vs. 72 genuine federal $0s). NA is independent of `FACILITY_OPERATING` — it's about whether an amount was ever assessed; unaffected by the window correction. |
-| 46 | `N_FED_PENALTY_ASSESSED` | integer | Count of distinct formal actions carrying a non-blank federal penalty amount — a different grain than `N_FORMAL_ACTIONS` (row 34, per-row); not directly comparable. |
-| 47 | `STATE_PENALTY` | numeric $ / NA | Same as `FED_PENALTY` for `STATE_LOCAL_PENALTY_AMT` (~64k blank vs. 768 genuine state $0s). |
-| 48 | `N_STATE_PENALTY_ASSESSED` | integer | Count of distinct formal actions carrying a non-blank state penalty amount — same different-grain note as row 46. |
-| 49 | `N_INFORMAL_ACTIONS` | integer / NA | **Raw-row count** of informal enforcement records (see design note above — not distinct actions). |
-| 50 | `N_LOVWL` | integer / NA | Informal rows, `ENF_TYPE_CODE == "LOVWL"` (Letter of Violation / Warning Letter). |
-| 51 | `N_NOV` | integer / NA | Informal rows, `"NOV"` (Notice of Violation). |
-| 52 | `N_NONC` | integer / NA | Informal rows, `"NONC"` (Notice of Noncompliance). |
-| 53 | `N_AER` | integer / NA | Informal rows, `"AER"` (Agency Enforcement Review — an internal/unofficial process step; see `OFFICIAL_FLG` note below and [`docs/data_dictionary.md`](data_dictionary.md)). |
-| 54 | `N_OFFICIAL_INFORMAL` | integer / NA | Informal rows with `OFFICIAL_FLG == "Y"` — genuine official actions (LOVWL/NOV/NONC-type). |
-| 55 | `N_UNOFFICIAL_INFORMAL` | integer / NA | Informal rows with `OFFICIAL_FLG == "N"` — internal agency process, not an action against the discharger. `N_OFFICIAL_INFORMAL + N_UNOFFICIAL_INFORMAL == N_INFORMAL_ACTIONS`. **If you want a count of real enforcement contacts, filter to `N_OFFICIAL_INFORMAL`** — including unofficial rows inflates counts with phone calls, reviews, and internal placeholders (see `docs/data_dictionary.md`). |
+| 35 | `N_FORMAL_ACTIONS` | integer / NA | **Raw-row count** of formal enforcement records (see design note above — not distinct actions; a multi-permit/multi-type action's rows each count separately). |
+| 36 | `N_AFR` | integer / NA | Formal actions with `ACTIVITY_TYPE_CODE == "AFR"` (administrative formal). |
+| 37 | `N_JDC` | integer / NA | Formal actions with `ACTIVITY_TYPE_CODE == "JDC"` (judicial). |
+| 38 | `N_SCWAAPO` | integer / NA | Formal actions with `ENF_TYPE_CODE == "SCWAAPO"`. |
+| 39 | `N_STAOCO` | integer / NA | Formal actions with `ENF_TYPE_CODE == "STAOCO"`. |
+| 40 | `N_SCWAAO` | integer / NA | Formal actions with `ENF_TYPE_CODE == "SCWAAO"`. |
+| 41 | `N_309A` | integer / NA | Formal actions with `ENF_TYPE_CODE == "309A"` (CWA §309(a) actions). |
+| 42 | `N_STATE_AFR` | integer / NA | `AFR` actions led by a state agency. |
+| 43 | `N_EPA_AFR` | integer / NA | `AFR` actions led by EPA. `N_STATE_AFR + N_EPA_AFR == N_AFR` (agency is one-per-action; verified in the run log). |
+| 44 | `N_STATE_JDC` | integer / NA | `JDC` actions led by a state agency. |
+| 45 | `N_EPA_JDC` | integer / NA | `JDC` actions led by EPA. `N_STATE_JDC + N_EPA_JDC == N_JDC`. |
+| 46 | `FED_PENALTY` | numeric $ / NA | Sum of federal penalty dollars (`FED_PENALTY_ASSESSED_AMT`) across the facility-month's formal actions, penalty de-duplicated to one value per action first. **NA means "not assessed," not "$0."** Blanks vastly outnumber true zeros (~107k blank vs. 72 genuine federal $0s). NA is independent of `FACILITY_OPERATING` — it's about whether an amount was ever assessed; unaffected by the window correction. |
+| 47 | `N_FED_PENALTY_ASSESSED` | integer | Count of distinct formal actions carrying a non-blank federal penalty amount — a different grain than `N_FORMAL_ACTIONS` (row 35, per-row); not directly comparable. |
+| 48 | `STATE_PENALTY` | numeric $ / NA | Same as `FED_PENALTY` for `STATE_LOCAL_PENALTY_AMT` (~64k blank vs. 768 genuine state $0s). |
+| 49 | `N_STATE_PENALTY_ASSESSED` | integer | Count of distinct formal actions carrying a non-blank state penalty amount — same different-grain note as row 47. |
+| 50 | `N_INFORMAL_ACTIONS` | integer / NA | **Raw-row count** of informal enforcement records (see design note above — not distinct actions). |
+| 51 | `N_LOVWL` | integer / NA | Informal rows, `ENF_TYPE_CODE == "LOVWL"` (Letter of Violation / Warning Letter). |
+| 52 | `N_NOV` | integer / NA | Informal rows, `"NOV"` (Notice of Violation). |
+| 53 | `N_NONC` | integer / NA | Informal rows, `"NONC"` (Notice of Noncompliance). |
+| 54 | `N_AER` | integer / NA | Informal rows, `"AER"` (Agency Enforcement Review — an internal/unofficial process step; see `OFFICIAL_FLG` note below and [`docs/data_dictionary.md`](data_dictionary.md)). |
+| 55 | `N_OFFICIAL_INFORMAL` | integer / NA | Informal rows with `OFFICIAL_FLG == "Y"` — genuine official actions (LOVWL/NOV/NONC-type). |
+| 56 | `N_UNOFFICIAL_INFORMAL` | integer / NA | Informal rows with `OFFICIAL_FLG == "N"` — internal agency process, not an action against the discharger. `N_OFFICIAL_INFORMAL + N_UNOFFICIAL_INFORMAL == N_INFORMAL_ACTIONS`. **If you want a count of real enforcement contacts, filter to `N_OFFICIAL_INFORMAL`** — including unofficial rows inflates counts with phone calls, reviews, and internal placeholders (see `docs/data_dictionary.md`). |
 
-**Type/activity breakouts (35–40, 50–53) are not partitions** — an action can carry
+**Type/activity breakouts (36–41, 51–54) are not partitions** — an action can carry
 several `ENF_TYPE_CODE`s and land in more than one column; rarer codes aren't broken
 out at all, so columns needn't sum to the parent total. `ENF_TYPE_CODE` variants
 ending in `S` (e.g. `AERS` vs. `AER`) are the state-issued counterpart of the same
@@ -257,16 +305,16 @@ and routed via the step-01 crosswalk.
 
 | # | Column | Type | Description |
 |---|---|---|---|
-| 30 | `N_TSS_EFF_VIOLATIONS` | integer / NA | All TSS/effluent-gross/monthly-avg violations that month, any code, distinct `NPDES_VIOLATION_ID`. Streamed directly from the raw ~16 GB `NPDES_EFF_VIOLATIONS.csv` (Python-filtered before `fread`, to stay within an 8 GB-RAM machine's memory). |
-| 31 | `N_TSS_EFF_D90` | integer / NA | TSS subset, `D90` code. |
-| 32 | `N_TSS_EFF_D80` | integer / NA | TSS subset, `D80` code. |
-| 33 | `N_TSS_EFF_E90` | integer / NA | TSS subset, `E90` code — genuine measured exceedances of the TSS limit. |
-| 56 | `n_D80` | integer / NA | All-parameter `D80` count, from the pre-built condensed monthly panel (`effluent_violations_npdes_month_panel_2005_2025.csv`); already de-duplicated to distinct underlying violations (latest DMR resubmission version only) at source. This is the same file step 01 reads for its event-existence check (Assumption 10; see `code/03_panel_building/use_operating_proxies.R`). |
-| 57 | `n_D90` | integer / NA | All-parameter `D90` count. |
-| 58 | `n_E90` | integer / NA | All-parameter `E90` count. |
+| 31 | `N_TSS_EFF_VIOLATIONS` | integer / NA | All TSS/effluent-gross/monthly-avg violations that month, any code, distinct `NPDES_VIOLATION_ID`. Streamed directly from the raw ~16 GB `NPDES_EFF_VIOLATIONS.csv` (Python-filtered before `fread`, to stay within an 8 GB-RAM machine's memory). |
+| 32 | `N_TSS_EFF_D90` | integer / NA | TSS subset, `D90` code. |
+| 33 | `N_TSS_EFF_D80` | integer / NA | TSS subset, `D80` code. |
+| 34 | `N_TSS_EFF_E90` | integer / NA | TSS subset, `E90` code — genuine measured exceedances of the TSS limit. |
+| 57 | `n_D80` | integer / NA | All-parameter `D80` count, from the pre-built condensed monthly panel (`effluent_violations_npdes_month_panel_2005_2025.csv`); already de-duplicated to distinct underlying violations (latest DMR resubmission version only) at source. This is the same file step 01 reads for its proxy-evidence scan (Assumption 10; see `code/03_panel_building/use_operating_proxies.R`). |
+| 58 | `n_D90` | integer / NA | All-parameter `D90` count. |
+| 59 | `n_E90` | integer / NA | All-parameter `E90` count. |
 
-Columns 30–33 sit right after `N_SE_VIOLATIONS` (their original position from when
-this block lived in step 04); columns 56–58 sit at the very end of the panel — the
+Columns 31–34 sit right after `N_SE_VIOLATIONS` (their original position from when
+this block lived in step 04); columns 57–59 sit at the very end of the panel — the
 two effluent blocks are not adjacent in column order.
 
 ---
@@ -299,10 +347,14 @@ two effluent blocks are not adjacent in column order.
   identically in each downstream step; an event on *any* individual permit ever linked
   to the facility counts toward that facility, not just the major one(s). Step 01
   itself builds this crosswalk **twice** — once restricted (for the spine), once
-  unrestricted (for the event-existence scan) — see its README, Assumption 10.
-- **Two operating flags, one intended for use** — `FACILITY_OPERATING` (corrected,
+  unrestricted (for the proxy-evidence scan) — see its README, Assumption 10.
+- **Three operating flags, one intended for use** — `FACILITY_OPERATING` (the union,
   column 7) is what analysis should use; `FACILITY_OPERATING_PERMIT_WINDOW` (column 8)
-  is the original permit-date-only version, kept for traceability/audit only.
+  is the original permit-date-only version, kept for traceability/audit only;
+  `FACILITY_OPERATING_PROXY_WINDOW` (column 9, new 2026-07-28) is the proxy-evidence-
+  only version — useful for understanding *why* a facility is in the panel, or for
+  isolating proxy-driven activity from permit-derived activity, but not a substitute
+  for `FACILITY_OPERATING` in general analysis.
 
 ## See also
 

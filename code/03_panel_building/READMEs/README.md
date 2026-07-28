@@ -11,11 +11,12 @@ the **facility-by-month panel** of major, individually-permitted NPDES facilitie
 > [`../../02_cleaning/build_effluent_violations_npdes_month_panel.md`](../../02_cleaning/build_effluent_violations_npdes_month_panel.md)
 > for its README.
 
-A facility-month with no violation of a given kind does not automatically get a 0. It gets 0 only if the facility was actually operating that month (FACILITY_OPERATING == 1, from step 01, passed through step 03); if it wasn't operating and no violation was recorded, it gets NA instead. The base 01 build script uses permit dates to determine operating status
+A facility-month with no violation of a given kind does not automatically get a 0. It gets 0 only if the facility was actually operating that month (FACILITY_OPERATING == 1, from step 01, passed through step 03); if it wasn't operating and no violation was recorded, it gets NA instead. The base 01 build script uses permit dates PLUS proxy evidence (since 2026-07-28) to
+determine operating status — see the dated note below.
 
 | Step | Script | README | Adds |
 |---|---|---|---|
-| 01 | `01_build_facility_month_panel_major_individual.R` | [01](01_build_facility_month_panel_major_individual.md) | base facility×month spine + facility attributes + corrected `FACILITY_OPERATING` |
+| 01 | `01_build_facility_month_panel_major_individual.R` | [01](01_build_facility_month_panel_major_individual.md) | base facility×month spine + facility attributes + all three operating flags (`FACILITY_OPERATING`, `FACILITY_OPERATING_PERMIT_WINDOW`, `FACILITY_OPERATING_PROXY_WINDOW`) |
 | 02 | `02_add_inspections.R` | [02](02_add_inspections.md) | inspection counts by type & conductor |
 | 03 | `03_add_naics_sic.R` | [03](03_add_naics_sic.md) | NAICS / SIC industry codes |
 | 04 | `04_add_violations.R` | [04](04_add_violations.md) | PS/CS/SE violation counts |
@@ -36,17 +37,42 @@ The missingness audit that used to occupy the "step 07" name lives in
 > of step 01's own body and into `use_operating_proxies.R` (still called by step 01,
 > now with an on/off switch per proxy source). See `../use_operating_proxies.R` and
 > step 01's README.
+>
+> **2026-07-28: added a `USE_PROXIES` config flag to step 01.** A single `TRUE`/`FALSE`
+> toggle near the top of the script now feeds all seven `use_operating_proxies()`
+> switches at once. `TRUE` (default) reproduces the original correction exactly;
+> `FALSE` uses permit-paperwork dates only — `FACILITY_OPERATING` becomes identical to
+> `FACILITY_OPERATING_PERMIT_WINDOW`, and the run skips reading all seven proxy sources
+> (verified both ways — see step 01's README).
+>
+> **2026-07-28: panel membership now depends on proxy evidence too, not permit dates**
+> **alone.** Previously, a facility whose permit-paperwork window didn't overlap
+> 2005–2025 was dropped entirely before the proxy scan ever ran — proxies only
+> widened an already-admitted facility's window. Now a facility is kept if EITHER its
+> permit window overlaps 2005–2025 OR it has independent proxy evidence anywhere in
+> that range. Verified: of 7,531 candidate facilities, 16 are admitted solely via
+> proxy evidence (no permit-window overlap at all) and 1 is dropped (neither) —
+> final population 7,530. A new column, `FACILITY_OPERATING_PROXY_WINDOW`, reports
+> the proxy-only window independent of permit dates. See step 01's README,
+> Assumption 1B.
 
 ## Pipeline order and conventions (shared by all steps)
 
 - **Run in order 01 → 02 → … → 06.** Each step reads the prior step's CSV from
   `data/processed/` and writes the next. Step 01 additionally reads several raw event
   files directly (existence only — see its README) to correct `FACILITY_OPERATING`
-  before anything downstream uses it. The missingness audit
+  before anything downstream uses it, AND (since 2026-07-28) to decide panel
+  **membership** itself for any facility whose permit-paperwork window doesn't
+  overlap 2005–2025 — unless its `USE_PROXIES` flag is set `FALSE`, in which case
+  those files aren't read at all, `FACILITY_OPERATING` stays permit-paperwork-only,
+  and membership collapses back to permit-window-overlap only. The missingness audit
   (`code/diagnostics/missingness/missingness_audit_major_individual.R`) is a standalone
   diagnostic that reads the final panel and the raw files.
 - **Unit of analysis:** the FRS facility (`FACILITY_UIN`), or `NPDES_ID` when
   `FACILITY_UIN` is blank. Panel grain is one row per **facility × year × month**.
+  Membership requires "ever major, ever individual" AND (since 2026-07-28) either a
+  permit-window overlap with 2005–2025 or independent proxy evidence somewhere in
+  that range — see step 01's README, Assumption 1B.
 - **Panel window:** January 2005 – December 2025 (`YEAR_MIN = 2005`, `YEAR_MAX = 2025`).
 - **Portable paths:** every script sources `_paths.R` at the repo root to resolve
   `CWA_ROOT`; all paths below are relative to that root.
