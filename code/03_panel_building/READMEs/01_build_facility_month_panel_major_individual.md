@@ -19,15 +19,20 @@ correctly reads 0 for every one of its months. See Assumption 1B.
 
 ** `USE_PROXIES` config flag.** A single `TRUE`/`FALSE` toggle
 near the top of the script (with `YEAR_MIN`/`YEAR_MAX`/etc.) now controls whether the
-`use_operating_proxies()` correction runs at all. `TRUE` (default) applies it with all
+`use_operating_proxies()` scan runs at all. `TRUE` (default) applies it with all
 seven proxy sources on, reproducing the original correction exactly. `FALSE` uses
 permit-paperwork dates only — `FACILITY_OPERATING` becomes identical to
 `FACILITY_OPERATING_PERMIT_WINDOW`, and the run skips reading all seven proxy sources
-entirely (verified: ~33s vs. ~59s wall time on an 8GB-RAM machine; run log prints
-"Facilities with window extended: 0 of 7,514" and `FACILITY_OPERATING == 1` matches
-`FACILITY_OPERATING_PERMIT_WINDOW == 1` exactly). The flag feeds all seven `use_*`
-arguments at once at the call site (STEP 6B/6C); to enable/disable individual proxy
-sources instead of all seven together, override the specific `use_*` argument there.
+entirely (verified: ~33s vs. ~59s wall time on an 8GB-RAM machine). **Since the 7/28
+membership change above, `FALSE` also shrinks the panel itself** — the 16 facilities
+admitted solely via proxy evidence get dropped entirely (neither a permit-window
+overlap nor any scanned proxy evidence to qualify on), not just window-unextended.
+Verified: 7,530 → 7,514 facilities, 1,897,560 → 1,893,528 rows; run log prints
+"Facilities admitted via proxy evidence only: 0 of 7,514" and `FACILITY_OPERATING == 1`
+matches `FACILITY_OPERATING_PERMIT_WINDOW == 1` exactly. The flag feeds all seven
+`use_*` arguments at once at the call site (STEP 5); to enable/disable individual
+proxy sources instead of all seven together, override the specific `use_*` argument
+there.
 
 The
 event-scanning/window-extension logic lives in `use_operating_proxies.R`, as a function,
