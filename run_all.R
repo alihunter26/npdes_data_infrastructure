@@ -10,10 +10,16 @@
 #    (see BUILD_EFFLUENT_PANEL below) — both step 01 and step 06 need this file
 #    to exist before they can run.
 # 4. Runs the six-step facility-by-month pipeline in code/03_panel_building/:
-#      01  base facility x month panel of major individual facilities, incl. a
-#          CORRECTED FACILITY_OPERATING flag (see step 01's README, Assumptions
-#          10-13 -- as of 2026-07-23 this correction lives here, not in a
-#          separate post-processing step)
+#      01  base facility x month panel of "ever major, ever individual"
+#          facilities -- as of 2026-07-28, a facility is admitted if EITHER its
+#          permit-paperwork window overlaps 2005-2025 OR it has independent
+#          proxy evidence (inspection, violation, enforcement, effluent)
+#          anywhere in that range (see step 01's README, Assumption 1B).
+#          Writes THREE operating flags: FACILITY_OPERATING (the union -- use
+#          this), FACILITY_OPERATING_PERMIT_WINDOW (permit-dates only), and
+#          FACILITY_OPERATING_PROXY_WINDOW (proxy evidence only; Assumption 11).
+#          Set USE_PROXIES <- FALSE inside the script to skip the proxy scan
+#          entirely (permit-window-overlap-only membership, faster run).
 #          -> data/processed/01_facility_month_panel_major_individual_2005_2025.csv
 #      02  + inspection counts
 #      03  + NAICS/SIC industry codes
@@ -74,7 +80,7 @@ if (!file.exists(EFF_PANEL_PATH)) {
 }
 
 steps <- c(
-  "01_build_facility_month_panel_major_individual.R", # base facility x month panel + corrected FACILITY_OPERATING
+  "01_build_facility_month_panel_major_individual.R", # base facility x month panel + all three operating flags
   "02_add_inspections.R",                              # + inspection-count columns
   "03_add_naics_sic.R",                                # + NAICS/SIC industry codes
   "04_add_violations.R",                               # + PS/CS/SE violation counts
