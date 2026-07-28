@@ -1,42 +1,17 @@
 # README — `01_build_facility_month_panel_major_individual.R`
 
-**updated 7/27: the Assumption 10 correction moved to its own file.** The
-event-scanning/window-extension logic (previously written inline as this script's
-STEP 6B/6C) now lives in `use_operating_proxies.R`, as a function,
+** verified by Ali 7/28 **
+
+The
+event-scanning/window-extension logic lives in `use_operating_proxies.R`, as a function,
 `use_operating_proxies()`, with an on/off switch per proxy source (all seven default
-`TRUE`, reproducing the original correction exactly). This script now just calls that
+`TRUE`). This script now just calls that
 function; see `use_operating_proxies.R`'s own header for the full explanation and for
 how to try a different mix of evidence without editing this script.
 
-** verified by Ali 7/17 **
-
-**updated 7/21:** the panel is now **balanced**, not unbalanced (see Overview and
-Assumption 9 below) — every qualifying facility now gets a row for **every** month
+Every qualifying facility gets a row for **every** month
 2005–2025, with a `FACILITY_OPERATING_PERMIT_WINDOW` flag marking which rows fall
 inside vs. outside its own permit-dates-only active window.
-
-**updated 7/23: the operating-window correction moved into this script.** It
-previously ran as a separate post-processing step (07, deleted) because it needed
-every event type already assembled — but it only ever needed to know *whether and
-when* a facility had *any* real event, not the full detailed counts, so that check now
-runs here directly. `FACILITY_OPERATING` (the name downstream scripts use) is the
-**corrected** flag from the moment it's created; the original permit-only flag is
-preserved as `FACILITY_OPERATING_PERMIT_WINDOW`. See Assumption 10 below. The
-retired step 07 found: 12.66% of `FACILITY_OPERATING==0` rows carried a real event
-anyway (32,033 of 253,028), 2,381 of 7,511 facilities (32%) affected, root cause =
-permits in Administrative Continuance (`PERMIT_STATUS_CODE == "ADC"`). This script now
-reproduces those exact same corrected numbers by construction, verified by a full
-column-by-column diff against the retired step-07 output (zero differences).
-
-**Bug found and fixed 7/21:** the spine-building `CJ()` call was passed the full,
-non-unique `all_months$YEAR`/`$MONTH` columns (252 values each, not 21/12 distinct
-values) instead of their unique values. `CJ()` does not deduplicate its inputs, so this
-squared the year-month dimension (252×252 instead of 21×12), attempting to build
-~477M rows instead of the correct ~1.89M and exceeding R's vector memory limit. Fixed
-to use `unique(all_months$YEAR)` / `unique(all_months$MONTH)`. Row/facility counts are
-unaffected (7,511 facilities, 1,892,772 rows, matching every count reported elsewhere
-in this project) — the bug only affected the (never-successfully-run) balanced-panel
-version of this script, not any panel actually delivered before 7/21.
 
 *Step 1 of the facility-by-month panel build. Input: raw ICIS-NPDES permit, facility,
 inspection, violation, and enforcement files, plus the pre-built condensed effluent
@@ -223,10 +198,6 @@ original — see Assumption 9), `FACILITY_TYPE_CODE`, `FACILITY_NAME`, `LOCATION
 ```bash
 Rscript "code/03_panel_building/01_build_facility_month_panel_major_individual.R"
 ```
-First step — has no upstream *panel* dependency (it does now read several raw event
-files and the condensed effluent panel, but nothing produced downstream in this
-pipeline). No manual rename needed before running step 02 (see the resolved filename
-note above).
 
 ## Notes / edge cases
 
@@ -245,7 +216,7 @@ note above).
   **zero** rows where `FACILITY_OPERATING == 0` and a real event is recorded — the
   correction is a mathematical guarantee of the Assumption-10 construction, not just
   an empirical result.
-- **Gotcha (found 7/22): `FACILITY_UIN` reads in as `integer64`** (via `fread`).
+- `FACILITY_UIN` reads in as `integer64`** (via `fread`).
   `data.table`'s `by =` grouping on an `integer64` column silently breaks (returns
   wrong/`NA` groups) unless the `bit64` package is loaded — this produced a bogus "0
   facilities with multiple NPDES_IDs" result before being caught. Cast to character
