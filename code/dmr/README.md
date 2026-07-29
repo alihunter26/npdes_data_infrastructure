@@ -31,9 +31,8 @@ DMR data on the side.
 
 ## The FY2025 / FY2009 DMR filter-pipeline trio
 
-These three build a *multi-tab* comparison across the stages of the DMR filter
-pipeline in `../../dmr analysis/` (01 Major-Individual → 02 TSS(00530) → 03 Effluent
-Gross → 04 C1/Q1):
+These three build a *multi-tab* comparison across the stages of the DMR row-filter
+pipeline below (01 Major-Individual → 02 TSS(00530) → 03 Effluent Gross → 04 C1/Q1):
 
 | Script | Purpose | Output |
 |---|---|---|
@@ -53,17 +52,18 @@ Gross → 04 C1/Q1):
 
 Four-step, FY-parameterized row filter narrowing a raw per-fiscal-year DMR file down
 to major/individual permits → TSS (00530) → effluent-gross monitoring location →
-C1/Q1 limit-value types. Moved in from the root-level `../dmr analysis/` folder
-2026-07-29 — only the scripts moved; input/output CSVs still land in
-`../../dmr analysis/`, which stays git-ignored for its multi-GB intermediates
-(`dmr analysis/*.csv` in `.gitignore`). Run manually per FY, not part of `run_all.R`:
+C1/Q1 limit-value types. Moved in from the root-level `dmr analysis/` folder
+2026-07-29 — the folder is gone now; both the scripts and their input/output CSVs
+live in `code/dmr/` (the CSVs are git-ignored via `code/dmr/*.csv` in `.gitignore`,
+same treatment the old folder gave them). Run manually per FY, not part of
+`run_all.R`:
 
 | Step | Script | Output |
 |---|---|---|
-| 1 | `filter_dmr_major_individual.R <FY>` | `../../dmr analysis/01_dmr_fy<FY>.csv` — FY DMR rows restricted to ever-major, individually-permitted permits |
-| 2 | `filter_dmr_00530.R <FY>` | `../../dmr analysis/02_dmr_fy<FY>_00530.csv` — step 1 restricted to PARAMETER_CODE = 00530 (TSS) |
-| 3 | `filter_dmr_monloc1.R <FY>` | `../../dmr analysis/03_dmr_fy<FY>_00530_monloc1.csv` — step 2 restricted to Effluent Gross monitoring locations |
-| 4 | `filter_dmr_c1q1.R <FY>` | `../../dmr analysis/04_dmr_fy<FY>_00530_monloc1_c1q1.csv` — step 3 restricted to LIMIT_VALUE_TYPE_CODE IN ('C1','Q1') |
+| 1 | `filter_dmr_major_individual.R <FY>` | `code/dmr/01_dmr_fy<FY>.csv` — FY DMR rows restricted to ever-major, individually-permitted permits |
+| 2 | `filter_dmr_00530.R <FY>` | `code/dmr/02_dmr_fy<FY>_00530.csv` — step 1 restricted to PARAMETER_CODE = 00530 (TSS) |
+| 3 | `filter_dmr_monloc1.R <FY>` | `code/dmr/03_dmr_fy<FY>_00530_monloc1.csv` — step 2 restricted to Effluent Gross monitoring locations |
+| 4 | `filter_dmr_c1q1.R <FY>` | `code/dmr/04_dmr_fy<FY>_00530_monloc1_c1q1.csv` — step 3 restricted to LIMIT_VALUE_TYPE_CODE IN ('C1','Q1') |
 
 ```bash
 Rscript code/dmr/filter_dmr_major_individual.R <FY>
@@ -75,9 +75,10 @@ Rscript code/dmr/filter_dmr_c1q1.R <FY>
 
 This is a separate, standalone pipeline from the FY2025 DMR filter mini-pipeline
 below — different logic (FY-parameterized vs. FY2025-hardcoded), different output
-location (`../dmr analysis/` vs. `data/processed/`). The FY2025/FY2009 filter-
-pipeline trio above (`build_dmr_raw_summary.R` etc.) summarizes *this* pipeline's
-stages, not the mini-pipeline's.
+naming/convention (numbered CSVs directly in `code/dmr/` vs. named CSVs in
+`data/processed/`). The FY2025/FY2009 filter-pipeline trio above
+(`build_dmr_raw_summary.R` etc.) summarizes *this* pipeline's stages, not the
+mini-pipeline's.
 
 ## `eff_flagged.R` — effluent-violation value QC
 
@@ -94,8 +95,8 @@ Output: `output/eff_flagged_<state>_<timestamp>.csv`.
 ## FY2025 DMR filter mini-pipeline
 
 A small two-step pipeline, run manually (not part of `run_all.R`), that filters the
-raw FY2025 DMR file down to the rows `../../dmr analysis/` and `06_add_effluent_violations.R`
-actually need:
+raw FY2025 DMR file down to the rows the DMR row-filter pipeline above and
+`06_add_effluent_violations.R` actually need:
 
 | Step | Script | Output |
 |---|---|---|

@@ -43,8 +43,8 @@ CWA/
 │   ├── 03_panel_building/   # facility-by-month panel pipeline (01–06); see its READMEs/
 │   ├── summary/             # per-dataset Excel summary sheets + built-panel QA/composition checks
 │   ├── diagnostics/         # data-quality checks, grouped by topic; see its README.md
-│   └── dmr/                 # DMR-specific summaries/diagnostics + two filter pipelines (see below)
-├── dmr analysis/     # git-ignored data only: intermediate CSVs for code/dmr/'s row-filter pipeline
+│   └── dmr/                 # DMR-specific summaries/diagnostics + two filter pipelines (incl.
+│                             #   git-ignored row-filter intermediates, code/dmr/*.csv; see below)
 ├── output/           # generated summaries (.xlsx) and flagged/extract CSVs
 │   ├── tables/       # diagnostic CSV extracts
 │   ├── figures/

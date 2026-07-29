@@ -4,7 +4,8 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # combine_dmr_summaries.R
 # ------------------------------------------------------------------------------
 # Builds ONE Excel workbook with 4 tabs -- one per stage of the DMR filter
-# pipeline in "dmr analysis/" (01 -> 04). This is the multi-tab equivalent of
+# pipeline in "code/dmr/" (01 -> 04, see filter_dmr_major_individual.R etc.).
+# This is the multi-tab equivalent of
 # running code/summary/summarize.R's `dmrs` dataset four times (once per
 # CSV_PATH, which is how output/DMR/01-04_dmr_summary.xlsx were each produced
 # as separate files): same styling, same summary logic, copied verbatim, but
@@ -29,7 +30,7 @@ options(openxlsx.dateFormat = "mm/dd/yyyy")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-DMR_ANALYSIS_DIR <- file.path(CWA_ROOT, "dmr analysis")
+DMR_ANALYSIS_DIR <- file.path(CWA_ROOT, "code", "dmr")
 OUT_DIR  <- file.path(CWA_ROOT, "output/DMR")
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 OUT_FILE <- file.path(OUT_DIR, "2025_dmr_summaries_combined.xlsx")

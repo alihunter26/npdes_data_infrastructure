@@ -4,7 +4,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # combine_dmr_summaries_fy2009.R
 # ------------------------------------------------------------------------------
 # FY2009 counterpart of combine_dmr_summaries.R -- identical logic and styling,
-# pointed at the FY2009 filter-pipeline outputs in "dmr analysis/" instead of
+# pointed at the FY2009 filter-pipeline outputs in "code/dmr/" instead of
 # FY2025's. Builds ONE Excel workbook with 4 tabs, one per stage (01 -> 04).
 #
 # Output: output/DMR/dmr_summaries_combined_fy2009_<timestamp>.xlsx
@@ -18,7 +18,7 @@ options(openxlsx.dateFormat = "mm/dd/yyyy")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-DMR_ANALYSIS_DIR <- file.path(CWA_ROOT, "dmr analysis")
+DMR_ANALYSIS_DIR <- file.path(CWA_ROOT, "code", "dmr")
 OUT_DIR  <- file.path(CWA_ROOT, "output/DMR")
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 OUT_FILE <- file.path(OUT_DIR, "2009_dmr_summaries_combined.xlsx")

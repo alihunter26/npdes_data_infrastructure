@@ -19,13 +19,13 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # Usage:
 #   Rscript code/dmr/filter_dmr_c1q1.R <FY>
 #
-# Moved in from the root-level `dmr analysis/` folder 2026-07-29 (script only --
-# input/output still land in `dmr analysis/`, which stays git-ignored for its
-# multi-GB intermediates; see code/dmr/README.md).
+# Moved in from the root-level `dmr analysis/` folder 2026-07-29 -- script AND its
+# input/output CSVs both now live in code/dmr/, git-ignored via `code/dmr/*.csv`
+# (see code/dmr/README.md). The old `dmr analysis/` folder is gone.
 #
-# Input : dmr analysis/03_dmr_fy<year>_00530_monloc1.csv      (majors-under-individual,
+# Input : code/dmr/03_dmr_fy<year>_00530_monloc1.csv      (majors-under-individual,
 #           TSS only, effluent gross)
-# Output: dmr analysis/04_dmr_fy<year>_00530_monloc1_c1q1.csv (+ LIMIT_VALUE_TYPE_CODE
+# Output: code/dmr/04_dmr_fy<year>_00530_monloc1_c1q1.csv (+ LIMIT_VALUE_TYPE_CODE
 #           IN ('C1','Q1'))
 #
 # Engine: DuckDB, out-of-core.
@@ -43,9 +43,9 @@ if (length(args) < 1 || is.na(suppressWarnings(as.integer(args[1]))))
 FY <- as.integer(args[1])
 
 ## ---- Config ----
-DMR_ANALYSIS_DIR <- file.path(CWA_ROOT, "dmr analysis")
-IN_PATH   <- file.path(DMR_ANALYSIS_DIR, sprintf("03_dmr_fy%d_00530_monloc1.csv", FY))
-OUT_PATH  <- file.path(DMR_ANALYSIS_DIR, sprintf("04_dmr_fy%d_00530_monloc1_c1q1.csv", FY))
+DMR_FILTER_DIR <- file.path(CWA_ROOT, "code", "dmr")
+IN_PATH   <- file.path(DMR_FILTER_DIR, sprintf("03_dmr_fy%d_00530_monloc1.csv", FY))
+OUT_PATH  <- file.path(DMR_FILTER_DIR, sprintf("04_dmr_fy%d_00530_monloc1_c1q1.csv", FY))
 VALUE_TYPE <- c("C1", "Q1")
 
 MEM_LIMIT <- "5GB"

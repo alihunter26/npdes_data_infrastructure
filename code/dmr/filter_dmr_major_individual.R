@@ -12,9 +12,9 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #   Rscript code/dmr/filter_dmr_major_individual.R <FY>
 #   e.g.    Rscript code/dmr/filter_dmr_major_individual.R 2025
 #
-# Moved in from the root-level `dmr analysis/` folder 2026-07-29 (script only --
-# output still lands in `dmr analysis/`, which stays git-ignored for its multi-GB
-# intermediates; see code/dmr/README.md).
+# Moved in from the root-level `dmr analysis/` folder 2026-07-29 -- script AND its
+# input/output CSVs both now live in code/dmr/, git-ignored via `code/dmr/*.csv`
+# (see code/dmr/README.md). The old `dmr analysis/` folder is gone.
 #
 # Row-filter the FULL FY<year> DMR file down to permits that are MAJOR under
 # an INDIVIDUAL permit -- the same population the facility panels use. Does
@@ -27,7 +27,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #   current-state extract, not FY-specific, so the "ever major individual"
 #   eligible-permit set is the same regardless of which FY's DMR is filtered.
 #
-# Output: dmr analysis/01_dmr_fy<year>.csv
+# Output: code/dmr/01_dmr_fy<year>.csv
 #
 # ---- Population definition ----------------------------------------------------
 #   INDIVIDUAL : PERMIT_TYPE_CODE == "NPD".
@@ -58,8 +58,8 @@ CSV_MEMBER <- sprintf("NPDES_DMRS_FY%d.csv", FY)
 ZIP_PATH   <- file.path(DMR_DIR, ZIP_NAME)
 PERMITS    <- file.path(RAW_DIR, "ICIS_PERMITS.csv")
 
-DMR_ANALYSIS_DIR <- file.path(CWA_ROOT, "dmr analysis")
-OUT_PATH   <- file.path(DMR_ANALYSIS_DIR, sprintf("01_dmr_fy%d.csv", FY))
+DMR_FILTER_DIR <- file.path(CWA_ROOT, "code", "dmr")
+OUT_PATH   <- file.path(DMR_FILTER_DIR, sprintf("01_dmr_fy%d.csv", FY))
 
 # Scratch dir named per-FY so gz caches for different years never collide.
 SCRATCH   <- Sys.getenv("CWA_SCRATCH", file.path(tempdir(), sprintf("cwa_dmr_mi_fy%d", FY)))
@@ -72,7 +72,7 @@ MEM_LIMIT <- "5GB"
 
 dir.create(SCRATCH,  showWarnings = FALSE, recursive = TRUE)
 dir.create(DUCK_TMP, showWarnings = FALSE, recursive = TRUE)
-dir.create(DMR_ANALYSIS_DIR, showWarnings = FALSE, recursive = TRUE)
+dir.create(DMR_FILTER_DIR, showWarnings = FALSE, recursive = TRUE)
 
 if (!file.exists(ZIP_PATH)) stop("FY", FY, " DMR zip not found: ", ZIP_PATH)
 message("FY: ", FY)
