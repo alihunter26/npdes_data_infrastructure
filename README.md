@@ -30,26 +30,32 @@ CWA/
 ├── data/
 │   ├── raw/          # original ECHO downloads — never modified
 │   │   ├── npdes_downloads/        # 15 core ICIS-NPDES tables
+│   │   ├── DMR/                    # per-fiscal-year DMR zips
 │   │   ├── Attains/                # receiving-water assessment links
-│   │   └── Master General Permits/
+│   │   ├── Master General Permits/
+│   │   └── reference/              # ECHO domain/lookup tables (code -> description)
 │   ├── processed/    # cleaned / analysis-ready files (built from code)
-│   └── crosswalks/   # reference tables (parameter, NAICS/SIC, state codes)
+│   └── crosswalks/   # NPDES_ID <-> EXTERNAL_PERMIT_NMBR crosswalk (built from code)
 ├── code/
 │   ├── 00_setup/            # package/directory checks (run_all.R's first step)
 │   ├── 01_data_download/    # scripted ECHO bulk-file downloader
 │   ├── 02_cleaning/         # shared cleaning helpers used by 03_panel_building/; see its module_README.md
 │   ├── 03_panel_building/   # facility-by-month panel pipeline (01–06); see its READMEs/
-│   ├── summary/             # per-dataset Excel summary sheets
+│   ├── summary/             # per-dataset Excel summary sheets + built-panel QA/composition checks
 │   ├── diagnostics/         # data-quality checks, grouped by topic; see its README.md
 │   └── dmr/                 # DMR-specific summaries/diagnostics + two filter pipelines (see below)
 ├── dmr analysis/     # git-ignored data only: intermediate CSVs for code/dmr/'s row-filter pipeline
 ├── output/           # generated summaries (.xlsx) and flagged/extract CSVs
 │   ├── tables/       # diagnostic CSV extracts
-│   └── figures/
+│   ├── figures/
+│   ├── briefs/       # code/diagnostics/brief_generators/ outputs
+│   └── DMR/          # code/dmr/'s raw-file summaries + combined workbooks
+├── website/          # static public site (data summaries, briefs); see website/scripts/ to regenerate its data/*.json
 └── docs/
-    ├── data_dictionary.md   # key fields and table join logic
-    ├── codebook.md          # variable definitions for the current facility-by-month panel
-    └── notes.md             # running notes on quirks, decisions, findings
+    ├── data_dictionary.md      # key fields and table join logic
+    ├── codebook.md             # variable definitions for the current facility-by-month panel
+    ├── notes.md                # running notes on quirks, decisions, findings
+    └── institutional_briefs/   # brief write-ups (.tex/.pdf) and their source figures/tables
 ```
 
 ## Scripts
