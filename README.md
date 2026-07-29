@@ -94,6 +94,20 @@ Datasets covered: `npdes` (every CSV in `npdes_downloads/`, one sheet per table)
 `dmrs`, `attains`, `eff_violations` / `eff_violations_state`, `limits`,
 `master_general_permits`, `outfalls_layer`.
 
+Two more scripts in `code/summary/` read a *built* panel rather than a raw source file
+(see [`code/summary/README.md`](code/summary/README.md) for full detail):
+
+- **`summarize_panel.R`** — face-validity/QA check for a built facility-month panel in
+  `data/processed/` (`Rscript code/summary/summarize_panel.R [panel_filename]`).
+  Its consistency-check section verifies component sums against totals, e.g.
+  `N_AFR == N_STATE_AFR + N_EPA_AFR`, `N_JDC == N_STATE_JDC + N_EPA_JDC`, and
+  `N_INFORMAL_ACTIONS == N_OFFICIAL_INFORMAL + N_UNOFFICIAL_INFORMAL` — the same
+  identities `05_add_enforcement.R`'s own run log verifies (there is no single
+  state/EPA split of *all* formal actions; agency is broken out separately within
+  `AFR` and within `JDC` — see `code/03_panel_building/READMEs/05_add_enforcement.md`).
+- **`summarize_violation_types.R`** — violation-type composition of a built panel
+  (permit-schedule vs. compliance-schedule vs. single-event vs. effluent).
+
 ### `code/diagnostics/` — diagnostics & checks
 
 Grouped into one subfolder per topic (NAICS/SIC coverage, enforcement duplicates,

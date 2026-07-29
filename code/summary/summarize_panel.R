@@ -135,8 +135,10 @@ check_sum <- function(total, parts, label) {
               format(bad, big.mark = ","), total, paste(parts, collapse = "+")))
   }
 }
-check_sum("N_FORMAL_ACTIONS",   c("N_STATE_FORMAL", "N_EPA_FORMAL"),
-          "N_FORMAL_ACTIONS == N_STATE_FORMAL + N_EPA_FORMAL")
+check_sum("N_AFR", c("N_STATE_AFR", "N_EPA_AFR"),
+          "N_AFR == N_STATE_AFR + N_EPA_AFR")
+check_sum("N_JDC", c("N_STATE_JDC", "N_EPA_JDC"),
+          "N_JDC == N_STATE_JDC + N_EPA_JDC")
 check_sum("N_INFORMAL_ACTIONS", c("N_OFFICIAL_INFORMAL", "N_UNOFFICIAL_INFORMAL"),
           "N_INFORMAL_ACTIONS == N_OFFICIAL_INFORMAL + N_UNOFFICIAL_INFORMAL")
 
