@@ -9,8 +9,7 @@ scripts below moved in the same day from a root-level `build/` folder (also now
 removed).
 
 None of these build the facility-month panel; they summarize, diagnose, or QC the
-DMR data on the side. See the root `code/README.md` for how this folder relates to
-`../dmr analysis/` (the sibling filter pipeline that also reads the raw DMR files).
+DMR data on the side.
 
 ## All scripts in this folder
 
@@ -23,6 +22,10 @@ DMR data on the side. See the root `code/README.md` for how this folder relates 
 | `make_dmr_funnel_fig.R` | Coverage, funnel, and outfall diagnostics |
 | `outfall_count_breakdown_dmr.R` | Coverage, funnel, and outfall diagnostics |
 | `eff_flagged.R` | Effluent-violation value QC |
+| `filter_dmr_major_individual.R` | DMR row-filter pipeline (step 1) |
+| `filter_dmr_00530.R` | DMR row-filter pipeline (step 2) |
+| `filter_dmr_monloc1.R` | DMR row-filter pipeline (step 3) |
+| `filter_dmr_c1q1.R` | DMR row-filter pipeline (step 4) |
 | `filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` | FY2025 DMR filter mini-pipeline (step 1) |
 | `filter_dmr_fy2025_effgross_major_individual.R` | FY2025 DMR filter mini-pipeline (step 2) |
 
@@ -45,6 +48,36 @@ Gross → 04 C1/Q1):
 | `summarize_dmr_coverage_major_minor.R` | FY2015-2020: how many Major vs. Minor permits (per `ICIS_PERMITS.csv`) actually reported DMR data each year — counts and coverage %, shaded by a green gradient. | `output/dmr_coverage_major_minor_<timestamp>.xlsx` |
 | `make_dmr_funnel_fig.R` | Plots the DMR row/permit "filter funnel" (major-individual → +TSS(00530) → +effluent gross → +C1/Q1) for FY2009 vs. FY2025 side by side. Figures cited in `docs/institutional_briefs/`. | `docs/institutional_briefs/fig/dmr_filter_funnel.pdf` |
 | `outfall_count_breakdown_dmr.R` | Companion to `code/diagnostics/outfalls/outfall_count_breakdown.R`: that script counts outfalls a facility is *permitted* for (`NPDES_LIMITS.csv`); this one counts outfalls that actually *reported* at least one monitoring result in the fiscal year, from the DMR file itself. DuckDB out-of-core (~9.7GB FY file, streamed from its zip). Default FY2025. | timestamped output (see script header) |
+
+## DMR row-filter pipeline (FY-parameterized, general)
+
+Four-step, FY-parameterized row filter narrowing a raw per-fiscal-year DMR file down
+to major/individual permits → TSS (00530) → effluent-gross monitoring location →
+C1/Q1 limit-value types. Moved in from the root-level `../dmr analysis/` folder
+2026-07-29 — only the scripts moved; input/output CSVs still land in
+`../../dmr analysis/`, which stays git-ignored for its multi-GB intermediates
+(`dmr analysis/*.csv` in `.gitignore`). Run manually per FY, not part of `run_all.R`:
+
+| Step | Script | Output |
+|---|---|---|
+| 1 | `filter_dmr_major_individual.R <FY>` | `../../dmr analysis/01_dmr_fy<FY>.csv` — FY DMR rows restricted to ever-major, individually-permitted permits |
+| 2 | `filter_dmr_00530.R <FY>` | `../../dmr analysis/02_dmr_fy<FY>_00530.csv` — step 1 restricted to PARAMETER_CODE = 00530 (TSS) |
+| 3 | `filter_dmr_monloc1.R <FY>` | `../../dmr analysis/03_dmr_fy<FY>_00530_monloc1.csv` — step 2 restricted to Effluent Gross monitoring locations |
+| 4 | `filter_dmr_c1q1.R <FY>` | `../../dmr analysis/04_dmr_fy<FY>_00530_monloc1_c1q1.csv` — step 3 restricted to LIMIT_VALUE_TYPE_CODE IN ('C1','Q1') |
+
+```bash
+Rscript code/dmr/filter_dmr_major_individual.R <FY>
+Rscript code/dmr/filter_dmr_00530.R <FY>
+Rscript code/dmr/filter_dmr_monloc1.R <FY>
+Rscript code/dmr/filter_dmr_c1q1.R <FY>
+#   <FY>: fiscal year, e.g. 2025 — each step requires the previous step's output
+```
+
+This is a separate, standalone pipeline from the FY2025 DMR filter mini-pipeline
+below — different logic (FY-parameterized vs. FY2025-hardcoded), different output
+location (`../dmr analysis/` vs. `data/processed/`). The FY2025/FY2009 filter-
+pipeline trio above (`build_dmr_raw_summary.R` etc.) summarizes *this* pipeline's
+stages, not the mini-pipeline's.
 
 ## `eff_flagged.R` — effluent-violation value QC
 

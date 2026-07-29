@@ -126,8 +126,9 @@ candidate is simply ignored, not treated as earlier/later than everything else.
 
 - Every function assumes the calling script has already run `library(data.table)`
   (and `library(lubridate)` for the date functions) — see "How it's used" above.
-- No cleaning here for `dmr analysis/` or `code/dmr/`'s filter mini-pipeline — those
-  are separate, standalone pipelines and out of scope for this extraction.
+- No cleaning here for `code/dmr/`'s two filter pipelines (the DMR row-filter chain
+  or the FY2025 mini-pipeline) — those are separate, standalone pipelines and out
+  of scope for this extraction.
 - No cleaning here for `build_effluent_violations_npdes_month_panel.R` either, despite
   living in the same folder — it's a standalone script, not a shared helper; see its
   own README.
