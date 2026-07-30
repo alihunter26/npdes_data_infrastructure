@@ -6,7 +6,7 @@ lookups), and numeric/date five-number summaries — plus a few cross-tab and QA
 scripts that build a different kind of output entirely. Raw data is never modified;
 see each section below for exact output paths (most are timestamped, a few are not).
 
-## `summarize.R` — single entry point for per-file variable summaries
+## [`summarize.R`](summarize.md) — single entry point for per-file variable summaries
 
 One registry-driven script builds any dataset's summary, so the shared styles, helpers,
 and worksheet writer live in one place:
@@ -35,9 +35,9 @@ see its README.
 
 | Script | Purpose | Output |
 |---|---|---|
-| `summarize_year_coverage.R` | Which years appear in which raw file's DATE/YEAR-named columns, across all of `data/raw/` (cheap column-only scan, so even multi-GB files like `NPDES_LIMITS.csv` are fast). | `output/year_coverage_<timestamp>.xlsx` |
+| [`summarize_year_coverage.R`](summarize_year_coverage.md) | Which years appear in which raw file's DATE/YEAR-named columns, across all of `data/raw/` (cheap column-only scan, so even multi-GB files like `NPDES_LIMITS.csv` are fast). | `output/year_coverage_<timestamp>.xlsx` |
 
-## `summarize_panel.R` — QA check for a *built* panel, not a raw source file
+## [`summarize_panel.R`](summarize_panel.md) — QA check for a *built* panel, not a raw source file
 
 Face-validity / realism check for a facility-month panel already built into
 `data/processed/` (the 01..06 panels from `code/03_panel_building/`) — the goal is
@@ -55,7 +55,7 @@ Prints all four sections (panel structure/key uniqueness, coverage, numeric summ
 consistency checks) to the console, and writes
 `output/panel_summary_<panel_name>_<timestamp>.xlsx`.
 
-## `summarize_violation_types.R` — violation-type composition of a built panel
+## [`summarize_violation_types.R`](summarize_violation_types.md) — violation-type composition of a built panel
 
 Also reads a *built* panel (not a raw source file), but answers a different question
 than `summarize_panel.R`'s QA checks: of all violations tallied in the panel, what
