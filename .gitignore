@@ -18,8 +18,9 @@ Thumbs.db
 data/processed/*.csv
 data/crosswalks/*.csv
 
-# dmr analysis/ intermediates — multi-GB, rebuilt from data/raw/ + dmr analysis/*.R
-dmr analysis/*.csv
+# code/dmr/ row-filter pipeline intermediates — multi-GB, rebuilt from data/raw/
+# + code/dmr/filter_dmr_*.R (moved in from the root-level dmr analysis/ 2026-07-29)
+code/dmr/*.csv
 
 # Generated summary / flag outputs (rebuilt from scripts) — incl. nested subfolders
 output/*.xlsx
