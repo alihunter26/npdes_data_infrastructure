@@ -29,9 +29,11 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #
 # SCOPE: PERM_FEATURE_TYPE_CODE = 'EXO' only; ALL parameters (not restricted
 #   to TSS or any pollutant) -- an outfall counts if it reported ANYTHING that
-#   year. Facilities are the panel's 7,511 major-individual facilities;
-#   multi-permit facilities (427) count distinct outfalls across all their
-#   permits. Fiscal year is configurable (FY below), default 2025.
+#   year. Facilities are the panel's current major-individual population (7,530 as
+#   of the 2026-07-28 proxy-evidence admission -- read fresh from PANEL_FILE below,
+#   not hardcoded); multi-permit facilities (427, unchanged by that admission) count
+#   distinct outfalls across all their permits. Fiscal year is configurable (FY
+#   below), default 2025.
 #
 # Engine: DuckDB, out-of-core. The FY DMR CSV (~9.7GB) lives inside a zip;
 # DuckDB can't read a zip member directly (non-seekable pipe breaks its

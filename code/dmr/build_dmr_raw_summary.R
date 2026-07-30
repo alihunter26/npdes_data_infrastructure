@@ -23,7 +23,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # content, so the same classification applies.
 #
 # Usage:
-#   Rscript code/summary/build_dmr_raw_summary.R <FY>
+#   Rscript code/dmr/build_dmr_raw_summary.R <FY>
 #
 # Output: output/DMR/raw_summary_fy<FY>.rds -- a summary_list (meta/cat/num/
 #   date) in the exact structure combine_dmr_summaries*.R's write_sheet()

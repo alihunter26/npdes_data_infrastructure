@@ -10,13 +10,12 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #
 # Writes: docs/institutional_briefs/fig/dmr_filter_funnel.pdf
 #
-# LABELED ASSUMPTION: the `d` table below is entered as literal numbers, not
-# recomputed here. Per the comment at its definition, they were checked
-# directly against the 8 pipeline output files via DuckDB -- but that check
-# was not run inside this script, so it is not independently traceable to a
-# logged run. TODO: replace with a query against the actual pipeline output
-# files (or a saved summary CSV) so these numbers are reproducible from code,
-# not just asserted correct in a comment.
+# Row/permit counts for `d` below are computed directly from the 8 DMR
+# row-filter pipeline output files in code/dmr/ (01-04, FY2009 and FY2025) on
+# every run -- not hardcoded -- so the figure always reflects whatever those
+# files currently contain. Requires all 8 files to already exist (run
+# filter_dmr_major_individual.R / filter_dmr_00530.R / filter_dmr_monloc1.R /
+# filter_dmr_c1q1.R for both FY2009 and FY2025 first).
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -26,15 +25,33 @@ suppressPackageStartupMessages({
   library(data.table)
 })
 
-# Verified directly from the 8 pipeline output files via DuckDB (not from memory)
-d <- data.table(
-  fy    = rep(c("2009", "2025"), each = 4),
-  stage = rep(1:4, 2),
-  rows    = c(4015793, 440369, 328296,  80196,
-              4703897, 489033, 336437,  75818),
-  permits = c(   6555,   6426,   6091,   4974,
-                 6701,   6572,   6117,   4880)
-)
+# ---- Compute rows + distinct permits from the actual pipeline output files ---
+stage_suffix <- c("01_dmr_fy%s.csv", "02_dmr_fy%s_00530.csv",
+                  "03_dmr_fy%s_00530_monloc1.csv", "04_dmr_fy%s_00530_monloc1_c1q1.csv")
+
+stage_counts <- function(path) {
+  permit_col <- fread(path, select = "EXTERNAL_PERMIT_NMBR", colClasses = "character",
+                       showProgress = FALSE)
+  list(rows = nrow(permit_col), permits = uniqueN(permit_col$EXTERNAL_PERMIT_NMBR))
+}
+
+d <- rbindlist(lapply(c("2009", "2025"), function(fy) {
+  paths <- file.path(CWA_ROOT, "code", "dmr", sprintf(stage_suffix, fy))
+  missing <- paths[!file.exists(paths)]
+  if (length(missing) > 0)
+    stop("Missing DMR row-filter pipeline output(s) for FY", fy, ": ",
+         paste(missing, collapse = ", "),
+         " -- run filter_dmr_major_individual.R/filter_dmr_00530.R/",
+         "filter_dmr_monloc1.R/filter_dmr_c1q1.R ", fy, " first.")
+  message("Reading FY", fy, " pipeline stages (01-04) ...")
+  counts <- lapply(paths, stage_counts)
+  data.table(fy = fy, stage = 1:4,
+             rows    = vapply(counts, `[[`, integer(1), "rows"),
+             permits = vapply(counts, `[[`, integer(1), "permits"))
+}))
+
+message("\nComputed funnel counts:")
+print(d)
 
 # x-axis tick labels: one per filter stage, matching `stage` 1-4 in `d` above.
 stage_labels <- c(

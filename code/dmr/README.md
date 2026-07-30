@@ -15,19 +15,19 @@ DMR data on the side.
 
 | Script | Category (see below) |
 |---|---|
-| `build_dmr_raw_summary.R` | FY2025/FY2009 filter-pipeline trio |
-| `combine_dmr_summaries.R` | FY2025/FY2009 filter-pipeline trio |
-| `combine_dmr_summaries_fy2009.R` | FY2025/FY2009 filter-pipeline trio |
-| `summarize_dmr_coverage_major_minor.R` | Coverage, funnel, and outfall diagnostics |
-| `make_dmr_funnel_fig.R` | Coverage, funnel, and outfall diagnostics |
-| `outfall_count_breakdown_dmr.R` | Coverage, funnel, and outfall diagnostics |
-| `eff_flagged.R` | Effluent-violation value QC |
-| `filter_dmr_major_individual.R` | DMR row-filter pipeline (step 1) |
-| `filter_dmr_00530.R` | DMR row-filter pipeline (step 2) |
-| `filter_dmr_monloc1.R` | DMR row-filter pipeline (step 3) |
-| `filter_dmr_c1q1.R` | DMR row-filter pipeline (step 4) |
-| `filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` | FY2025 DMR filter mini-pipeline (step 1) |
-| `filter_dmr_fy2025_effgross_major_individual.R` | FY2025 DMR filter mini-pipeline (step 2) |
+| [`build_dmr_raw_summary.R`](build_dmr_raw_summary.md) | FY2025/FY2009 filter-pipeline trio |
+| [`combine_dmr_summaries.R`](combine_dmr_summaries.md) | FY2025/FY2009 filter-pipeline trio |
+| [`combine_dmr_summaries_fy2009.R`](combine_dmr_summaries_fy2009.md) | FY2025/FY2009 filter-pipeline trio |
+| [`summarize_dmr_coverage_major_minor.R`](summarize_dmr_coverage_major_minor.md) | Coverage, funnel, and outfall diagnostics |
+| [`make_dmr_funnel_fig.R`](make_dmr_funnel_fig.md) | Coverage, funnel, and outfall diagnostics |
+| [`outfall_count_breakdown_dmr.R`](outfall_count_breakdown_dmr.md) | Coverage, funnel, and outfall diagnostics |
+| [`eff_flagged.R`](eff_flagged.md) | Effluent-violation value QC |
+| [`filter_dmr_major_individual.R`](filter_dmr_major_individual.md) | DMR row-filter pipeline (step 1) |
+| [`filter_dmr_00530.R`](filter_dmr_00530.md) | DMR row-filter pipeline (step 2) |
+| [`filter_dmr_monloc1.R`](filter_dmr_monloc1.md) | DMR row-filter pipeline (step 3) |
+| [`filter_dmr_c1q1.R`](filter_dmr_c1q1.md) | DMR row-filter pipeline (step 4) |
+| [`filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R`](filter_dmr_fy2025_exo_00530_effgross_monthlyavg.md) | FY2025 DMR filter mini-pipeline (step 1) |
+| [`filter_dmr_fy2025_effgross_major_individual.R`](filter_dmr_fy2025_effgross_major_individual.md) | FY2025 DMR filter mini-pipeline (step 2) |
 
 ## The FY2025 / FY2009 DMR filter-pipeline trio
 
@@ -36,17 +36,17 @@ pipeline below (01 Major-Individual → 02 TSS(00530) → 03 Effluent Gross → 
 
 | Script | Purpose | Output |
 |---|---|---|
-| `build_dmr_raw_summary.R` | Summarizes the **raw, unfiltered** FY DMR file (every permit/parameter, no restriction at all). Uses DuckDB out-of-core — the raw file is 4.7-27M rows, too large to safely `fread` whole on an 8GB machine. Usage: `Rscript build_dmr_raw_summary.R <FY>` | `output/DMR/raw_summary_fy<FY>.rds` — **not** an `.xlsx`; a serialized summary object meant to be prepended into the workbooks below without recomputing. |
-| `combine_dmr_summaries.R` | One workbook, one tab per FY2025 pipeline stage, with the raw-file summary above spliced in as tab 0. | `output/DMR/2025_dmr_summaries_combined.xlsx` — fixed filename, overwritten each run (not timestamped). |
-| `combine_dmr_summaries_fy2009.R` | Identical logic and styling, pointed at the FY2009 pipeline stages instead (a comparison/baseline year). | `output/DMR/2009_dmr_summaries_combined.xlsx` — fixed filename, overwritten each run. |
+| [`build_dmr_raw_summary.R`](build_dmr_raw_summary.md) | Summarizes the **raw, unfiltered** FY DMR file (every permit/parameter, no restriction at all). Uses DuckDB out-of-core — the raw file is 4.7-27M rows, too large to safely `fread` whole on an 8GB machine. Usage: `Rscript build_dmr_raw_summary.R <FY>` | `output/DMR/raw_summary_fy<FY>.rds` — **not** an `.xlsx`; a serialized summary object meant to be prepended into the workbooks below without recomputing. |
+| [`combine_dmr_summaries.R`](combine_dmr_summaries.md) | One workbook, one tab per FY2025 pipeline stage, with the raw-file summary above spliced in as tab 0. | `output/DMR/2025_dmr_summaries_combined.xlsx` — fixed filename, overwritten each run (not timestamped). |
+| [`combine_dmr_summaries_fy2009.R`](combine_dmr_summaries_fy2009.md) | Identical logic and styling, pointed at the FY2009 pipeline stages instead (a comparison/baseline year). | `output/DMR/2009_dmr_summaries_combined.xlsx` — fixed filename, overwritten each run. |
 
 ## Coverage, funnel, and outfall diagnostics
 
 | Script | Purpose | Output |
 |---|---|---|
-| `summarize_dmr_coverage_major_minor.R` | FY2015-2020: how many Major vs. Minor permits (per `ICIS_PERMITS.csv`) actually reported DMR data each year — counts and coverage %, shaded by a green gradient. | `output/dmr_coverage_major_minor_<timestamp>.xlsx` |
-| `make_dmr_funnel_fig.R` | Plots the DMR row/permit "filter funnel" (major-individual → +TSS(00530) → +effluent gross → +C1/Q1) for FY2009 vs. FY2025 side by side. Figures cited in `docs/institutional_briefs/`. | `docs/institutional_briefs/fig/dmr_filter_funnel.pdf` |
-| `outfall_count_breakdown_dmr.R` | Companion to `code/diagnostics/outfalls/outfall_count_breakdown.R`: that script counts outfalls a facility is *permitted* for (`NPDES_LIMITS.csv`); this one counts outfalls that actually *reported* at least one monitoring result in the fiscal year, from the DMR file itself. DuckDB out-of-core (~9.7GB FY file, streamed from its zip). Default FY2025. | timestamped output (see script header) |
+| [`summarize_dmr_coverage_major_minor.R`](summarize_dmr_coverage_major_minor.md) | FY2015-2020: how many Major vs. Minor permits (per `ICIS_PERMITS.csv`) actually reported DMR data each year — counts and coverage %, shaded by a green gradient. | `output/dmr_coverage_major_minor_<timestamp>.xlsx` |
+| [`make_dmr_funnel_fig.R`](make_dmr_funnel_fig.md) | Plots the DMR row/permit "filter funnel" (major-individual → +TSS(00530) → +effluent gross → +C1/Q1) for FY2009 vs. FY2025 side by side. Figures cited in `docs/institutional_briefs/`. | `docs/institutional_briefs/fig/dmr_filter_funnel.pdf` |
+| [`outfall_count_breakdown_dmr.R`](outfall_count_breakdown_dmr.md) | Companion to `code/diagnostics/outfalls/outfall_count_breakdown.R`: that script counts outfalls a facility is *permitted* for (`NPDES_LIMITS.csv`); this one counts outfalls that actually *reported* at least one monitoring result in the fiscal year, from the DMR file itself. DuckDB out-of-core (~9.7GB FY file, streamed from its zip). Default FY2025. | timestamped output (see script header) |
 
 ## DMR row-filter pipeline (FY-parameterized, general)
 
@@ -60,10 +60,10 @@ same treatment the old folder gave them). Run manually per FY, not part of
 
 | Step | Script | Output |
 |---|---|---|
-| 1 | `filter_dmr_major_individual.R <FY>` | `code/dmr/01_dmr_fy<FY>.csv` — FY DMR rows restricted to ever-major, individually-permitted permits |
-| 2 | `filter_dmr_00530.R <FY>` | `code/dmr/02_dmr_fy<FY>_00530.csv` — step 1 restricted to PARAMETER_CODE = 00530 (TSS) |
-| 3 | `filter_dmr_monloc1.R <FY>` | `code/dmr/03_dmr_fy<FY>_00530_monloc1.csv` — step 2 restricted to Effluent Gross monitoring locations |
-| 4 | `filter_dmr_c1q1.R <FY>` | `code/dmr/04_dmr_fy<FY>_00530_monloc1_c1q1.csv` — step 3 restricted to LIMIT_VALUE_TYPE_CODE IN ('C1','Q1') |
+| 1 | [`filter_dmr_major_individual.R`](filter_dmr_major_individual.md) `<FY>` | `code/dmr/01_dmr_fy<FY>.csv` — FY DMR rows restricted to ever-major, individually-permitted permits |
+| 2 | [`filter_dmr_00530.R`](filter_dmr_00530.md) `<FY>` | `code/dmr/02_dmr_fy<FY>_00530.csv` — step 1 restricted to PARAMETER_CODE = 00530 (TSS) |
+| 3 | [`filter_dmr_monloc1.R`](filter_dmr_monloc1.md) `<FY>` | `code/dmr/03_dmr_fy<FY>_00530_monloc1.csv` — step 2 restricted to Effluent Gross monitoring locations |
+| 4 | [`filter_dmr_c1q1.R`](filter_dmr_c1q1.md) `<FY>` | `code/dmr/04_dmr_fy<FY>_00530_monloc1_c1q1.csv` — step 3 restricted to LIMIT_VALUE_TYPE_CODE IN ('C1','Q1') |
 
 ```bash
 Rscript code/dmr/filter_dmr_major_individual.R <FY>
@@ -80,7 +80,7 @@ naming/convention (numbered CSVs directly in `code/dmr/` vs. named CSVs in
 (`build_dmr_raw_summary.R` etc.) summarizes *this* pipeline's stages, not the
 mini-pipeline's.
 
-## `eff_flagged.R` — effluent-violation value QC
+## [`eff_flagged.R`](eff_flagged.md) — effluent-violation value QC
 
 Flags suspicious rows in the effluent-violations data for one state (negative
 `DMR_VALUE_NMBR`/`DMR_VALUE_STANDARD_UNITS`, implausible dates/magnitudes).
@@ -100,8 +100,8 @@ raw FY2025 DMR file down to the rows the DMR row-filter pipeline above and
 
 | Step | Script | Output |
 |---|---|---|
-| 1 | `filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R` (moved in from the external EIL Summer folder 2026-07-27) | `data/processed/dmr_fy2025_exo_00530_effgross_monthlyavg.csv` — FY2025 DMR rows filtered to TSS / effluent-gross / monthly-average |
-| 2 | `filter_dmr_fy2025_effgross_major_individual.R` | `data/processed/dmr_fy2025_exo_00530_effgross_monthlyavg_major_individual.csv` — step 1's output restricted to major, individually-permitted facilities |
+| 1 | [`filter_dmr_fy2025_exo_00530_effgross_monthlyavg.R`](filter_dmr_fy2025_exo_00530_effgross_monthlyavg.md) (moved in from the external EIL Summer folder 2026-07-27) | `data/processed/dmr_fy2025_exo_00530_effgross_monthlyavg.csv` — FY2025 DMR rows filtered to TSS / effluent-gross / monthly-average |
+| 2 | [`filter_dmr_fy2025_effgross_major_individual.R`](filter_dmr_fy2025_effgross_major_individual.md) | `data/processed/dmr_fy2025_exo_00530_effgross_monthlyavg_major_individual.csv` — step 1's output restricted to major, individually-permitted facilities |
 
 ## Conventions
 

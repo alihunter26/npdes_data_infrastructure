@@ -35,7 +35,7 @@ OUT_DIR  <- file.path(CWA_ROOT, "output/DMR")
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 OUT_FILE <- file.path(OUT_DIR, "2025_dmr_summaries_combined.xlsx")
 
-# Raw (unfiltered) FY2025 summary, built by code/summary/build_dmr_raw_summary.R
+# Raw (unfiltered) FY2025 summary, built by code/dmr/build_dmr_raw_summary.R
 # via DuckDB (the raw file is too large to safely fread on this 8GB machine).
 # Prepended as this workbook's FIRST sheet, before any of the filtered stages.
 RAW_SUMMARY_RDS <- file.path(OUT_DIR, "raw_summary_fy2025.rds")
@@ -433,7 +433,7 @@ wb <- createWorkbook()
 
 if (!file.exists(RAW_SUMMARY_RDS))
   stop("Raw summary not found: ", RAW_SUMMARY_RDS,
-       " -- run code/summary/build_dmr_raw_summary.R 2025 first.")
+       " -- run code/dmr/build_dmr_raw_summary.R 2025 first.")
 cat("\n=== 00_RawAllPermits (raw, unfiltered FY2025 DMR) ===\n")
 raw_summary <- readRDS(RAW_SUMMARY_RDS)
 write_sheet(wb, "00_RawAllPermits", raw_summary)
