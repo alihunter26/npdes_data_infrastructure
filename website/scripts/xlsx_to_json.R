@@ -9,17 +9,22 @@
 library(openxlsx)
 library(jsonlite)
 
-CWA_ROOT <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA"
-OUT_DIR  <- file.path(CWA_ROOT, "output")
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 JSON_DIR <- file.path(CWA_ROOT, "website/data")
 dir.create(JSON_DIR, showWarnings = FALSE, recursive = TRUE)
 
 # Pick the most recently modified file matching a prefix pattern, excluding
-# Excel lock files (~$...).
+# Excel lock files (~$...). Returns NA (not an error) when nothing matches, so a
+# partial build -- e.g. the memory-heavy `limits` summary failed this run --
+# still refreshes the datasets that DID build and leaves the rest' JSON as-is.
 latest_file <- function(pattern) {
   files <- list.files(OUT_DIR, pattern = pattern, full.names = TRUE)
   files <- files[!grepl("/~\\$", files)]
-  if (length(files) == 0) stop("No files matching: ", pattern)
+  if (length(files) == 0) {
+    warning("No files matching: ", pattern, " -- skipping this dataset.")
+    return(NA_character_)
+  }
   files[order(file.info(files)$mtime, decreasing = TRUE)][1]
 }
 
@@ -33,6 +38,11 @@ DATASET_FILES <- list(
   eff_violations_va      = latest_file("^eff_violations_va_summary_.*\\.xlsx$"),
   eff_violations_ny      = latest_file("^eff_violations_ny_summary_.*\\.xlsx$")
 )
+# Drop datasets with no workbook this run (keeps their existing JSON untouched).
+DATASET_FILES <- DATASET_FILES[!vapply(DATASET_FILES, is.na, logical(1))]
+if (length(DATASET_FILES) == 0)
+  stop("No summary workbooks found in ", OUT_DIR,
+       " -- run code/summary/summarize.R first.")
 
 # Ground truth for which variables are dates, copied from each dataset's
 # date_cols in code/summary/summarize.R's DATASETS registry (minus any

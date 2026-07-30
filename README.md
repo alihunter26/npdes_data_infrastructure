@@ -26,7 +26,7 @@ Raw data is excluded from version control (see `.gitignore`) due to size.
 ```
 CWA/
 ├── _paths.R          # central path config (anchors to repo root; no absolute paths)
-├── run_all.R         # one-command rebuild of the panel:  Rscript run_all.R
+├── run_all.R         # one command: raw download (if missing) → panel → website data
 ├── data/
 │   ├── raw/          # original ECHO downloads — never modified
 │   │   ├── npdes_downloads/        # 15 core ICIS-NPDES tables
@@ -46,6 +46,11 @@ CWA/
 ├── output/           # generated summaries (.xlsx) and flagged/extract CSVs
 │   ├── tables/       # diagnostic CSV extracts
 │   └── figures/
+├── website/          # static site (HTML/JS/CSS) + its data build
+│   ├── *.html        # pages: summaries, dataset, panel, temporal-coverage, briefs, …
+│   ├── assets/       # style.css, table.js, datasets.js, year-coverage.js
+│   ├── data/         # *.json the pages fetch (generated — see "Building the website")
+│   └── scripts/      # build_website_data.R + the xlsx→JSON converters
 └── docs/
     ├── data_dictionary.md   # key fields and table join logic
     ├── codebook.md          # variable definitions for the current facility-by-month panel
@@ -100,6 +105,36 @@ Grouped into one subfolder per topic (NAICS/SIC coverage, enforcement duplicates
 missingness, outfalls, brief generation, effluent QC). See
 [`code/diagnostics/README.md`](code/diagnostics/README.md) for the full, current list —
 not duplicated here so this table can't drift out of sync as scripts are added.
+
+## Building the website
+
+The static site under `website/` shows its tables from `website/data/*.json`, which
+are **generated**, not hand-written. `run_all.R` rebuilds them as its final stage
+(`BUILD_WEBSITE <- TRUE`); to (re)build them on their own:
+
+```bash
+Rscript website/scripts/build_website_data.R
+```
+
+That orchestrator runs the per-dataset summaries (`code/summary/summarize.R`), the
+year-coverage cross-tab, and the panel QA summary, then converts each to JSON
+(`website/scripts/{xlsx_to_json,year_coverage_to_json,panel_to_json}.R`). Each step
+runs in its own R process (memory isolation for the multi-GB `limits` summary) and
+is fail-soft — a step that errors is logged and the rest continue, refreshing the
+JSON that did build. It is **slow** (`limits` loads a multi-GB file; the two
+eff_violations states each stream a ~2.9 GB zip).
+
+**Serve over HTTP — not `file://`.** The pages load their JSON with `fetch()`, which
+browsers block on the `file://` protocol, so opening a page by double-clicking it
+shows empty tables. Serve the folder instead:
+
+```bash
+cd website && python3 -m http.server 8000    # then open http://localhost:8000
+```
+
+The built facility-by-month panel has its own QA page (`panel.html`, linked as the
+first card on Data Summaries); the raw source datasets are the other cards. See
+[`website/README.md`](website/README.md).
 
 ## Conventions
 

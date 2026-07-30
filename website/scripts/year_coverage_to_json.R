@@ -9,8 +9,8 @@
 library(openxlsx)
 library(jsonlite)
 
-CWA_ROOT <- "/Users/alihunter/Library/CloudStorage/Dropbox/CWA"
-OUT_DIR  <- file.path(CWA_ROOT, "output")
+# Portable paths: locate & source the repo _paths.R (defines CWA_ROOT, OUT_DIR, ...)
+source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d) d<-dirname(d); file.path(d,"_paths.R")}))
 JSON_DIR <- file.path(CWA_ROOT, "website/data")
 dir.create(JSON_DIR, showWarnings = FALSE, recursive = TRUE)
 
