@@ -11,7 +11,8 @@ Running notes on data quirks, analytical decisions, and findings.
   path through R's `system()` fails to translate to the session locale, so the
   build script keeps the name out of the shell string (cd into `data/raw` + an
   ASCII glob). Never hardcode this filename — match by pattern.
-- **The CSV is a zip64 archive, ~15.9 GB uncompressed.** Too large for whole-file
+- **The CSV is a zip64 archive, ~16 GB uncompressed** (16,284,937,729 bytes exactly, per
+  `unzip -l`). Too large for whole-file
   `fread` on this 8 GB machine; read out-of-core with DuckDB (see below).
 - **A head sample of this file is NOT representative.** The first ~3 M rows are all
   D80/D90 (sorted, no E90). The resubmission de-dup rate looked like ~0.3% there

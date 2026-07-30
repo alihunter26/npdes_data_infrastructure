@@ -17,9 +17,8 @@ place.** Everything downstream is rebuilt from them into `data/processed/`.
 |---|---|
 | `npdes_downloads/` | 15 core ICIS-NPDES tables: facilities, permits, violations (CS/PS/SE), formal & informal enforcement, inspections, QNCR history, violation–enforcement links, NAICS/SIC, permit components & feature coords, data groups |
 | `NPDES_LIMITS.csv` | Permit-level effluent limits by parameter and limit set (~7 GB) |
-| `npdes_dmrs_fy2025.zip` | Discharge Monitoring Reports, FY2025 (`NPDES_DMRS_FY2025.csv` inside) — *referenced by scripts but may be absent locally* |
-| `DMR/` | Per-fiscal-year DMR zips (`npdes_dmrs_fy2009.zip` … ) |
-| `npdes_eff_downloads … .zip` | Effluent violations (`NPDES_EFF_VIOLATIONS.csv`, ~16 GB uncompressed). *Note: the filename contains a non-ASCII space; scripts that stream it create an ASCII symlink first.* |
+| `DMR/` | Per-fiscal-year DMR zips, incl. FY2025 (`npdes_dmrs_fy2009.zip` … `npdes_dmrs_fy2025.zip`, each with its own `NPDES_DMRS_FY<year>.csv` inside) — *referenced by scripts but may be absent locally* |
+| `npdes_eff_downloads … .zip` | Effluent violations (`NPDES_EFF_VIOLATIONS.csv`, ~16 GB uncompressed). *Note: the filename contains a non-ASCII space; scripts that stream it `cd` into `data/raw` and match it with an ASCII glob pattern rather than hardcoding the name.* |
 | `Attains/` | `ATTAINS_AU_CATCHMENTS`, `NPDES_CATCHMENTS`, `NPDES_ATTAINS_AU_SUMMARIES` — dischargers ↔ receiving-water assessments |
 | `Master General Permits/` | `ICIS_MASTER_GENERAL_PERMITS.csv` (+ source zip) |
 | `npdes_outfalls_layer.csv` | Spatial layer of permitted outfalls / discharge points |

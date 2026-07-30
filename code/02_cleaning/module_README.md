@@ -37,7 +37,7 @@ executable script. Full
 details: [`build_effluent_violations_npdes_month_panel.md`](build_effluent_violations_npdes_month_panel.md).
 
 - **What it does:** reads EPA's raw effluent-violations file (`NPDES_EFF_VIOLATIONS.csv`,
-  ~15.9 GB uncompressed, inside a zip in `data/raw/`) via DuckDB out-of-core, and
+  ~16 GB uncompressed, inside a zip in `data/raw/`) via DuckDB out-of-core, and
   condenses it into one row per (`NPDES_ID`, calendar month) with two count sets: all-
   parameter violation counts (`n_D80`/`n_D90`/`n_E90`) and a TSS/gross-effluent/monthly-
   average subset (`N_TSS_EFF_VIOLATIONS`, `N_TSS_EFF_D90`/`_D80`/`_E90`). Both are

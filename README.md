@@ -13,7 +13,7 @@ Raw files live under `data/raw/` and are treated as **immutable** (never edited 
 |---|---|
 | `data/raw/npdes_downloads/` | 15 core ICIS-NPDES tables: facilities, permits, violations (compliance-schedule, permit-schedule, single-event), formal & informal enforcement, inspections, QNCR history, violation–enforcement links, NAICS/SIC, permit components & feature coords, data groups |
 | `data/raw/NPDES_LIMITS.csv` | Permit-level effluent limits by parameter and limit set |
-| `data/raw/npdes_dmrs_fy2025.zip` | Discharge Monitoring Reports, FY2025 (`NPDES_DMRS_FY2025.csv` inside) |
+| `data/raw/DMR/npdes_dmrs_fy2025.zip` | Discharge Monitoring Reports, FY2025 (`NPDES_DMRS_FY2025.csv` inside) |
 | `data/raw/npdes_eff_downloads … .zip` | Effluent violations (`NPDES_EFF_VIOLATIONS.csv`, ~16 GB uncompressed) |
 | `data/raw/Attains/` | `ATTAINS_AU_CATCHMENTS`, `NPDES_CATCHMENTS`, `NPDES_ATTAINS_AU_SUMMARIES` — links dischargers to receiving-water assessments |
 | `data/raw/Master General Permits/` | `ICIS_MASTER_GENERAL_PERMITS.csv` (+ source zip) |
@@ -24,7 +24,7 @@ Raw data is excluded from version control (see `.gitignore`) due to size.
 ## Repository Structure
 
 ```
-CWA/
+npdes_data_infrastructure/
 ├── _paths.R          # central path config (anchors to repo root; no absolute paths)
 ├── run_all.R         # one command: raw download (if missing) → panel → website data
 ├── data/

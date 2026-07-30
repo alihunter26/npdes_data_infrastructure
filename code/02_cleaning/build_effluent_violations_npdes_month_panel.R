@@ -21,7 +21,7 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 # Because of that, `run_all.R` must run this script FIRST, before step 01 --
 # not just before step 06.
 #
-#   Input  : NPDES_EFF_VIOLATIONS.csv, inside a zip in data/raw/ (~15.9 GB
+#   Input  : NPDES_EFF_VIOLATIONS.csv, inside a zip in data/raw/ (~16 GB
 #            uncompressed -- too big to read into memory whole on this
 #            machine, so it's streamed and processed out-of-core; see STEP 1-2)
 #   Output : data/processed/effluent_violations_npdes_month_panel_2005_2025.csv

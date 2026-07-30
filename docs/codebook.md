@@ -83,11 +83,12 @@ Of 1,897,560 rows, **1,754,214 are operating (`=1`) and 143,346 are not (`=0`)**
 ### The window correction (why `FACILITY_OPERATING` isn't just permit dates)
 
 `FACILITY_OPERATING` was originally computed purely from `ICIS_PERMITS` date fields —
-no independent knowledge of whether a facility was actually active. Measured directly:
-**12.66% of `FACILITY_OPERATING == 0` rows (32,033 of 253,028) still carried a real
-recorded event** — proof the facility was genuinely active — and 75.9% of those were
-more than 12 months outside the computed window (median 31, max 250 months). 2,381 of
-7,511 facilities (32%) were affected.
+no independent knowledge of whether a facility was actually active. Measured directly
+*(on the pre-7/28, 7,511-facility build, before the later proxy-evidence admission of
+16 more facilities described below)*: **12.66% of `FACILITY_OPERATING == 0` rows
+(32,033 of 253,028) still carried a real recorded event** — proof the facility was
+genuinely active — and 75.9% of those were more than 12 months outside the computed
+window (median 31, max 250 months). 2,381 of 7,511 facilities (32%) were affected.
 
 **Root cause:** permits with `PERMIT_STATUS_CODE == "ADC"` (Administrative
 Continuance — legally still active past the nominal `EXPIRATION_DATE` while a renewal
@@ -155,7 +156,7 @@ Full detail: step 01's README, Assumption 1B, and
 | 1 | `FACILITY_UIN` | text | Facility identifier (EPA FRS Universal Interchange Number). Falls back to `NPDES_ID` when blank in the raw data — no facility is silently dropped for lacking one. **Panel key**, together with `YEAR`/`MONTH`. |
 | 2 | `YEAR` | integer | Calendar year, 2005–2025. |
 | 3 | `MONTH` | integer | Calendar month, 1–12. |
-| 4 | `NPDES_ID` | text | **Semicolon-separated list** of every individual (`NPD`) permit ever linked to this facility, `sort(unique(...))`. 427 of 7,511 facilities (5.7%) have >1; max is 7. To count distinct permits per facility, split on `"; "` — grouping directly on `FACILITY_UIN` will not do it, the collapse already happened here. |
+| 4 | `NPDES_ID` | text | **Semicolon-separated list** of every individual (`NPD`) permit ever linked to this facility, `sort(unique(...))`. 427 of 7,530 facilities (5.7%) have >1; max is 7. To count distinct permits per facility, split on `"; "` — grouping directly on `FACILITY_UIN` will not do it, the collapse already happened here. |
 | 5 | `MAJOR_MINOR_FLAG` | text | Semicolon list, **position-aligned with `NPDES_ID`** — one major/minor flag (`M`/`N`) per listed permit, from `ICIS_PERMITS.MAJOR_MINOR_STATUS_FLAG`. A facility qualifies for the panel if *any* entry is ever `M` at any point in that permit's version history ("ever major"); entries can legitimately mix `M` and `N` for the same facility. 875 facilities shift between major and minor at some point. |
 | 6 | `PERMIT_TYPE_FLAG` | text | Constant `"NPD"` for every row — the panel is restricted to individual permits by construction (general/`GPC` permits are out of scope). |
 | 7 | `FACILITY_OPERATING` | integer (0/1) | **The union — use this.** See "Read this first" above. 1 iff the calendar month falls within the facility's window after extending it to also cover any month with independent proxy evidence. For a facility admitted solely via proxy evidence (no permit-window overlap; see "Panel membership" above), this column is identical to `FACILITY_OPERATING_PROXY_WINDOW` (column 9). Facility *attribute* columns (name, address, `NPDES_ID` list, …) are **not** masked by this flag — they broadcast the same snapshot to every month regardless. |
@@ -200,7 +201,7 @@ Time-invariant facility attributes (the code files carry no date/version).
 
 | # | Column | Type | Description |
 |---|---|---|---|
-| 26 | `NAICS_CODE` | text | Every NAICS code across all of the facility's permits, **semicolon-joined, primary code first** (`PRIMARY_INDICATOR_FLAG == "Y"` sorts first), de-duplicated, order preserved (not alphabetical). Blank `""` (not NA) if the facility's permits never appear in the NAICS file — coverage is sparse. 161 of 7,511 facilities carry >1 code. |
+| 26 | `NAICS_CODE` | text | Every NAICS code across all of the facility's permits, **semicolon-joined, primary code first** (`PRIMARY_INDICATOR_FLAG == "Y"` sorts first), de-duplicated, order preserved (not alphabetical). Blank `""` (not NA) if the facility's permits never appear in the NAICS file — coverage is sparse. 164 of 7,530 facilities (2.2%) carry >1 code. |
 | 27 | `SIC_CODE` | text | Same construction for SIC. Near-complete coverage for the major population. 466 facilities carry >1 code. |
 
 ## 4 · Compliance-schedule violations (step 04)

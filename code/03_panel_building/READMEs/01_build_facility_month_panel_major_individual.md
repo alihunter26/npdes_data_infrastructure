@@ -188,8 +188,9 @@ explanation):
    silently dropped; such facilities appear with `FACILITY_UIN` = the `NPDES_ID` value. (all rows without FACILITY_UIN get filtered out later -- not a large issue)
 6. **Multiple permits per facility ⇒ semicolon list.** All individual `NPDES_ID`s ever
    linked to a qualifying facility are `paste(sort(unique(...)), collapse = "; ")` into
-   one string; the facility-month remains a single row. **Checked 7/22:** 427 of the
-   7,511 facilities (5.68%) have more than one `NPDES_ID` in this field; the max is 7
+   one string; the facility-month remains a single row. **Checked 7/22, reconfirmed 7/30
+   against the current 7,530-facility population:** 427 of the 7,530 facilities (5.67%)
+   have more than one `NPDES_ID` in this field; the max is 7
    (one Nevada facility, `FACILITY_UIN 110059864179`). Because these are joined into a
    single string rather than separate rows, counting them requires splitting on `"; "`
    — grouping directly on `FACILITY_UIN` to count distinct `NPDES_ID`s (as if one row

@@ -13,20 +13,27 @@ Notes on key variables, table relationships, and join logic across the ICIS-NPDE
 | `REGISTRY_ID` | EPA facility registry ID | Facilities, Inspections, Informal Enforcement |
 | `NHDPLUSID` | NHDPlus catchment ID — links facilities to hydrologic network | Catchments, ATTAINS |
 | `ASSESSMENTUNITIDENTIFIER` | ATTAINS water body ID | ATTAINS catchments, ATTAINS summaries |
+| `NPDES_VIOLATION_ID` | Identifies one violation record | CS/PS/SE/EFF Violations, Violation-Enforcement bridge |
+| `ENF_IDENTIFIER` | Identifies one enforcement action | Formal/Informal Enforcement, Violation-Enforcement bridge |
 
 ## Table Relationships
 
 ```
 ICIS_FACILITIES
     └── ICIS_PERMITS (via EXTERNAL_PERMIT_NMBR)
-            └── NPDES_LIMITS (via EXTERNAL_PERMIT_NMBR + VERSION_NMBR + PERM_FEATURE_NMBR)
-            └── DMR (via EXTERNAL_PERMIT_NMBR + VERSION_NMBR + PERM_FEATURE_NMBR)
-                    └── NPDES_EFF_VIOLATIONS (via NPDES_VIOLATION_ID)
-                            └── NPDES_FORMAL_ENFORCEMENT_ACTIONS (via NPDES_ID)
+            ├── NPDES_LIMITS (via EXTERNAL_PERMIT_NMBR + VERSION_NMBR + PERM_FEATURE_NMBR)
+            ├── DMR (via EXTERNAL_PERMIT_NMBR + VERSION_NMBR + PERM_FEATURE_NMBR)
+            └── CS/PS/SE/EFF Violations (via NPDES_ID)
+                    └── NPDES_VIOLATION_ENFORCEMENTS (bridge: NPDES_VIOLATION_ID ↔ ENF_IDENTIFIER)
+                            └── NPDES_FORMAL/INFORMAL_ENFORCEMENT_ACTIONS (via ENF_IDENTIFIER)
 NPDES_CATCHMENTS (via NPDES_ID)
     └── ATTAINS_AU_CATCHMENTS (via NHDPLUSID)
     └── NPDES_ATTAINS_AU_SUMMARIES (via NPDES_ID + ASSESSMENTUNITIDENTIFIER)
 ```
+
+Enforcement is **not** a child of effluent violations specifically — it links to
+violations of *any* type (CS/PS/SE/EFF) through the `NPDES_VIOLATION_ENFORCEMENTS`
+bridge table, not directly via `NPDES_ID`.
 
 ## Field notes
 
@@ -49,6 +56,4 @@ Marks whether an informal-enforcement record is an **official enforcement action
 (Separately, `ENF_TYPE_CODE` values that differ only by a trailing `S` — e.g. `AER`/`AERS`,
 `PHEMAIL`/`PHEMLS` — are the state-issued vs EPA-issued variants of the same activity, a distinct
 axis from `OFFICIAL_FLG`.)
-
-## Notes
 

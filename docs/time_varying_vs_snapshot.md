@@ -26,8 +26,8 @@ computed this session over `data/raw/` (see `data_issues.md`, `missingness.md`).
 | File | Type | Row grain | Date/period field(s) | Can place in a month? |
 |---|---|---|---|---|
 | `NPDES_INSPECTIONS` | Event | one inspection | `ACTUAL_BEGIN_DATE`, `ACTUAL_END_DATE` | Yes |
-| `NPDES_FORMAL_ENFORCEMENT_ACTIONS` | Event | one action×permit | `SETTLEMENT_ENTERED_DATE` | Yes (dedupe `ACTIVITY_ID`) |
-| `NPDES_INFORMAL_ENFORCEMENT_ACTIONS` | Event | one action×permit | `ACHIEVED_DATE` | Yes (dedupe `ACTIVITY_ID`) |
+| `NPDES_FORMAL_ENFORCEMENT_ACTIONS` | Event | one action×permit | `SETTLEMENT_ENTERED_DATE` | Yes (dedupe `ENF_IDENTIFIER`) |
+| `NPDES_INFORMAL_ENFORCEMENT_ACTIONS` | Event | one action×permit | `ACHIEVED_DATE` | Yes (dedupe `ENF_IDENTIFIER`) |
 | `NPDES_SE_VIOLATIONS` | Event | one single-event viol. | `SINGLE_EVENT_VIOLATION_DATE`, `_END_DATE`, RNC dates | Yes |
 | `NPDES_CS_VIOLATIONS` | Event | one comp-schedule viol. | `SCHEDULE_DATE` / `ACTUAL_DATE` / `REPORT_RECEIVED_DATE` / RNC dates | Yes — **but which date?** (§4) |
 | `NPDES_PS_VIOLATIONS` | Event | one permit-schedule viol. | `SCHEDULE_DATE` / `ACTUAL_DATE` / `REPORT_RECEIVED_DATE` / RNC dates | Yes — **but which date?** (§4) |
@@ -71,7 +71,8 @@ I checked whether facility attributes actually change across a permit's versions
 - `MAJOR_MINOR_STATUS_FLAG` differs across version rows for **908 permits** → major/minor **is
   weakly time-varying**. This corrects `missingness.md`, which calls the flag "a snapshot." It is
   a snapshot *within a version* but changes at reissuance; the 908 is consistent with the ~875
-  status-shifting facilities in `panel_questions_for_pis.md` (permit vs. facility grain).
+  status-shifting facilities in `docs/panel_questions_for_pis.md` *(local-only file, not
+  tracked in this repo)* (permit vs. facility grain).
 - `TOTAL_DESIGN_FLOW_NMBR` differs across versions for **10,964 permits** → design flow is
   version-varying too; don't treat it as a fixed facility constant.
 - `PERMIT_TYPE_CODE` differs for only **7 permits** → individual/general status is effectively
@@ -82,7 +83,8 @@ I checked whether facility attributes actually change across a permit's versions
 close on `TERMINATION_DATE` if `PERMIT_STATUS_CODE = TRM`, on `EXPIRATION_DATE` if `= EXP`,
 otherwise treat as still operating (ADC/EFF are legally active past expiration). **Do not** use
 `RETIREMENT_DATE` or `RET` status as closure — they mark version supersession, not shutdown
-(see `panel_questions_for_pis.md`). `VERSION_NMBR = 0` is the current version.
+(see `docs/panel_questions_for_pis.md`, a local-only file not tracked in this repo).
+`VERSION_NMBR = 0` is the current version.
 
 ---
 
@@ -94,10 +96,12 @@ otherwise treat as still operating (ADC/EFF are legally active past expiration).
   umbrella IDs (one ND UIN = 361 permits) — **unsafe to collapse to facility outside a restricted
   population.** Restricting to major-individual fixes this: only **84 facilities hold >1 individual
   permit** *(measured)*.
-- Enforcement double-counts: one `ACTIVITY_ID` is stored as **one row per permit it touches**
+- Enforcement double-counts: one `ENF_IDENTIFIER` is stored as **one row per permit it touches**
   (PRASA = 135 rows of the same $1,024,427). The formal file has 111,816 rows / 103,989 distinct
-  `ACTIVITY_ID` (~7% inflation) *(measured)*. **Dedupe on `(FACILITY_UIN, ACTIVITY_ID)` before
-  counting or summing.**
+  `ENF_IDENTIFIER` (~7% inflation) *(measured)*. **Dedupe on `(FACILITY_UIN, ENF_IDENTIFIER)`
+  before counting or summing.** (`ACTIVITY_ID` is the analogous grain key for the
+  *inspections* file specifically, not enforcement — the two are easy to conflate since
+  both key one action/visit to one row per permit it touches.)
 
 ---
 
@@ -111,8 +115,10 @@ otherwise treat as still operating (ADC/EFF are legally active past expiration).
   `ACTUAL_DATE` (~17% missing), `REPORT_RECEIVED_DATE` (~17%), and RNC detection/resolution dates
   (~54% missing). These mean different things — *scheduled* vs. *achieved* vs. *reported* vs.
   *escalated to RNC* — and choosing changes which month a violation lands in and how many are
-  usable. Still an **open decision** (`panel_questions_for_pis.md`); pick per economic
-  interpretation (occurrence vs. detection) and hold it fixed.
+  usable. Still an **open decision** — see `docs/panel_questions_for_pis.md` (a
+  local-only file, not tracked in this repo; ask the PI directly for its current
+  status if you don't have a copy); pick per economic interpretation (occurrence vs.
+  detection) and hold it fixed.
 - RNC-date blanks are **structural**: missing = "never reached the RNC threshold," not unknown.
   Do not impute.
 
@@ -186,7 +192,9 @@ assumes it never changed. Specific hazards:
 2. Roll permit → `FACILITY_UIN` via `ICIS_FACILITIES`; restrict to **major-individual** to make
    the roll-up safe.
 3. Attach **event** tables (inspections, formal/informal enforcement, SE/CS/PS violations) by
-   binning the chosen date into month; **dedupe `ACTIVITY_ID`**.
+   binning the chosen date into month; dedupe each on its own grain key — `ACTIVITY_ID`
+   for inspections, `ENF_IDENTIFIER` for formal/informal enforcement, `NPDES_VIOLATION_ID`
+   for SE/CS/PS violations.
 4. Attach **quarterly** QNCR at quarter grain (or a documented month assignment).
 5. Optionally attach **DMR/effluent** for majors, flagging the 2016 eRule break and the
    pre-2009 gap; effluent gives counts only.
@@ -196,5 +204,6 @@ assumes it never changed. Specific hazards:
 
 ---
 *Sources: raw headers in `data/raw/`; `data_issues.md`, `missingness.md`,
-`panel_questions_for_pis.md`, `npdes_data_overview.md`, `permit_types_brief.md`. Measured counts
+`panel_questions_for_pis.md` (local-only, not tracked in this repo), `npdes_data_overview.md`,
+`permit_types_brief.md`. Measured counts
 recomputed this session over `ICIS_PERMITS.csv` and are reproducible with `data.table::fread`.*

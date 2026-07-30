@@ -8,7 +8,7 @@ Must run before step 01 (not just before step 06) — both read its output. Inpu
 
 ## Overview
 
-Reads EPA's raw effluent-violations file (~15.9 GB uncompressed, inside a zip) and
+Reads EPA's raw effluent-violations file (~16 GB uncompressed, inside a zip) and
 condenses it into one row per (`NPDES_ID`, calendar month), with both:
 
 - **All-parameter** violation counts (`n_D80`, `n_D90`, `n_E90`) — across every
@@ -29,7 +29,7 @@ the underlying effluent file. ☒ All data publicly available.
 
 | File | Format | Key fields used |
 |---|---|---|
-| `NPDES_EFF_VIOLATIONS.csv` (inside its zip in `data/raw/`) | `.csv` in `.zip`, ~15.9 GB unzipped | `NPDES_ID`, `NPDES_VIOLATION_ID`, `VIOLATION_CODE`, `PARAMETER_CODE`, `MONITORING_LOCATION_CODE`, `STATISTICAL_BASE_MONTHLY_AVG`, `STATISTICAL_BASE_CODE`, `PERM_FEATURE_NMBR`, `LIMIT_SET_DESIGNATOR`, `MONITORING_PERIOD_END_DATE` |
+| `NPDES_EFF_VIOLATIONS.csv` (inside its zip in `data/raw/`) | `.csv` in `.zip`, ~16 GB unzipped | `NPDES_ID`, `NPDES_VIOLATION_ID`, `VIOLATION_CODE`, `PARAMETER_CODE`, `MONITORING_LOCATION_CODE`, `STATISTICAL_BASE_MONTHLY_AVG`, `STATISTICAL_BASE_CODE`, `PERM_FEATURE_NMBR`, `LIMIT_SET_DESIGNATOR`, `MONITORING_PERIOD_END_DATE` |
 
 ## Dataset list
 

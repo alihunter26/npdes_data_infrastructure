@@ -64,7 +64,7 @@ noncompliance history going back to the 1970s.
 
 ## ICIS-NPDES National Dataset (Part 2 — Effluent Violations)
 
-One large (~15 GB) file containing every instance where a facility's discharge
+One large (~16 GB) file containing every instance where a facility's discharge
 monitoring report (DMR) showed a pollutant reading that exceeded its permitted limit.
 
 **Each row:** a single parameter violation — one pollutant, at one discharge point,
