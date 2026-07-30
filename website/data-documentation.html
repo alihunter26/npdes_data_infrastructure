@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Data Documentation — Clean Water Act Data Explorer</title>
-<link rel="stylesheet" href="assets/style.css?v=4">
+<link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body>
 <header class="site-header">
@@ -12,10 +12,15 @@
     <div class="brand">Clean Water Act Data Explorer<small>NPDES · DMR · ATTAINS Summary Data</small></div>
     <nav>
       <a href="index.html">Home</a>
-      <a href="summaries.html">Data Summaries</a>
+      <div class="nav-dropdown">
+        <button type="button" class="nav-trigger active">Data <span class="caret">&#9662;</span></button>
+        <div class="dropdown-menu">
+          <a href="summaries.html">Data Summaries</a>
+          <a href="data-documentation.html" class="active">Data Documentation</a>
+          <a href="temporal-coverage.html">Temporal Coverage</a>
+        </div>
+      </div>
       <a href="briefs.html">Briefs</a>
-      <a href="data-documentation.html" class="active">Data Documentation</a>
-      <a href="temporal-coverage.html">Temporal Coverage</a>
       <a href="about.html">About &amp; Methodology</a>
     </nav>
   </div>

@@ -94,6 +94,87 @@ a:hover { text-decoration: underline; }
   color: #fff;
 }
 
+/* ---------- Nav dropdown ("Data" tab with subtabs) ---------- */
+
+.nav-dropdown {
+  position: relative;
+  /* bottom padding + matching negative margin bridges the gap to the
+     dropdown menu so hover doesn't drop out between trigger and menu */
+  padding-bottom: 10px;
+  margin-bottom: -10px;
+}
+
+.nav-dropdown .nav-trigger {
+  font: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--navy);
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nav-dropdown .nav-trigger:hover {
+  background: var(--blue-pale);
+}
+
+.nav-dropdown .nav-trigger.active {
+  background: var(--navy);
+  color: #fff;
+}
+
+.nav-dropdown .nav-trigger .caret {
+  font-size: 0.6em;
+  opacity: 0.7;
+  transform: translateY(1px);
+}
+
+.nav-dropdown .dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 10px;
+  min-width: 200px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 10px 28px rgba(4, 39, 60, 0.14);
+  padding: 6px;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 30;
+}
+
+.nav-dropdown:hover .dropdown-menu,
+.nav-dropdown:focus-within .dropdown-menu {
+  display: flex;
+}
+
+.nav-dropdown .dropdown-menu a {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--navy);
+  white-space: nowrap;
+}
+
+.nav-dropdown .dropdown-menu a:hover {
+  background: var(--blue-pale);
+  text-decoration: none;
+}
+
+.nav-dropdown .dropdown-menu a.active {
+  background: var(--navy);
+  color: #fff;
+}
+
 /* ---------- Hero ---------- */
 
 .hero {
