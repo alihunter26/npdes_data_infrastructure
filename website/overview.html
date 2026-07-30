@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NPDES Overview — Clean Water Act Data Explorer</title>
+<link rel="stylesheet" href="assets/style.css?v=5">
+</head>
+<body>
+<header class="site-header">
+  <div class="bar">
+    <div class="brand">Clean Water Act Data Explorer<small>NPDES · DMR · ATTAINS Summary Data</small></div>
+    <nav>
+      <a href="index.html">Home</a>
+      <div class="nav-dropdown">
+        <button type="button" class="nav-trigger active">Data <span class="caret">&#9662;</span></button>
+        <div class="dropdown-menu">
+          <a href="overview.html" class="active">Overview</a>
+          <a href="summaries.html">Data Summaries</a>
+          <a href="data-documentation.html">Data Documentation</a>
+          <a href="data-coverage-issues.html">Data Coverage Issues</a>
+          <a href="temporal-coverage.html">Temporal Coverage</a>
+        </div>
+      </div>
+      <a href="briefs.html">Briefs</a>
+      <a href="about.html">About &amp; Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="no-hero">
+  <div class="breadcrumb"><a href="index.html">Home</a> / Overview</div>
+
+  <div class="eyebrow">Reference</div>
+  <h1>NPDES High-Level Overview</h1>
+  <p class="lede">
+    A plain-language map of the datasets behind this site &mdash; what each source covers, what
+    it&rsquo;s useful for, and what one row represents. Start here before diving into the
+    file-by-file detail in <a href="data-documentation.html">Data Documentation</a> or the
+    per-variable stats in <a href="summaries.html">Data Summaries</a>.
+  </p>
+
+  <div class="table-wrap" style="margin-top:28px;">
+    <table class="data-table">
+      <thead>
+        <tr><th>Source</th><th>What&rsquo;s there?</th><th>Row</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>ICIS-NPDES</strong></td>
+          <td>
+            Data on every US facility that holds a permit to discharge water. Contains reference
+            information on each facility (location, permit history, and industry). Also contains
+            information on permit violations from missed deadlines, failure to follow court
+            orders, and one-off pollutants, and the resulting enforcement. This is a reference
+            file for the other datasets, and can be joined through the <code>NPDES_ID</code>
+            (identifies permit).
+          </td>
+          <td>One facility, permit, inspection, violation, enforcement</td>
+        </tr>
+        <tr>
+          <td><strong>ICIS-NPDES 2: Effluent Violations</strong></td>
+          <td>
+            Records every instance where a facility discharges more pollution than legally
+            allowed by the permit. Can be used to show historical trends on which facilities have
+            had the most exceedance events. Includes millions of observations of individual
+            violations.
+          </td>
+          <td>One violation</td>
+        </tr>
+        <tr>
+          <td><strong>Master General Permits</strong></td>
+          <td>
+            Lists general permits issued by the EPA (permits applied broadly to similar facilities
+            operating in the same region). Includes 2,823 observations, with the vast majority
+            coming from state agencies but some from the EPA. Includes information on the type of
+            permit. This can be linked to individual facilities in the ICIS data using
+            <code>MASTER_GENERAL_PERMITS</code> as a join key.
+          </td>
+          <td>One general permit</td>
+        </tr>
+        <tr>
+          <td><strong>Discharge Points</strong></td>
+          <td>
+            Identifies locations where facilities release their treated or partially treated
+            water. Data is listed by discharge point (not facility), and facilities can have
+            multiple discharge points. It includes latitude and longitude coordinates for each
+            point to specify exactly where pollutants are potentially being emitted.
+          </td>
+          <td>One discharge point (outfall)</td>
+        </tr>
+        <tr>
+          <td><strong>Permit Limit</strong></td>
+          <td>
+            Limits written into each facility&rsquo;s permit for every monitored substance. For
+            each pollutant and each discharge point, it records the maximum allowable
+            concentration or quantity, the unit of measurement, and how often the facility is
+            required to measure and report.
+          </td>
+          <td>One limit (at a specific discharge point, under a specific permit)</td>
+        </tr>
+        <tr>
+          <td><strong>DMR (Discharge Monitoring Report)</strong></td>
+          <td>
+            Self-reported discharge measurements submitted by facilities (what they released into
+            waterways during each reporting period). Files can be downloaded by fiscal year.
+          </td>
+          <td>One measurement of a pollutant (at one discharge point, during one reporting period)</td>
+        </tr>
+        <tr>
+          <td><strong>Monitoring Data Download</strong></td>
+          <td>
+            Shows the regulatory limit of emissions and the actual discharge by facility, allowing
+            comparison between what the facility is allowed to do and what they actually do. Can
+            be downloaded for a specific facility for a specific period of time (dating back to
+            2017). Data for each facility contains each of the individual sources and the
+            individual pollutants. This is permit data and DMR data joined for a specific
+            facility.
+          </td>
+          <td>One measurement of a pollutant (at one discharge point, during one reporting period)</td>
+        </tr>
+        <tr>
+          <td><strong>Catchment Index and Assorted Waters</strong></td>
+          <td>
+            These three datasets link each facility to the specific body of water it drains into
+            and connect it to water quality assessments. It contains latitude and longitude
+            coordinates of facilities to see which waterways sit downstream of each facility, and
+            rates the health of the waterways. Shows the actual effect of potential pollutants on
+            local waterways.
+          </td>
+          <td>Discharge point, catchment and water body, facility and downstream water body</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="note" style="margin-top:20px;">
+    For row counts, key variables, and join logic file-by-file, see
+    <a href="data-documentation.html">Data Documentation</a>. For which years each dataset
+    actually has data, see <a href="temporal-coverage.html">Temporal Coverage</a>.
+  </p>
+</main>
+
+<footer class="site-footer">
+  <div class="bar">
+    Data sourced from ECHO EPA Data Downloads
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Coverage Issues — Clean Water Act Data Explorer</title>
+<link rel="stylesheet" href="assets/style.css?v=5">
+</head>
+<body>
+<header class="site-header">
+  <div class="bar">
+    <div class="brand">Clean Water Act Data Explorer<small>NPDES · DMR · ATTAINS Summary Data</small></div>
+    <nav>
+      <a href="index.html">Home</a>
+      <div class="nav-dropdown">
+        <button type="button" class="nav-trigger active">Data <span class="caret">&#9662;</span></button>
+        <div class="dropdown-menu">
+          <a href="overview.html">Overview</a>
+          <a href="summaries.html">Data Summaries</a>
+          <a href="data-documentation.html">Data Documentation</a>
+          <a href="data-coverage-issues.html" class="active">Data Coverage Issues</a>
+          <a href="temporal-coverage.html">Temporal Coverage</a>
+        </div>
+      </div>
+      <a href="briefs.html">Briefs</a>
+      <a href="about.html">About &amp; Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="no-hero">
+  <div class="breadcrumb"><a href="index.html">Home</a> / Data Coverage Issues</div>
+
+  <div class="eyebrow">Reference</div>
+  <h1>Data Coverage Issues</h1>
+  <p class="lede">
+    Known data issues, anomalies, and caveats across the NPDES / ICIS data sets used by this
+    site &mdash; what's wrong or easy to misread in the raw files, and what it means for the
+    facility-month panel specifically. See <a href="data-documentation.html">Data Documentation</a>
+    for what each file contains and <a href="temporal-coverage.html">Temporal Coverage</a> for
+    which years each variable actually has data.
+  </p>
+
+  <div class="sheet-tabs" id="severity-filter" style="margin-top:28px;">
+    <button class="active" data-filter="all">All issues</button>
+    <button data-filter="high">High</button>
+    <button data-filter="medium">Medium</button>
+    <button data-filter="low">Low</button>
+  </div>
+  <p class="note" id="severity-count"></p>
+
+  <div class="field-card sev-high" data-severity="high">
+    <div class="field-card-head">
+      <h3>NPDES_FORMAL_ENFORCEMENT_ACTIONS</h3>
+      <span class="severity-badge sev-high">High</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>FED_PENALTY_ASSESSED_AMT</code> <code>SETTLEMENT_ENTERED_DATE</code></p>
+    <p>One enforcement action (single <code>ACTIVITY_ID</code>) is stored as one row per permit
+       it touches: same fine, same date repeated. PRASA = 135 rows of $1,024,427 (measured);
+       Deepwater Horizon $3.35B recorded as lead + non-lead records with different
+       state/compliance allocations (verified vs ECHO).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Summing penalties/actions naively
+       double-counts multi-permit cases; aggregate/dedupe at <code>ACTIVITY_ID</code>.</p>
+  </div>
+
+  <div class="field-card sev-high" data-severity="high low">
+    <div class="field-card-head">
+      <h3>ICIS_FACILITIES</h3>
+      <span class="severity-badge sev-high">High (universe) / Low (panel)</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>FACILITY_UIN</code> &#8596; <code>NPDES_ID</code></p>
+    <p>10.5% of FRS IDs map to &gt;1 NPDES ID (measured), inflated by generic umbrellas (one ND
+       UIN = 361 unrelated permits).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Dangerous universe-wide, but near 1:1 for
+       major-individual &mdash; only 84 facilities hold &gt;1 permit (one has 4, four have 3,
+       rest 2).</p>
+  </div>
+
+  <div class="field-card sev-medium" data-severity="medium">
+    <div class="field-card-head">
+      <h3>NPDES_CATCHMENTS</h3>
+      <span class="severity-badge sev-medium">Medium</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> catchment record / <code>NHDPLUSID</code></p>
+    <p>Covers inland surface waters only: coastal/offshore facilities have no record and
+       silently drop from inner-join spatial merges (no error).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> ~7% (549) of major-individual permits
+       (coastal/marine) vanish from catchment joins &rarr; anti-join to catch them.</p>
+  </div>
+
+  <div class="field-card sev-medium" data-severity="medium">
+    <div class="field-card-head">
+      <h3>ICIS_PERMITS</h3>
+      <span class="severity-badge sev-medium">Medium</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>PERMIT_STATUS_CODE</code> <code>EXPIRATION_DATE</code> <code>TERMINATION_DATE</code></p>
+    <p>No facility open/close field; existence inferred from permit lifecycle. ADC
+       (admin-continued, ~243k) = "expired" but still active, so <code>EXPIRATION_DATE</code>
+       overstates closures. Permit &ne; facility.</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Entry/exit derived from permit dates; must
+       treat ADC/EXP-continued as active or you mis-date exits.</p>
+  </div>
+
+  <div class="field-card sev-medium" data-severity="medium">
+    <div class="field-card-head">
+      <h3>NPDES_NAICS, NPDES_SICS</h3>
+      <span class="severity-badge sev-medium">Medium</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>NAICS_CODE</code> <code>SIC_CODE</code></p>
+    <p>NAICS ~65% missing; SIC ~99% for majors but ~39% of all permits have neither (measured).
+       Missingness flat across vintages (not date-gated).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> NAICS unusable panel-wide &rarr; use SIC
+       (~99% in panel). Newest entrants worst-coded.</p>
+  </div>
+
+  <div class="field-card sev-medium" data-severity="medium">
+    <div class="field-card-head">
+      <h3>NPDES_NAICS + NPDES_SICS</h3>
+      <span class="severity-badge sev-medium">Medium</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>NAICS_CODE</code> &#8596; <code>SIC_CODE</code></p>
+    <p>No clean crosswalk: many-to-many (NAICS 221320 &rarr; 88 SICs; SIC 1542 &rarr; 115 NAICS)
+       (measured).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Can't convert/reconcile the two systems;
+       pick one and use its primary code.</p>
+  </div>
+
+  <div class="field-card sev-low" data-severity="low">
+    <div class="field-card-head">
+      <h3>bulk enforcement files (vs case-report API)</h3>
+      <span class="severity-badge sev-low">Low</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> SEP value, compliance-action cost, cost recovery</p>
+    <p>Absent from bulk files: only in the case-report API (PRASA: $1M penalty vs $195M
+       compliance cost).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Bulk penalty totals understate true case
+       weight.</p>
+  </div>
+
+  <div class="field-card sev-medium" data-severity="medium">
+    <div class="field-card-head">
+      <h3>NPDES_FORMAL/INFORMAL_ENFORCEMENT_ACTIONS</h3>
+      <span class="severity-badge sev-medium">Medium</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>FED_PENALTY_ASSESSED_AMT</code> <code>STATE_LOCAL_PENALTY_AMT</code></p>
+    <p>Mostly missing/zero: the majority of actions are informal (no penalty).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Don't use penalty $ as a general enforcement
+       outcome; use action counts / SNC flags.</p>
+  </div>
+
+  <div class="field-card sev-medium" data-severity="medium">
+    <div class="field-card-head">
+      <h3>NPDES_DMRS</h3>
+      <span class="severity-badge sev-medium">Medium (if using DMR)</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>DMR_VALUE_NMBR</code> (non-receipt)</p>
+    <p>Coverage majors ~84% vs minors ~7% (FY2025) (measured); the 2016 eRule pulls minors in
+       &rarr; non-stationary.</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Majors well-covered; if adding DMR/violations,
+       control for/flag the ~2016 reporting break.</p>
+  </div>
+
+  <div class="field-card sev-medium" data-severity="medium">
+    <div class="field-card-head">
+      <h3>NPDES_EFF_VIOLATIONS</h3>
+      <span class="severity-badge sev-medium">Medium</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> whole file</p>
+    <p>Derived &amp; lossy &mdash; only violating rows, no compliant reports. Absent
+       facility-year = "no violation," NOT "no discharge."</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Can't compute rates/averages; violation
+       counts only.</p>
+  </div>
+
+  <div class="field-card sev-medium" data-severity="medium">
+    <div class="field-card-head">
+      <h3>NPDES_EFF_VIOLATIONS</h3>
+      <span class="severity-badge sev-medium">Medium</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>EXCEEDENCE_PCT</code> <code>RNC_*</code> <code>NODI_CODE</code> <code>DAYS_LATE</code></p>
+    <p>Populated only for their specific violation subtype (conditionally defined, not truly
+       missing).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Condition on <code>VIOLATION_TYPE_CODE</code>
+       before aggregating or means/sums mislead.</p>
+  </div>
+
+  <div class="field-card sev-medium" data-severity="medium">
+    <div class="field-card-head">
+      <h3>all CSVs (esp. ICIS_FACILITIES, ICIS_PERMITS)</h3>
+      <span class="severity-badge sev-medium">Medium (technical)</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> quoted text fields (<code>FACILITY_NAME</code>, <code>RAD_WBD_HUC12S</code>&hellip;)</p>
+    <p>Legal-but-tricky CSV &mdash; embedded commas ("BP EXPLORATION&amp;PRODUCTION, INC") and
+       embedded newlines inside quoted fields (a multi-line <code>RAD_WBD_HUC12S</code> value
+       spilled "Waterloo Municipal Airport" fragments) &mdash; break naive <code>cut -d,</code>/<code>awk -F,</code>
+       and line-by-line splitting, silently shifting columns or spawning fake "rows." The data is
+       fine; proper parsers reassemble it.</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Use a real CSV parser
+       (<code>read.csv</code>/<code>fread</code>/Python <code>csv</code>); never delimiter- or
+       line-split.</p>
+  </div>
+
+  <div class="field-card sev-low" data-severity="low">
+    <div class="field-card-head">
+      <h3>ICIS_PERMITS</h3>
+      <span class="severity-badge sev-low">Low</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>EXTERNAL_PERMIT_NMBR</code> <code>VERSION_NMBR</code></p>
+    <p>Individual permits keep the same NPDES_ID across reissuance (versioned, ~52% &gt;1
+       version); general coverages get renumbered each cycle
+       (<code>NDR100000</code>&rarr;<code>NDR110000</code>).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Individual IDs are stable &rarr; coherent
+       time series (general renumber not in panel).</p>
+  </div>
+
+  <div class="field-card sev-low" data-severity="low">
+    <div class="field-card-head">
+      <h3>ICIS_PERMITS</h3>
+      <span class="severity-badge sev-low">Low</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>MAJOR_MINOR_STATUS_FLAG</code></p>
+    <p>~3.6% of rows blank (measured).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Those facilities can't be classified; drop
+       from major-restricted sample.</p>
+  </div>
+
+  <div class="field-card sev-low" data-severity="low">
+    <div class="field-card-head">
+      <h3>NPDES_NAICS, NPDES_SICS</h3>
+      <span class="severity-badge sev-low">Low</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>NAICS_CODE</code> <code>SIC_CODE</code></p>
+    <p>Snapshots (not time-varying); also ~49k facilities have &gt;1 SIC, ~9k &gt;1 NAICS
+       (measured) (multi-activity sites).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Treat industry as time-invariant; collapse
+       with the primary code.</p>
+  </div>
+
+  <div class="field-card sev-high" data-severity="low high">
+    <div class="field-card-head">
+      <h3>ICIS_FACILITIES</h3>
+      <span class="severity-badge sev-high">Low (panel) / High (general)</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>GEOCODE_LATITUDE</code>/<code>LONGITUDE</code></p>
+    <p>General/minor sites often un-geocoded &rarr; city/county-centroid or placeholder coords;
+       many "facilities" at one point. Conflicting geocodes for offshore/corporate permits (BP:
+       office vs offshore ~370 km apart; inland-TX "99999" placeholder).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Only ~0.5% of major-individual have invalid
+       geocodes (measured) &mdash; good within panel, bad outside. Check
+       <code>LATLONG_TYPE</code>.</p>
+  </div>
+
+  <div class="field-card sev-low" data-severity="low">
+    <div class="field-card-head">
+      <h3>NPDES_PERM_FEATURE_COORDS</h3>
+      <span class="severity-badge sev-low">Low (panel)</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>PERM_FEATURE_NMBR</code> / coords</p>
+    <p>A permit can be a spatial cloud &mdash; <code>GMG290110</code> = 76 outfalls over ~510 km
+       (measured). Individual permits: 44% multi-outfall but clustered at one site.</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Individual outfalls cluster &rarr; collapsing
+       to a point is fine; extreme spread is general/offshore.</p>
+  </div>
+
+  <div class="field-card sev-low" data-severity="low">
+    <div class="field-card-head">
+      <h3>multiple files</h3>
+      <span class="severity-badge sev-low">Low</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>MAJOR_MINOR_FLAG</code> vs <code>MAJOR_MINOR_STATUS_FLAG</code></p>
+    <p>Column names differ across files (outfalls layer vs permits); ECHO renames columns.</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Join defensively on candidate names.</p>
+  </div>
+
+  <div class="field-card sev-low" data-severity="low">
+    <div class="field-card-head">
+      <h3>NPDES_EFF_VIOLATIONS</h3>
+      <span class="severity-badge sev-low">Low</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>ADJUSTED_DMR_VALUE_NMBR</code></p>
+    <p>Essentially always empty &mdash; 6 of 46,361,587 rows (measured); effluent trading is
+       negligible.</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Ignore the field.</p>
+  </div>
+
+  <div class="field-card sev-low" data-severity="low">
+    <div class="field-card-head">
+      <h3>NPDES_ATTAINS_AU_SUMMARIES</h3>
+      <span class="severity-badge sev-low">Low</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> <code>REPORTINGCYCLE</code> / impairment</p>
+    <p>Snapshot, not a time series &mdash; only the latest cycle per unit (0 of 813k unit-pairs
+       have &gt;1) (measured); no impairment history.</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Water quality = time-invariant covariate;
+       can't study change over the window.</p>
+  </div>
+
+  <div class="field-card sev-low" data-severity="low">
+    <div class="field-card-head">
+      <h3>NPDES_CATCHMENTS</h3>
+      <span class="severity-badge sev-low">Low</span>
+    </div>
+    <p class="keyvars"><strong>Variable(s):</strong> (no time column)</p>
+    <p>Static facility&rarr;catchment spatial crosswalk (physical hydrography).</p>
+    <p class="fc-note"><strong>Panel impact:</strong> Time-invariant; fine to join once.</p>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <div class="bar">
+    Data sourced from ECHO EPA Data Downloads
+  </div>
+</footer>
+
+<script>
+  const filterBar = document.getElementById("severity-filter");
+  const countEl = document.getElementById("severity-count");
+  const cards = Array.from(document.querySelectorAll(".field-card"));
+
+  function applyFilter(filter) {
+    let shown = 0;
+    cards.forEach(card => {
+      const sevs = (card.dataset.severity || "").split(" ");
+      const match = filter === "all" || sevs.includes(filter);
+      card.style.display = match ? "" : "none";
+      if (match) shown++;
+    });
+    countEl.textContent = `Showing ${shown} of ${cards.length} issues`;
+  }
+
+  filterBar.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      filterBar.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      applyFilter(btn.dataset.filter);
+    });
+  });
+
+  applyFilter("all");
+</script>
+</body>
+</html>

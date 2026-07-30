@@ -485,6 +485,22 @@ table.data-table td.empty-val { color: #9aa7b1; font-style: italic; }
 }
 .field-card .fc-note { font-style: italic; }
 
+/* Severity accents (Data Coverage Issues page) */
+.field-card.sev-high { border-left-color: var(--coral); }
+.field-card.sev-medium { border-left-color: #d99a2b; }
+.field-card.sev-low { border-left-color: var(--teal); }
+
+.severity-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.severity-badge.sev-high { background: #fbe1da; color: #a8391c; }
+.severity-badge.sev-medium { background: #fbeecb; color: #8a5a09; }
+.severity-badge.sev-low { background: var(--blue-pale); color: var(--teal-dark); }
+
 code {
   background: var(--blue-pale);
   color: var(--navy);
