@@ -4,8 +4,10 @@
 # Usage (from anywhere inside the repo):   Rscript run_all.R
 #
 # 1. Sources code/00_setup/00_setup.R (package/directory checks).
-# 2. Optionally re-downloads the ECHO bulk files (off by default — slow, large;
-#    see DOWNLOAD_DATA below).
+# 2. Acquires the ECHO bulk files into data/raw/ if they're missing (the default
+#    DOWNLOAD_DATA = "auto" — a fresh clone downloads automatically, an already-
+#    populated setup skips it). Set TRUE to always run the downloader, FALSE to
+#    never. See DOWNLOAD_DATA below.
 # 3. Builds the condensed effluent-violations panel if it isn't already on disk
 #    (see BUILD_EFFLUENT_PANEL below) — both step 01 and step 06 need this file
 #    to exist before they can run.
@@ -27,14 +29,20 @@
 #      05  + formal/informal enforcement counts + penalty $
 #      06  + effluent-violation counts (final panel)
 #          -> data/processed/06_facility_month_panel_major_individual_effluent_2005_2025.csv
+# 5. Rebuilds the website's data (website/scripts/build_website_data.R): the
+#    per-dataset summaries + year-coverage + panel QA summary, converted to the
+#    website/data/*.json the static site reads. On by default (BUILD_WEBSITE);
+#    fail-soft and SLOW (the `limits` summary alone loads a multi-GB file), so
+#    set BUILD_WEBSITE <- FALSE to rebuild just the panel. Serve the result over
+#    HTTP (the pages fetch JSON, which browsers block under file://).
 #
 # The numbering encodes dependency order: each step reads the CSV the previous
 # step wrote. Steps are sourced in isolated environments so their variables
 # can't collide; data passes between them via the CSVs on disk, not R objects.
 #
-# Not run here (deliberately): code/diagnostics/, code/summary/, code/dmr/
-# (incl. its two standalone filter pipelines) -- QC/reporting/filter pipelines,
-# not part of rebuilding the panel. See code/README.md.
+# Not run here (deliberately): code/diagnostics/, code/dmr/, dmr analysis/ --
+# QC/sibling pipelines, not part of rebuilding the panel. (code/summary/ IS run,
+# but only as part of the step-5 website build above.) See code/README.md.
 #
 # REMOVED 2026-07-23: the FY2025 row-filter helper (restrict_06_to_fy2025.R) was
 # deleted. Its outputs (data/processed/07_facility_month_panel_major_individual_
@@ -51,14 +59,38 @@ message("\n===== running 00_setup.R =====")
 source(file.path(CWA_ROOT, "code/00_setup/00_setup.R"))
 message("done: 00_setup.R")
 
-# Set TRUE to (re-)fetch the ECHO bulk files before rebuilding. Off by default:
-# slow (multi-GB downloads) and data/raw/ is normally already populated.
-DOWNLOAD_DATA <- FALSE
-if (DOWNLOAD_DATA) {
+# Raw-data acquisition. Three modes:
+#   "auto"  (default) -- fetch ONLY if data/raw/ looks unpopulated, so a fresh
+#                        clone downloads on its own while an already-populated
+#                        setup skips the multi-GB transfer.
+#   TRUE              -- always run the downloader (it still skips files already
+#                        on disk; set REFRESH <- TRUE inside that script to force
+#                        a re-download).
+#   FALSE             -- never download.
+# The downloader is idempotent (logs SKIPPED-EXISTS, fetches only gaps), so
+# "auto" can safely re-run it whenever a sentinel file is absent.
+DOWNLOAD_DATA <- "auto"
+
+# A minimal set of files the panel build needs; if any is absent, "auto" treats
+# data/raw/ as unpopulated and runs the downloader (which then fills only gaps).
+RAW_SENTINELS <- c(
+  file.path(RAW_DIR,  "ICIS_FACILITIES.csv"),      # core npdes_downloads table
+  file.path(RAW_DIR,  "ICIS_PERMITS.csv"),
+  file.path(RAW_ROOT, "npdes_eff_downloads.zip")   # effluent source (stays zipped)
+)
+raw_present <- all(file.exists(RAW_SENTINELS))
+do_download <- isTRUE(DOWNLOAD_DATA) ||
+  (identical(DOWNLOAD_DATA, "auto") && !raw_present)
+
+if (do_download) {
+  if (identical(DOWNLOAD_DATA, "auto"))
+    message("\n===== raw data not found in data/raw/; auto-downloading (multi-GB, slow) =====")
   message("\n===== running 01_download_echo_bulk_files.R =====")
   source(file.path(CWA_ROOT, "code/01_data_download/01_download_echo_bulk_files.R"),
          local = new.env())
   message("done: 01_download_echo_bulk_files.R")
+} else if (identical(DOWNLOAD_DATA, "auto")) {
+  message("\n===== skipping download (raw data already present in data/raw/) =====")
 } else {
   message("\n===== skipping 01_download_echo_bulk_files.R (DOWNLOAD_DATA = FALSE) =====")
 }
@@ -96,3 +128,22 @@ for (s in steps) {
 }
 
 message("\n=== pipeline complete: facility-by-month panel rebuilt in data/processed/ ===")
+
+# ---- Website data (final stage) ----------------------------------------------
+# Rebuild the JSON the static site reads (data summaries, year coverage, panel
+# QA). SLOW -- the `limits` summary loads a multi-GB file and the two
+# eff_violations states each stream a ~2.9 GB zip. Fail-soft: wrapped so a
+# problem here logs a warning but never discards the panel just built. Set FALSE
+# to skip; run website/scripts/build_website_data.R by hand to (re)build later.
+BUILD_WEBSITE <- TRUE
+if (BUILD_WEBSITE) {
+  message("\n===== building website data (summaries -> JSON); this can take a while =====")
+  tryCatch(
+    source(file.path(CWA_ROOT, "website/scripts/build_website_data.R"), local = new.env()),
+    error = function(e)
+      message("WARNING: website build failed (", conditionMessage(e), "). ",
+              "The panel is built; re-run website/scripts/build_website_data.R to retry.")
+  )
+} else {
+  message("\n===== skipping website build (BUILD_WEBSITE = FALSE) =====")
+}

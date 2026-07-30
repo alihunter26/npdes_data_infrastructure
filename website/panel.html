@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facility-Month Panel — Clean Water Act Data Explorer</title>
+<link rel="stylesheet" href="assets/style.css?v=4">
+</head>
+<body>
+<header class="site-header">
+  <div class="bar">
+    <div class="brand">Clean Water Act Data Explorer<small>NPDES · DMR · ATTAINS Summary Data</small></div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="summaries.html" class="active">Data Summaries</a>
+      <a href="briefs.html">Briefs</a>
+      <a href="data-documentation.html">Data Documentation</a>
+      <a href="temporal-coverage.html">Temporal Coverage</a>
+      <a href="about.html">About &amp; Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="no-hero">
+  <div class="breadcrumb"><a href="index.html">Home</a> / <a href="summaries.html">Data Summaries</a> / Facility-Month Panel</div>
+  <div id="content">Loading&hellip;</div>
+</main>
+
+<footer class="site-footer">
+  <div class="bar">
+    Data sourced from NPDES Data Downloads
+  </div>
+</footer>
+
+<script src="assets/table.js"></script>
+<script>
+// Friendly labels + one-line descriptions for summarize_panel.R's sheet names.
+const SHEETS = [
+  { key: "1_structure",   name: "Panel structure",
+    note: "Shape and keys of the built panel, and whether (FACILITY_UIN, YEAR, MONTH) is unique." },
+  { key: "2a_year",       name: "Rows per year",
+    note: "Row and distinct-facility counts by year — a coverage check across the 2005–2025 window." },
+  { key: "2b_missing",    name: "Missing data by column",
+    note: "Percent missing per column, most-missing first." },
+  { key: "3_numeric",     name: "Numeric summary",
+    note: "Per numeric column: N, mean, sd, min, median, p90, p99, max, % non-zero, % missing." },
+  { key: "4_consistency", name: "Consistency checks",
+    note: "Internal-consistency tests (component sums equal totals; penalties imply a formal action; no negative counts)." }
+];
+
+async function main() {
+  const content = document.getElementById("content");
+
+  let data;
+  try {
+    const res = await fetch("data/panel.json");
+    if (!res.ok) throw new Error(res.status);
+    data = await res.json();
+  } catch (e) {
+    content.innerHTML = `<h1>Facility-Month Panel</h1><p>Could not load data/panel.json (${e}). ` +
+      `Generate it with <code>Rscript website/scripts/build_website_data.R</code>, and serve this ` +
+      `site over HTTP (the page fetches JSON, which browsers block under file://).</p>`;
+    return;
+  }
+
+  content.innerHTML = "";
+
+  const h1 = document.createElement("h1");
+  h1.textContent = "Facility-Month Panel — QA Summary";
+  content.appendChild(h1);
+
+  const lede = document.createElement("p");
+  lede.className = "lede";
+  lede.textContent = "Face-validity and internal-consistency checks for the built facility-by-month " +
+    "panel of major, individually-permitted NPDES facilities (2005–2025) — the project's core analysis " +
+    "dataset. These catch construction bugs (bad merges, duplicated rows, impossible values, coverage gaps).";
+  content.appendChild(lede);
+
+  const src = document.createElement("p");
+  src.className = "note";
+  src.textContent = `Panel: ${data.panel || "—"}  |  Source workbook: ${data.source_file}`;
+  content.appendChild(src);
+
+  SHEETS.forEach(s => {
+    const rows = data.sheets ? data.sheets[s.key] : null;
+    if (!rows || !rows.length) return;
+    const h2 = document.createElement("h2");
+    h2.textContent = s.name;
+    content.appendChild(h2);
+    const p = document.createElement("p");
+    p.className = "note";
+    p.textContent = s.note;
+    content.appendChild(p);
+    const div = document.createElement("div");
+    content.appendChild(div);
+    // Small reference tables don't need a search box; the numeric table does.
+    renderDataTable(div, rows, { searchable: s.key === "3_numeric" || s.key === "2b_missing" });
+  });
+}
+main();
+</script>
+</body>
+</html>

@@ -30,7 +30,8 @@
   <div class="breadcrumb"><a href="index.html">Home</a> / Data Summaries</div>
   <h1>Data Summaries</h1>
   <p class="lede">Select a dataset to view its variable-level summary: missing data rates,
-     most frequent category values, and numeric/date distributions.</p>
+     most frequent category values, and numeric/date distributions. The first card is the
+     built facility-by-month <strong>panel</strong> (QA summary); the rest are the raw source datasets.</p>
 
   <div class="card-grid" id="cards"></div>
 </main>
@@ -44,6 +45,19 @@
 <script src="assets/datasets.js"></script>
 <script>
   const grid = document.getElementById("cards");
+
+  // Featured first card: the built facility-month panel (its own page, since its
+  // QA layout differs from the raw-dataset summaries the cards below link to).
+  const panelCard = document.createElement("a");
+  panelCard.href = "panel.html";
+  panelCard.className = "card";
+  panelCard.style.display = "block";
+  panelCard.innerHTML = `<h3>Facility-Month Panel (QA summary)</h3>` +
+    `<p>Structure, per-year coverage, missingness, numeric distributions, and internal-consistency ` +
+    `checks for the built facility-by-month panel — the project's core analysis dataset.</p>` +
+    `<div class="meta">Built panel · data/processed</div>`;
+  grid.appendChild(panelCard);
+
   DATASETS.forEach(d => {
     const card = document.createElement("a");
     card.href = `dataset.html?key=${encodeURIComponent(d.key)}`;

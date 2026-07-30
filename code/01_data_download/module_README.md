@@ -8,12 +8,14 @@ through the downloads page" step. See
 [`01_download_echo_bulk_files.md`](01_download_echo_bulk_files.md) for full
 per-script documentation (data sources, decisions/assumptions, output columns).
 
-## Off by default
+## When `run_all.R` runs this
 
-`run_all.R` does **not** run this automatically — it's gated behind a
-`DOWNLOAD_DATA <- FALSE` flag, since it can mean multi-GB downloads and
-`data/raw/` is normally already populated. Set that flag to `TRUE`, or run the
-script directly:
+`run_all.R` runs this on demand via its `DOWNLOAD_DATA` flag, which defaults to
+`"auto"`: it fetches the bulk files **only when `data/raw/` looks unpopulated**
+(a fresh clone downloads on its own; an already-populated setup skips the
+multi-GB transfer). Set `DOWNLOAD_DATA <- TRUE` to always run it, or `FALSE` to
+never. The download is idempotent — it logs `SKIPPED-EXISTS` and fetches only
+missing files — so re-running is safe. You can also run the script directly:
 
 ```bash
 Rscript code/01_data_download/01_download_echo_bulk_files.R

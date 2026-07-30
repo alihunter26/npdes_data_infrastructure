@@ -11,7 +11,7 @@ not build steps.
 | Folder | Role |
 |---|---|
 | `00_setup/` | Package/directory checks, run first. See its `module_README.md`. |
-| `01_data_download/` | Downloads the EPA ECHO / ICIS-NPDES bulk files into `data/raw/`. Off by default in `run_all.R` — see its `module_README.md`. |
+| `01_data_download/` | Downloads the EPA ECHO / ICIS-NPDES bulk files into `data/raw/`. Runs automatically from `run_all.R` only when `data/raw/` is unpopulated (`DOWNLOAD_DATA = "auto"`) — see its `module_README.md`. |
 | `02_cleaning/` | Shared cleaning helpers (`cleaning_helpers.R`) used by every step of `03_panel_building/`: safe raw-file reads, the permit→facility crosswalk, and date-combining mechanics. Also holds `build_effluent_violations_npdes_month_panel.R` (moved in from `03_panel_building/` 2026-07-27) — an unrelated standalone prerequisite script, not a helper function, that just happens to live here now. See its `module_README.md`. |
 | `03_panel_building/` | The core pipeline: builds the facility-by-**month** panel of major, individually-permitted NPDES facilities, 2005–2025. Steps `01`–`06` (`06` = final panel); `01` also corrects `FACILITY_OPERATING` internally. Documented per-script in `03_panel_building/READMEs/`. |
 | `summary/` | Per-dataset Excel summary generators. `summarize.R` is the single registry-driven entry point; the legacy `summarize_*.R` scripts are kept for reference. |
@@ -26,7 +26,9 @@ not build steps.
 - **Deterministic:** no random number generation; no seeds.
 - **Outputs timestamped**, written to `output/` or `data/processed/`; raw data is never
   modified.
-- **One master script:** `../run_all.R` runs `00_setup/`, optionally
-  `01_data_download/`, then the full `03_panel_building/` chain in order.
+- **One master script:** `../run_all.R` runs `00_setup/`, `01_data_download/` (only
+  if `data/raw/` is unpopulated), the full `03_panel_building/` chain in order, then
+  the website data build (`../website/scripts/build_website_data.R`, which drives
+  `summary/`). Each stage has a flag near the top of `run_all.R` to skip it.
 
 See the root `README.md` for the per-script tables.
