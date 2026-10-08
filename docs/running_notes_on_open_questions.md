@@ -308,7 +308,7 @@ facility-month runs well under its limit, with a long right tail (max 22.2× and
 `output/tables/dmr_fy2017_exceed_disagreements_*.csv`. Both counts are kept as separate
 columns — reported, not reconciled.
 
-**New reference table:** `data/raw/reference/REF_NODI.csv`, all 35 EPA NODI codes with a
+**New reference table:** `data/raw/reference/REF_NODI.csv`, all 33 EPA NODI codes with a
 curated `NODI_ACTIVITY_CLASS`, needed to decide which "no data" reasons still imply a live
 outfall. Six codes (`4`, `7`, `I`, `J`, `K`, `W`) are genuine judgment calls —
 discharging-but-elsewhere vs. not-operating — and are left `unclear`, landing in

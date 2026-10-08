@@ -175,7 +175,7 @@ every uncovered one is `NA` in all 28 variables. Filter covered rows with
    `N_OUTFALLS_CENSORED_MASS` / `_CONC` so the sensitivity is boundable.
 8. **NODI classes live in a reference table, not in code.** `N_OUTFALLS_ACTIVE` needs to
    know which "no data" reasons still imply a live outfall, so
-   `data/raw/reference/REF_NODI.csv` carries all 35 EPA codes with a curated
+   `data/raw/reference/REF_NODI.csv` carries all 33 EPA codes with a curated
    `NODI_ACTIVITY_CLASS` (`active` / `no_discharge` / `inactive` / `no_data_admin` /
    `unclear`). Six codes are genuine judgment calls — `4` (discharge to
    lagoon/groundwater), `7` (no influent), `I` (land applied), `J` (recycled closed

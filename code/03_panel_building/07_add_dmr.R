@@ -119,7 +119,7 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 #
 #   8. NODI CODES COME FROM A REFERENCE TABLE, NOT FROM CODE. N_OUTFALLS_ACTIVE
 #      needs to know which "no data" reasons still imply a live outfall, so
-#      data/raw/reference/REF_NODI.csv carries all 35 EPA codes with a curated
+#      data/raw/reference/REF_NODI.csv carries all 33 EPA codes with a curated
 #      NODI_ACTIVITY_CLASS (active / no_discharge / inactive / no_data_admin /
 #      unclear), sourced from EPA's published DMR NODI code list. Six codes are
 #      genuine judgment calls (4, 7, I, J, K, W: discharging-but-elsewhere vs.
