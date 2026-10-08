@@ -350,7 +350,7 @@ fwrite(panel, OUT_PATH)
 
 # ------------------------------------------------------------------------------
 # STEP 5: Run log -- always print what was built, and cross-check against the
-# exact figures already on record in docs/notes.md from this file's original
+# exact figures already on record in docs/running_notes_on_open_questions.md from this file's original
 # construction, so a silent regression would be caught immediately.
 # ------------------------------------------------------------------------------
 message("=== build_effluent_violations_npdes_month_panel: condensed effluent panel ===")
@@ -359,11 +359,11 @@ message("Raw D80/D90/E90 rows in window                              : ", n_raw_
 message("Distinct vkey (de-duplicated) in window                     : ", n_distinct_vkey_in_window)
 message("  of which D80 / D90 / E90                                  : ",
         n_D80_total, " / ", n_D90_total, " / ", n_E90_total)
-message("  (docs/notes.md, 2026-07-14 build, for comparison           : 43,317,821 raw / ",
+message("  (docs/running_notes_on_open_questions.md, 2026-07-14 build, for comparison           : 43,317,821 raw / ",
         "41,451,812 distinct / D80 21,073,782 / D90 17,814,134 / E90 2,563,896)")
 message("Permit-month rows written                                   : ", nrow(panel))
 message("Distinct NPDES_IDs                                          : ", uniqueN(panel$NPDES_ID))
-message("  (docs/notes.md, for comparison: 2,694,316 ID-months across 121,708 distinct NPDES_IDs)")
+message("  (docs/running_notes_on_open_questions.md, for comparison: 2,694,316 ID-months across 121,708 distinct NPDES_IDs)")
 message("TSS-subset totals (violations / D90 / D80 / E90)            : ",
         sum(panel$N_TSS_EFF_VIOLATIONS), " / ", sum(panel$N_TSS_EFF_D90), " / ",
         sum(panel$N_TSS_EFF_D80), " / ", sum(panel$N_TSS_EFF_E90))

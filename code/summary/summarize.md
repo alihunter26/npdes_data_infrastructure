@@ -124,7 +124,7 @@ running the CLI (used by a verification harness).
 
 - The effluent zip is located by **pattern match** (`eff.*zip` in `data/raw/`), not a
   hardcoded filename, because the real ECHO filename contains a non-ASCII space —
-  never hardcode it (see `docs/notes.md`).
+  never hardcode it (see `docs/running_notes_on_open_questions.md`).
 - `eff_violations`'s chunked quantiles are *estimated* from a reservoir sample, not
   exact — seeded for reproducibility, but treat the 5th/95th percentiles as
   approximate, unlike every other dataset's exact quantiles.

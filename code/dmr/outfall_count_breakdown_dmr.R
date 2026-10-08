@@ -35,6 +35,15 @@ source(local({d<-getwd(); while(!file.exists(file.path(d,".git"))&&dirname(d)!=d
 #   distinct outfalls across all their permits. Fiscal year is configurable (FY
 #   below), default 2025.
 #
+# FILTER_TO_MAJOR_INDIVIDUAL can be set to TRUE to explicitly restrict DMR permits
+# to ever-major individual permits, matching the population definition used by the
+# panel-building scripts. The default FALSE preserves the prior behavior; the
+# final facility join still restricts the reported facility universe to the panel.
+# FILTER_TO_TSS can be set to TRUE to restrict DMR records to total suspended
+# solids (PARAMETER_CODE = '00530'). The two filters can be used together.
+# WRITE_SUMMARY_CSV can be set to TRUE to also save the two summary tables;
+# summary statistics are always printed in the R terminal.
+#
 # Engine: DuckDB, out-of-core. The FY DMR CSV (~9.7GB) lives inside a zip;
 # DuckDB can't read a zip member directly (non-seekable pipe breaks its
 # sniffer), so the member is streamed out with `tar` and re-gzipped to scratch
@@ -51,14 +60,20 @@ suppressPackageStartupMessages({
 })
 
 ## ---- Config ----
-FY          <- 2025L
+FY          <- 2009L
 ZIP_NAME    <- sprintf("npdes_dmrs_fy%d.zip", FY)
 CSV_MEMBER  <- sprintf("NPDES_DMRS_FY%d.csv", FY)
 F_PERM_FEATURE_TYPE <- "EXO"
+FILTER_TO_MAJOR_INDIVIDUAL <- TRUE
+FILTER_TO_TSS <- TRUE
+TSS_PARAMETER_CODE <- "00530"
+WRITE_SUMMARY_CSV <- FALSE
 
 PANEL_FILE <- file.path(PROC_DIR, "06_facility_month_panel_major_individual_effluent_2005_2025.csv")
+PERMITS    <- file.path(RAW_DIR, "ICIS_PERMITS.csv")
 SCRATCH    <- Sys.getenv("CWA_SCRATCH", file.path(tempdir(), "cwa_dmr"))
 GZ_TMP     <- file.path(SCRATCH, sprintf("NPDES_DMRS_FY%d.csv.gz", FY))
+ELIGIBLE_TMP <- file.path(SCRATCH, "eligible_major_individual_permits.csv")
 DUCK_TMP   <- file.path(SCRATCH, "duckdb_spill")
 REUSE_GZ   <- TRUE
 MEM_LIMIT  <- "5GB"
@@ -66,6 +81,23 @@ OUT_DIR    <- file.path(CWA_ROOT, "output/tables")
 
 dir.create(SCRATCH,  showWarnings = FALSE, recursive = TRUE)
 dir.create(DUCK_TMP, showWarnings = FALSE, recursive = TRUE)
+
+# ---- Optional major-individual permit set -----------------------------------
+if (FILTER_TO_MAJOR_INDIVIDUAL) {
+  if (!file.exists(PERMITS)) stop("ICIS_PERMITS.csv not found: ", PERMITS)
+  pm <- fread(PERMITS,
+              select = c("EXTERNAL_PERMIT_NMBR", "PERMIT_TYPE_CODE",
+                         "MAJOR_MINOR_STATUS_FLAG"),
+              colClasses = "character", showProgress = FALSE)
+  pm[, `:=`(id = trimws(EXTERNAL_PERMIT_NMBR),
+            ptc = trimws(PERMIT_TYPE_CODE),
+            flag = trimws(MAJOR_MINOR_STATUS_FLAG))]
+  pm <- pm[ptc == "NPD"]
+  eligible <- pm[, .(ever_major = any(flag == "M")), by = id][ever_major == TRUE, id]
+  fwrite(data.table(EXTERNAL_PERMIT_NMBR = eligible), ELIGIBLE_TMP)
+  message("Filtering DMR permits to ", length(eligible),
+          " ever-major individual permits")
+}
 
 # ---- 1. Locate the DMR zip, decompress the CSV member -> gzip temp (once) -----
 ZIP_PATH <- file.path(DMR_DIR, ZIP_NAME)
@@ -94,11 +126,27 @@ dbExecute(con, "SET preserve_insertion_order=false;")
 
 message("Scanning FY", FY, " DMR for EXO outfalls (all parameters) ...")
 t0 <- Sys.time()
+READ_CSV <- sprintf("read_csv('%s', all_varchar=true, header=true, sample_size=-1)", GZ_TMP)
+DMR_JOIN <- if (FILTER_TO_MAJOR_INDIVIDUAL) {
+  ELIGIBLE_CSV <- sprintf("read_csv('%s', all_varchar=true, header=true)", ELIGIBLE_TMP)
+  sprintf("INNER JOIN %s e ON trim(d.EXTERNAL_PERMIT_NMBR) = trim(e.EXTERNAL_PERMIT_NMBR)",
+          ELIGIBLE_CSV)
+} else {
+  ""
+}
+DMR_WHERE <- sprintf(
+  "d.PERM_FEATURE_TYPE_CODE = '%s' AND d.PERM_FEATURE_ID IS NOT NULL%s",
+  F_PERM_FEATURE_TYPE,
+  if (FILTER_TO_TSS) sprintf(" AND d.PARAMETER_CODE = '%s'", TSS_PARAMETER_CODE) else "")
+message("  Filters: EXO; ", if (FILTER_TO_TSS) "TSS (00530)" else "all parameters",
+        if (FILTER_TO_MAJOR_INDIVIDUAL) "; ever-major individual permits" else "")
 outfalls_all_versions <- as.data.table(dbGetQuery(con, sprintf(
-  "SELECT DISTINCT EXTERNAL_PERMIT_NMBR AS PERMIT, VERSION_NMBR, PERM_FEATURE_ID AS FEATURE_ID
-   FROM read_csv('%s', all_varchar=true, header=true, sample_size=-1)
-   WHERE PERM_FEATURE_TYPE_CODE = '%s' AND PERM_FEATURE_ID IS NOT NULL",
-  GZ_TMP, F_PERM_FEATURE_TYPE)))
+  "SELECT DISTINCT d.EXTERNAL_PERMIT_NMBR AS PERMIT, d.VERSION_NMBR,
+          d.PERM_FEATURE_ID AS FEATURE_ID
+   FROM %s d
+   %s
+   WHERE %s",
+  READ_CSV, DMR_JOIN, DMR_WHERE)))
 dbDisconnect(con, shutdown = TRUE)
 message("  scan done in ", round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1), " min")
 outfalls_all_versions[, VERSION_NMBR := as.integer(VERSION_NMBR)]
@@ -149,12 +197,23 @@ cat("\nmedian =", median(result$n_outfalls),
     " mean =", round(mean(result$n_outfalls), 2),
     " max =", max(result$n_outfalls), "\n")
 
-# ---- 7. Write ---------------------------------------------------------------------
-if (!dir.exists(OUT_DIR)) dir.create(OUT_DIR, recursive = TRUE)
-stamp <- format(Sys.time(), "%Y-%m-%d_%H%M")
-out_facility <- file.path(OUT_DIR, sprintf("outfall_count_per_facility_dmr_fy%d_%s.csv", FY, stamp))
-out_dist     <- file.path(OUT_DIR, sprintf("outfall_count_distribution_dmr_fy%d_%s.csv", FY, stamp))
-fwrite(result, out_facility)
-fwrite(dist, out_dist)
-cat("\nWrote:", out_facility, "\n")
-cat("Wrote:", out_dist, "\n")
+# ---- 7. Optionally write summary CSVs ----------------------------------------
+if (WRITE_SUMMARY_CSV) {
+  if (!dir.exists(OUT_DIR)) dir.create(OUT_DIR, recursive = TRUE)
+  stamp <- format(Sys.time(), "%Y-%m-%d_%H%M")
+  out_facility <- file.path(OUT_DIR, sprintf("outfall_count_per_facility_dmr_fy%d_%s.csv", FY, stamp))
+  out_dist     <- file.path(OUT_DIR, sprintf("outfall_count_distribution_dmr_fy%d_%s.csv", FY, stamp))
+  filter_suffix <- paste(c(
+    if (FILTER_TO_MAJOR_INDIVIDUAL) "major_individual" else NULL,
+    if (FILTER_TO_TSS) "tss" else NULL
+  ), collapse = "_")
+  if (nzchar(filter_suffix)) {
+    out_facility <- sub("\\.csv$", paste0("_", filter_suffix, ".csv"), out_facility)
+    out_dist <- sub("\\.csv$", paste0("_", filter_suffix, ".csv"), out_dist)
+  }
+  fwrite(result, out_facility)
+  fwrite(dist, out_dist)
+  cat("\nWrote:", out_facility, "\n")
+  cat("Wrote:", out_dist, "\n")
+}
+if (FILTER_TO_MAJOR_INDIVIDUAL && file.exists(ELIGIBLE_TMP)) unlink(ELIGIBLE_TMP)

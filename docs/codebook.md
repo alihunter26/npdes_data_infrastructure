@@ -107,7 +107,7 @@ separate column, **`FACILITY_OPERATING_PERMIT_WINDOW`** (column 8) — see its e
 below. Full detail, every labeled assumption, and the worked example (facility
 `110006619212`) are in
 [`code/03_panel_building/READMEs/01_build_facility_month_panel_major_individual.md`](../code/03_panel_building/READMEs/01_build_facility_month_panel_major_individual.md)
-(Assumption 10; see also `code/03_panel_building/use_operating_proxies.R`) and `docs/notes.md`.
+(Assumption 10; see also `code/03_panel_building/use_operating_proxies.R`) and `docs/running_notes_on_open_questions.md`.
 
 **One residual limitation to know:** a facility whose panel life shows **zero**
 recorded events anywhere (no inspections, violations, enforcement, or effluent
@@ -282,7 +282,7 @@ ending in `S` (e.g. `AERS` vs. `AER`) are the state-issued counterpart of the sa
 activity and are **not** folded into these columns — an open `TODO` in the source
 script.
 
-## 6 · Effluent violations (step 06, final assembly)
+## 6 · Effluent violations (step 06)
 
 **Two independent count sets, kept separate on purpose** — `n_D80/n_D90/n_E90` are
 all-parameter (every parameter, feature, and monitoring location), while
@@ -317,6 +317,84 @@ and routed via the step-01 crosswalk.
 Columns 31–34 sit right after `N_SE_VIOLATIONS` (their original position from when
 this block lived in step 04); columns 57–59 sit at the very end of the panel — the
 two effluent blocks are not adjacent in column order.
+
+## 7 · DMR discharge & compliance, FY2017 (step 07, final assembly)
+
+**The first block measured from the DMR files themselves**, not from a violations
+extract. Columns 60–88, added by
+[`code/03_panel_building/07_add_dmr.R`](../code/03_panel_building/07_add_dmr.R).
+
+**Scope — read this before using any column here.** Majors under individual permits →
+TSS (`00530`) → Effluent Gross (`MONITORING_LOCATION_CODE` `1` or `EG`) → external
+outfalls (`PERM_FEATURE_TYPE_CODE == 'EXO'`) → monthly average
+(`STATISTICAL_BASE_CODE == 'MK'`) → the average basis pair `Q1` (mass, kg/d) and `C2`
+(concentration, mg/L). **"Basis" = `VALUE_TYPE_CODE`**, which encodes
+concentration-vs-quantity, *not* a statistic.
+
+**`NA` ≠ 0 here, and the rule is the OPPOSITE of step 06's.** In step 06 a missing
+violation record means zero violations, so it fills `0`. Here a missing DMR report is
+**not** a measured zero discharge, so every column below is `NA` outside coverage.
+
+**There is no coverage-flag column** — a facility-month is covered **iff**
+`N_OUTFALL_BASIS_TOTAL` is non-`NA` (bit-for-bit equivalent to the flag that used to
+exist, since covered rows always have `N_OUTFALL_BASIS_TOTAL >= 1`). Only 47,394 of
+1,897,560 panel rows (2.50%) are covered — FY2017 is 12 months of a 21-year panel.
+**Treat `!is.na(N_OUTFALL_BASIS_TOTAL)` as the analysis sample, not the panel.**
+
+Three distinct reasons a row is uncovered, all recoverable: outside FY2017 (1,807,200
+rows), inside FY2017 but no DMR report (41,226), inside FY2017 but dropped by the
+multi-limit-set rule (1,740, flagged `DMR_TSS_DROPPED_MULTISET`).
+
+| # | Column | Type | Meaning |
+|---|---|---|---|
+| 60 | `DMR_TSS_DROPPED_MULTISET` | 0/1 | ≥1 of the facility's permits was dropped for multi-limit-set outfalls (145 facilities). **Not missing-at-random** — flags *conditionally-permitted* facilities (many limit sets on few outfalls), not large ones; the median flagged permit has one outfall. |
+| 61 | `N_OUTFALLS_TOTAL` | int | Distinct external outfalls reporting. **Not** `max` or the sum of the two per-basis counts — half of outfall-months report only one basis. |
+| 62 | `N_OUTFALLS_MASS` | int | Outfalls with a `Q1` (mass) row |
+| 63 | `N_OUTFALLS_CONC` | int | Outfalls with a `C2` (concentration) row |
+| 64 | `N_OUTFALLS_NOLIMIT_ALL` | int | Outfalls where *every* basis reported has no numeric limit |
+| 65 | `N_OUTFALLS_NOLIMIT_ANY` | int | Outfalls with ≥1 basis lacking a numeric limit |
+| 66 | `N_OUTFALL_BASIS_NOLIMIT` | int | Outfall-basis cells with no numeric limit (monitor-only) |
+| 67 | `N_OUTFALL_BASIS_TOTAL` | int | Outfall-basis cells in total — the denominator |
+| 68 | `N_MASS_EXCEED_CALC` | int | Mass rows where discharge > limit (**our** test) |
+| 69 | `N_MASS_EXCEED_EPA` | int | Mass rows with `VIOLATION_CODE == 'E90'` (**EPA's** flag) |
+| 70 | `N_CONC_EXCEED_CALC` | int | Concentration rows where discharge > limit (ours) |
+| 71 | `N_CONC_EXCEED_EPA` | int | Concentration rows flagged `E90` (EPA's) |
+| 72 | `N_OUTFALLS_CENSORED_MASS` | int | Outfalls with a censored (`<`) mass row — their discharge is an **upper bound** |
+| 73 | `N_OUTFALLS_CENSORED_CONC` | int | Outfalls with a censored concentration row |
+| 74 | `N_OUTFALLS_NO_DISCHARGE` | int | Outfalls where *every* basis is a confirmed zero (reported `0`, or NODI `C`) |
+| 75 | `N_OUTFALLS_ACTIVE` | int | Outfalls discharging > 0 on any basis, **plus** no-discharge outfalls whose NODI class is `active` |
+| 76 | `N_OUTFALLS_NODI_UNCLASSIFIED` | int | Outfalls whose only activity signal is one of the six `unclear` NODI codes — counted, never guessed |
+| 77 | `N_OUTFALL_BASIS_MULTIMONTH` | int | Cells whose `NMBR_OF_REPORT > 1` (dated to period end, **not** spread backwards) |
+| 78 | `N_OUTFALL_BASIS_UNEXPLAINED_BLANK` | int | Cells with neither a value nor a NODI code |
+| 79 | `N_OUTFALL_BASIS_NEGATIVE` | int | Cells reporting a **negative** TSS value — physically impossible, kept as reported. **Condition on `== 0`** to exclude; 8 cells in FY2017. |
+| 80 | `MASS_DISCHARGED_TOTAL` | num | Σ mass discharged over *all* mass rows, **kg/d** |
+| 81 | `MASS_DISCHARGED_LIMITED` | num | Σ mass discharged over mass rows carrying a limit, kg/d |
+| 82 | `MASS_PERMITTED_TOTAL` | num | Σ mass limit over those rows, kg/d |
+| 83 | `MASS_EXCEED_TOTAL` | num | Σ(discharge − limit) over exceeding mass rows; `0` when none (it's a sum) |
+| 84 | `MASS_RATIO_POOLED` | num | `MASS_DISCHARGED_LIMITED / MASS_PERMITTED_TOTAL` — a **ratio of sums** |
+| 85 | `MASS_RATIO_AVG` | num | Mean of per-row discharge/limit over limited mass rows — an **average of ratios** |
+| 86 | `MASS_EXCEED_AVG_PROP` | num | Mean of (discharge − limit)/limit over exceeding mass rows |
+| 87 | `CONC_RATIO_AVG` | num | Mean of per-row discharge/limit over limited concentration rows |
+| 88 | `CONC_EXCEED_AVG_PROP` | num | Mean of (discharge − limit)/limit over exceeding concentration rows |
+
+**`MASS_*` are kg/d rates, not kilograms.** `Q1` is a daily-average quantity. Summing a
+rate across outfalls is legitimate (rates are additive), but nothing here multiplies by
+days-in-month, so these are not monthly masses.
+
+**Why #85 pools and #88 averages.** Mass is additive across outfalls; concentration is
+not (you cannot sum mg/L across outfalls 001 and 002). So the mass ratio pools numerator
+and denominator while the concentration ratio averages per-outfall ratios.
+`MASS_RATIO_AVG` is the explicit mass-side counterpart so the distinction is never
+implicit.
+
+**Two exceedance counts, kept separate.** `*_CALC` is our own `discharge > limit` test;
+`*_EPA` counts EPA's `E90`. FY2017: 272 vs 269 (mass), 451 vs 438 (concentration), with
+24 row-level disagreements of 105,685 (0.02%), listed in
+`output/tables/dmr_fy2017_exceed_disagreements_*.csv`. Reported, not reconciled.
+
+**Averages are `NA` on an empty denominator**, never 0 — the paired count column
+distinguishes "none occurred" from "averaged zero". `MASS_EXCEED_TOTAL` is the one
+exception, being a sum.
 
 ---
 
@@ -362,7 +440,7 @@ two effluent blocks are not adjacent in column order.
 - [`docs/data_dictionary.md`](data_dictionary.md) — cross-table join logic for the raw
   ICIS-NPDES source tables (not the panel itself), plus the `OFFICIAL_FLG` /
   `ENF_TYPE_CODE` "-S variant" notes referenced above.
-- [`docs/data_issues.md`](data_issues.md), [`docs/notes.md`](notes.md),
+- [`docs/data_issues.md`](data_issues.md), [`docs/running_notes_on_open_questions.md`](running_notes_on_open_questions.md),
   [`docs/time_varying_vs_snapshot.md`](time_varying_vs_snapshot.md) — known data
   issues, e.g. the ~2016 eRule DMR-coverage break, non-monthly DMR periods, and the
   `PERMIT_STATUS_CODE`/`ADC` quirk behind the window correction.

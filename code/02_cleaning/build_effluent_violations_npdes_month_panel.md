@@ -65,7 +65,7 @@ the underlying effluent file. ☒ All data publicly available.
    (Assumption 4 explains why these two rules are deliberately different).
 4. Also compute grand summary totals (raw rows in window, distinct-`vkey` count, per-code
    totals) for the run log, to cross-check against the exact figures already on record in
-   `docs/notes.md` from this file's original 2026-07-14 construction.
+   `docs/running_notes_on_open_questions.md` from this file's original 2026-07-14 construction.
 5. Write the combined result.
 
 ## Decisions and Assumptions
@@ -122,7 +122,7 @@ runs automatically from `run_all.R` if its output isn't already on disk.
 ## Notes / edge cases
 
 - The run log prints its summary totals alongside the exact figures already on record
-  in `docs/notes.md` from this file's original 2026-07-14 build (43,317,821 raw rows in
+  in `docs/running_notes_on_open_questions.md` from this file's original 2026-07-14 build (43,317,821 raw rows in
   window / 41,451,812 distinct `vkey` / D80 21,073,782 / D90 17,814,134 / E90 2,563,896 /
   2,694,316 permit-months across 121,708 distinct `NPDES_ID`s) — a correct rebuild should
   match these exactly.

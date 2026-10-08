@@ -205,5 +205,5 @@ assumes it never changed. Specific hazards:
 ---
 *Sources: raw headers in `data/raw/`; `data_issues.md`, `missingness.md`,
 `panel_questions_for_pis.md` (local-only, not tracked in this repo), `npdes_data_overview.md`,
-`permit_types_brief.md`. Measured counts
+`institutional_briefs/permit_types_brief.md`. Measured counts
 recomputed this session over `ICIS_PERMITS.csv` and are reproducible with `data.table::fread`.*

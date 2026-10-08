@@ -56,7 +56,7 @@ npdes_data_infrastructure/
 └── docs/
     ├── data_dictionary.md      # key fields and table join logic
     ├── codebook.md             # variable definitions for the current facility-by-month panel
-    ├── notes.md                # running notes on quirks, decisions, findings
+    ├── running_notes_on_open_questions.md  # running notes on quirks, decisions, findings
     └── institutional_briefs/   # brief write-ups (.tex/.pdf) and their source figures/tables
 ```
 
@@ -163,7 +163,7 @@ first card on Data Summaries); the raw source datasets are the other cards. See
 - **Interpreting ECHO blanks:** across ICIS files a blank almost always means
   *"not applicable / hasn't occurred / not escalated"* — not "unknown." Some files use a
   literal space rather than an empty string. Don't treat blanks as missing-at-random.
-  See `docs/notes.md`.
+  See `docs/running_notes_on_open_questions.md`.
 
 ## Housekeeping
 

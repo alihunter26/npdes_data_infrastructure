@@ -1,6 +1,6 @@
 # `code/03_panel_building/` — facility-by-month panel pipeline
 
-The six numbered scripts that build the **facility-by-month panel** of major,
+The seven numbered scripts that build the **facility-by-month panel** of major,
 individually-permitted NPDES facilities, 2005–2025, from the raw ECHO/ICIS-NPDES data
 in `data/raw/`. Each step reads the prior step's CSV from `data/processed/` and writes
 the next.
@@ -17,7 +17,16 @@ the next.
 | 03 | `03_add_naics_sic.R` | NAICS / SIC industry codes |
 | 04 | `04_add_violations.R` | PS/CS/SE violation counts |
 | 05 | `05_add_enforcement.R` | formal/informal enforcement counts + penalty $ |
-| 06 | `06_add_effluent_violations.R` | all effluent-violation counts: TSS subset + all-parameter D80/D90/E90 (final panel) |
+| 06 | `06_add_effluent_violations.R` | all effluent-violation counts: TSS subset + all-parameter D80/D90/E90 |
+| 07 | `07_add_dmr.R` | **FY2017 DMR discharge & compliance variables** (final panel): 30 columns covering outfall counts by mass/concentration basis, mass discharged vs. permitted, exceedance counts and magnitudes (ours and EPA's), censoring, and outfall activity. First step that reads the DMR files themselves. Requires the `code/dmr/` row-filter pipeline steps 1–3 for FY2017 first; **not** in `run_all.R`. See [`READMEs/07_add_dmr.md`](READMEs/07_add_dmr.md). |
+
+> **2026-10-07: the `07_` name is now step `07_add_dmr.R`.** Two earlier, unrelated
+> things carried that number: a retired `FACILITY_OPERATING` correction (folded into step
+> 01, see below) and, before that, the missingness audit (now a diagnostic). The static
+> files `data/processed/07_facility_month_panel_major_individual_operating_corrected_*.csv`
+> on disk are leftovers of the FIRST of those and are **not** this step's output — the new
+> step writes `07_facility_month_panel_major_individual_dmr_tss_2005_2025.csv`. Don't
+> confuse them.
 
 > The missingness audit that used to occupy the "step 07" name is now a diagnostic:
 > [`../diagnostics/missingness/missingness_audit_major_individual.R`](../diagnostics/missingness/missingness_audit_major_individual.R).
@@ -85,7 +94,13 @@ the next.
 ```bash
 Rscript "code/03_panel_building/01_build_facility_month_panel_major_individual.R"
 Rscript "code/03_panel_building/02_add_inspections.R"
-# … 03, 04, 05, 06 in order (06 = final panel)
+# … 03, 04, 05, 06 in order (06 = last step in run_all.R)
+
+# Step 07 is run manually, after its own DMR prerequisite (see note below):
+Rscript "code/dmr/filter_dmr_major_individual.R" 2017
+Rscript "code/dmr/filter_dmr_00530.R" 2017
+Rscript "code/dmr/filter_dmr_monloc1.R" 2017
+Rscript "code/03_panel_building/07_add_dmr.R"
 Rscript "code/diagnostics/missingness/missingness_audit_major_individual.R"   # diagnostic, after 06
 ```
 

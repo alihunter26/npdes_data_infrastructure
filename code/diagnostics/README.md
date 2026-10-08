@@ -18,7 +18,7 @@ diagnostics (effluent QC, DMR funnel figure, DMR-based outfall counts) live in
 | `facility_structure/` | [`facility_uin_multiple_npdes.R`](facility_structure/facility_uin_multiple_npdes.md) | Facilities (`FACILITY_UIN`) holding more than one `NPDES_ID`. |
 | `missingness/` | [`cs_rnc_missingness.R`](missingness/cs_rnc_missingness.md), `missingness_audit_major_individual.R` (+ its own [README](missingness/missingness_audit_major_individual.md)) | Where and why fields are blank. |
 | `outfalls/` | [`outfall_count_breakdown.R`](outfalls/outfall_count_breakdown.md), [`feature_ids_per_permit.R`](outfalls/feature_ids_per_permit.md) | Outfall / discharge-point (`PERM_FEATURE_ID`) counts per permit — permitted vs. actually reporting. (`outfall_count_breakdown_dmr.R` moved to `code/dmr/` 2026-07-27 — see its README.) |
-| `brief_generators/` | [`make_naics_sic_coverage_brief.R`](brief_generators/make_naics_sic_coverage_brief.md) | Compute the figures/tables cited in `docs/institutional_briefs/`. (`make_permit_types_brief.R` was removed when `docs/permit_types_brief.md` became the sole canonical permit-types brief — see `docs/permit_types_brief.md`. `make_dmr_funnel_fig.R` moved to `code/dmr/` 2026-07-27.) |
+| `brief_generators/` | [`make_naics_sic_coverage_brief.R`](brief_generators/make_naics_sic_coverage_brief.md) | Compute the figures/tables cited in `docs/institutional_briefs/`. (`make_permit_types_brief.R` was removed when `docs/institutional_briefs/permit_types_brief.md` became the sole canonical permit-types brief — see `docs/institutional_briefs/permit_types_brief.md`. `make_dmr_funnel_fig.R` moved to `code/dmr/` 2026-07-27.) |
 
 ## Conventions
 

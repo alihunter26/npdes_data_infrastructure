@@ -1,4 +1,4 @@
-# Research Notes
+# Running Notes on Open Questions
 
 Running notes on data quirks, analytical decisions, and findings.
 
@@ -17,6 +17,57 @@ Running notes on data quirks, analytical decisions, and findings.
 - **A head sample of this file is NOT representative.** The first ~3 M rows are all
   D80/D90 (sorted, no E90). The resubmission de-dup rate looked like ~0.3% there
   but is **4.31% on the full file** — always verify counts on the full data.
+
+### Negative TSS values in the FY2017 DMR (2026-10-07)
+Found while building step 07. **8 rows across 2 facilities report a NEGATIVE TSS mass or
+concentration** in the FY2017 majors/individual/TSS/effluent-gross/monthly-average slice:
+- `WY0000418`, feature `SUM`, 2017-09: mass −2,661.30 kg/d against a 730 limit
+- `OH0001872`, outfall `099`: seven consecutive months (Nov 2016 – Aug 2017) of negative
+  concentrations, −0.75 to −4.20 mg/L, against a 5 mg/L limit. The persistence over seven
+  months suggests a systematic sign or data-entry problem at that outfall, not a one-off.
+
+Physically impossible, and they drag `MASS_RATIO_POOLED` / `CONC_RATIO_AVG` below zero in
+8 facility-months. **Not corrected or dropped** — counted in `N_OUTFALL_BASIS_NEGATIVE`
+and written to `output/tables/dmr_fy2017_negative_values_*.csv`. Excluding them leaves the
+mass ratio in `[0, 22.155]` and the concentration ratio in `[0, 17.667]`. Same class of
+problem `code/dmr/eff_flagged.R` exists to catch; **open question for the PIs**: drop,
+treat as zero, or treat as missing?
+
+### `MONITORING_LOCATION_CODE` has THREE "Effluent Gross" codes (2026-10-07, sourced 2026-10-08)
+**Authoritative source: EPA's [ICIS-NPDES DMR Data Element Dictionary](https://echo.epa.gov/node/206)**
+(the code list is inline on that page; verified against the raw HTML, not a paraphrase).
+`MONITORING_LOCATION_CODE` is defined there as *"The code that the monitoring location at
+which the monitoring requirement (and effluent limit if limited) applies. One parameter may
+have several monitoring location requirements pertaining to the same permitted feature."*
+Three of its values mean Effluent Gross:
+
+| Code | Description | Treatment |
+|---|---|---|
+| `1` | Effluent Gross | **kept** |
+| `EG` | Effluent Gross | **kept** |
+| `Y` | Effluent Gross (Supplementary) | **excluded** |
+
+- `code/dmr/filter_dmr_monloc1.R` keeps `1` and `EG` (its inline comment asserting this is
+  now confirmed against the dictionary above). FY2017 TSS: 352,990 rows `1`, 1,101 `EG`.
+- **`1` and `EG` never collide**: zero (permit, outfall, month, basis) keys carry both, so
+  keeping both cannot double-count. The dictionary's "several monitoring location
+  requirements" sentence explains the coexistence — e.g. `TN0062499` outfall 001 codes its
+  mass slot `1` and its concentration slot `EG` within one limit set.
+- **Filtering `== "1"` silently deletes facilities.** `MT0022641` uses only `EG` (12 months
+  × both bases of real values against real limits) and would vanish entirely, looking
+  identical to a non-reporter; `MD0002399` would lose outfall 104. Clustered by state
+  (MD/MT/TN), so the loss is not spread thin. A too-narrow filter on this field raises no
+  error — a guard written `== "1"` in `07_add_dmr.R` is the only reason this surfaced.
+- **`Y` is excluded and that is verified harmless** for this scope: of 1,433 FY2017 TSS `Y`
+  rows across 112 permits, exactly **one** is in scope (`KS0042722`), and its
+  outfall-month-basis is already present under `1` — a duplicate of a primary measurement,
+  as "Supplementary" implies. The other 1,432 are out of scope for unrelated reasons
+  (1,080 are statistical base `AB` not `MK`, 108 are internal outfalls, etc.). **For a
+  different parameter or statistical base the `Y` volume is big enough to recheck.**
+- `MONITORING_LOCATION_CODE` is carried into
+  `data/processed/dmr_fy2017_tss_effgross_mk_outfall_basis.csv` so this choice is auditable
+  and a sensitivity test is one line.
+
 
 ## Analytical Decisions
 
@@ -180,6 +231,111 @@ separate changes, same day:
   columns 9–58 → 10–59 accordingly (these are literal physical CSV positions, not
   just documentation ordinals, so the renumbering reflects the real file, not a
   stylistic choice).
+
+### FY2017 DMR discharge & compliance variables — step 07 (2026-10-07)
+Script: `code/03_panel_building/07_add_dmr.R` →
+`data/processed/07_facility_month_panel_major_individual_dmr_tss_2005_2025.csv`
+(59 → 89 columns; step 06's panel untouched). Intermediate at the auditable grain:
+`data/processed/dmr_fy2017_tss_effgross_mk_outfall_basis.csv`.
+
+**Trigger:** through step 06 the panel knew only whether a facility was *cited*. It had no
+measure of how much was discharged, how much was permitted, or how close to its limit a
+facility ran — all of which live only in the DMR files, which the pipeline never opened.
+
+**Four decisions settled (these were open going in):**
+1. **Statistical base = `MK` only** (literal Monthly Average). The grain is outfall ×
+   basis × month, and a monthly-average row cannot share a cell with a daily-maximum row.
+2. **Basis = `VALUE_TYPE_CODE`, restricted to the average pair `Q1` (mass, kg/d) and
+   `C2` (concentration, mg/L).** Within `MK`, `C1`/`C3`/`Q2` also occur; including them
+   would put two "concentration" rows in one cell. Builds on
+   `code/dmr/value_type_vs_statistical_base.R`'s finding that `VALUE_TYPE_CODE` is a
+   basis, not a statistic.
+3. **Multi-limit-set outfalls → drop the whole PERMIT.** This closes the `needs_rule`
+   column in `data/processed/fy2017_tss_*_multiset_*.csv` *by avoidance, not by solving
+   it*. 3,004 of 111,066 outfall-basis-month keys (2.70%) are contested.
+
+**Measured cost on FY2017, at three different grains — they are not interchangeable:**
+   
+   | Grain | Dropped | Share |
+   |---|---|---|
+   | outfall-basis-month DMR rows | 10,857 of 116,610 | 9.31% |
+   | permits | 148 of 4,309 | 3.43% |
+   | **facility-months (the panel's own grain)** | **1,740 of 49,134 potentially coverable** | **3.54%** |
+   | **facilities** | **145 of 4,195** | **3.46%** |
+   
+   **The panel-level cost is ~3.5%, not 9.31%.** The DMR-row share is inflated because the row
+   count balloons *below* the panel's grain and is collapsed away by aggregation: `LA0043982`
+   has ONE outfall governed by 16 limit sets, which is many DMR rows but still only 12
+   facility-months. Use 9.31% to describe how much raw measurement data was discarded, and
+   3.54% to describe how much of the analysis sample is lost.
+   
+   **What the dropped permits have in common is complexity, not size.** The median dropped
+   permit has 1 outfall — the same as the median kept permit — and 95 of the 148 are
+   single-outfall. The distinguishing feature is many limit sets on few outfalls (mean 73.4
+   DMR rows per dropped permit vs 25.4 per kept one), with a few genuine giants pulling the
+   mean (`MT0023965`: 144 outfalls, 467 limit sets). So the exclusion is of
+   *conditionally-permitted* facilities, not of large ones.
+   
+   **`DMR_TSS_DROPPED_MULTISET` is therefore not missing-at-random**, and the bias is toward
+   simply-permitted facilities: a plant with 16 conditional TSS limits is plausibly a different
+   kind of regulated entity than one with a single flat limit. Results on the covered sample
+   are results about simply-permitted facilities unless that flag is tested against.
+
+   145 facilities are flagged and forced to `NA` (never a partial total). Every dropped
+   permit is logged, so the decision is reversible if a collapse rule is later agreed.
+4. **Empty-denominator averages = `NA`, not 0**, with the paired count column carrying
+   the information. `MASS_EXCEED_TOTAL` excepted (a sum legitimately gives 0).
+
+**No coverage-flag column** (removed 2026-10-08 per request): a facility-month is covered
+**iff** `N_OUTFALL_BASIS_TOTAL` is non-`NA`, which was verified bit-for-bit identical to the
+flag it replaced — covered rows always carry `N_OUTFALL_BASIS_TOTAL >= 1` and uncovered rows
+are `NA` in all 28 variables, so the flag was exactly redundant. The three distinct reasons a
+row is uncovered remain recoverable: outside FY2017 (1,807,200 rows), inside FY2017 with no
+DMR report (41,226), and inside FY2017 but dropped by the multi-limit-set rule (1,740,
+flagged `DMR_TSS_DROPPED_MULTISET`). Panel is 59 → **88** columns, 29 new.
+
+**Coverage:** 47,394 facility-months (4,050 facilities × 12 months) = **2.50%** of the
+1,897,560-row panel. FY2017 is 12 months of a 21-year panel, so
+`!is.na(N_OUTFALL_BASIS_TOTAL)` is the analysis sample, not the panel. `NA` here means "no DMR
+report", **not** zero discharge — the opposite of step 06's fill rule.
+
+**Headline numbers:** 9,831,349 kg/d discharged against 52,706,201 kg/d permitted;
+median `MASS_RATIO_POOLED` 0.094 and median `CONC_RATIO_AVG` 0.200, so the typical covered
+facility-month runs well under its limit, with a long right tail (max 22.2× and 17.7×).
+
+**Our exceedance test vs EPA's `E90`:** 272 vs 269 (mass), 451 vs 438 (concentration);
+**24 row-level disagreements of 105,685 (0.02%)**, written to
+`output/tables/dmr_fy2017_exceed_disagreements_*.csv`. Both counts are kept as separate
+columns — reported, not reconciled.
+
+**New reference table:** `data/raw/reference/REF_NODI.csv`, all 35 EPA NODI codes with a
+curated `NODI_ACTIVITY_CLASS`, needed to decide which "no data" reasons still imply a live
+outfall. Six codes (`4`, `7`, `I`, `J`, `K`, `W`) are genuine judgment calls —
+discharging-but-elsewhere vs. not-operating — and are left `unclear`, landing in
+`N_OUTFALLS_NODI_UNCLASSIFIED` rather than being forced either way (only 57 outfall-months
+affected, so the calls barely matter empirically). `B` (below detection) is classed
+**active**: the outfall is discharging, below the measurable floor.
+
+**Column added beyond the requested list:** `N_OUTFALLS_TOTAL`. Discovered during
+verification that **33,789 of 69,737 outfall-months report only ONE basis**, so neither
+`max(N_OUTFALLS_MASS, N_OUTFALLS_CONC)` nor their sum gives the distinct-outfall count —
+and the no-discharge/active counts are uninterpretable without that denominator.
+`MASS_RATIO_AVG` was also added: the requested #10 is labelled "avg ratio" but its worked
+example is a ratio of sums, while #15's is an average of ratios, so both are supplied.
+
+**Verified:** the hand-worked specification runs as a 25-value `stopifnot()` fixture on
+every run; all 59 pre-existing panel columns byte-identical to step 06; panel row count
+unchanged and keys unique; nothing populated outside coverage; coverage confined to the 12
+FY2017 months; row accounting balances exactly (103,689 covered + 12 flagged + 1,984
+off-spine = 105,685 grain rows); all monotonic invariants hold; and **one facility-month
+independently re-derived by hand across 16 variables, every value matching**.
+
+**Known limitations, not bugs:** `MASS_*` are kg/d **rates**, not monthly kilograms (no
+days-in-month multiplication anywhere); censored (`<`) rows report the detection limit, so
+discharge sums are **upper bounds** for 2,135 mass / 3,262 concentration outfall-months;
+`DMR_TSS_DROPPED_MULTISET` is **not missing-at-random**; 1,073 facility-months (95
+facilities, 1,984 rows) appear in the DMR but not on the panel spine and drop in the join,
+because panel membership is narrower than "ever-major individual permit".
 
 ## Findings
 

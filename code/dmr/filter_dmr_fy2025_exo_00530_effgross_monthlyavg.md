@@ -92,7 +92,7 @@ Must run before `filter_dmr_fy2025_effgross_major_individual.R`.
   needed.
 - **Verified end to end after the move:** 754,033 rows, 34,797 distinct permits,
   57/57 columns, zero filter-violation rows on a from-scratch run (~24.5 min wall
-  time, ~9.68 GB raw file streamed once) — see `docs/notes.md`.
+  time, ~9.68 GB raw file streamed once) — see `docs/running_notes_on_open_questions.md`.
 - **This is a separate, standalone pipeline from the general DMR row-filter chain**
   (`filter_dmr_major_individual.R` etc.) — FY2025-hardcoded vs. FY-parameterized,
   different output location (`data/processed/` vs. `code/dmr/`), different exact

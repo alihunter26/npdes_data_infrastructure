@@ -28,7 +28,7 @@ data-availability conventions.
 - **IDs and codes are text.** Read with `colClasses = "character"` so leading zeros in
   ZIP, `NPDES_ID`, and numeric-looking codes survive.
 - **Blanks are usually structural** ("not applicable / hasn't occurred"), not
-  missing-at-random — see `docs/notes.md` and `docs/missingness.md`.
+  missing-at-random — see `docs/running_notes_on_open_questions.md` and `docs/missingness.md`.
 
 Paths are resolved via `_paths.R` at the repo root (`RAW_DIR`, `PROC_DIR`, …). See the
 root `README.md` for the full data-source table.

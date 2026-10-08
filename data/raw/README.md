@@ -22,7 +22,7 @@ place.** Everything downstream is rebuilt from them into `data/processed/`.
 | `Attains/` | `ATTAINS_AU_CATCHMENTS`, `NPDES_CATCHMENTS`, `NPDES_ATTAINS_AU_SUMMARIES` — dischargers ↔ receiving-water assessments |
 | `Master General Permits/` | `ICIS_MASTER_GENERAL_PERMITS.csv` (+ source zip) |
 | `npdes_outfalls_layer.csv` | Spatial layer of permitted outfalls / discharge points |
-| `reference/` | ECHO ICIS-NPDES domain/lookup tables that decode coded columns. `REF_STATISTICAL_BASE.csv` = `STATISTICAL_BASE_CODE` → description (e.g. `MK` = Monthly Average, `MN` = Monthly Maximum) |
+| `reference/` | ECHO ICIS-NPDES domain/lookup tables that decode coded columns. `REF_STATISTICAL_BASE.csv` = `STATISTICAL_BASE_CODE` → description (e.g. `MK` = Monthly Average, `MN` = Monthly Maximum). `REF_NODI.csv` = `NODI_CODE` → EPA description + a curated `NODI_ACTIVITY_CLASS` (`active` / `no_discharge` / `inactive` / `no_data_admin` / `unclear`) used by `code/03_panel_building/07_add_dmr.R` to decide which "no data" reasons still imply a live outfall; all 35 codes transcribed from [EPA's published DMR NODI code list](https://www.epa.gov/system/files/documents/2022-10/EPA%20DMR%20NODI%20CODES.pdf). Six codes are deliberately left `unclear` rather than guessed — edit a single cell to reclassify. |
 
 ## Conventions
 
