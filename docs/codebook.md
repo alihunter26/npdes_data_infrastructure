@@ -361,9 +361,9 @@ multi-limit-set rule (1,740, flagged `DMR_TSS_DROPPED_MULTISET`).
 | 71 | `N_CONC_EXCEED_EPA` | int | Concentration rows flagged `E90` (EPA's) |
 | 72 | `N_OUTFALLS_CENSORED_MASS` | int | Outfalls with a censored (`<`) mass row — their discharge is an **upper bound** |
 | 73 | `N_OUTFALLS_CENSORED_CONC` | int | Outfalls with a censored concentration row |
-| 74 | `N_OUTFALLS_NO_DISCHARGE` | int | Outfalls where *every* basis is a confirmed zero (reported `0`, or NODI `C`) |
-| 75 | `N_OUTFALLS_ACTIVE` | int | Outfalls discharging > 0 on any basis, **plus** no-discharge outfalls whose NODI class is `active` |
-| 76 | `N_OUTFALLS_NODI_UNCLASSIFIED` | int | Outfalls whose only activity signal is one of the six `unclear` NODI codes — counted, never guessed |
+| 74 | `N_OUTFALLS_NO_DISCHARGE` | int | Outfalls where *every* basis is a confirmed zero: a reported `0`, or NODI `C` (EPA's verbatim "No Discharge"). 14,700 of 15,151 rest on `C` — only 597 outfall-months report a literal `0`. |
+| 75 | `N_OUTFALLS_ACTIVE` | int | Outfalls reporting a **positive discharge** on any basis. **No NODI code is read as evidence of discharge** — below-detection (`B`), waived-monitoring (`9`), unquantifiable (`Q`) and insufficient-flow (`F`) outfall-months land in #76, not here. |
+| 76 | `N_OUTFALLS_UNDETERMINED` | int | Outfalls that are neither a confirmed discharge nor a confirmed zero — the data does not say. With #74 and #75 this **partitions** #61 exactly (asserted each run). 3,369 outfall-months in FY2017. |
 | 77 | `N_OUTFALL_BASIS_MULTIMONTH` | int | Cells whose `NMBR_OF_REPORT > 1` (dated to period end, **not** spread backwards) |
 | 78 | `N_OUTFALL_BASIS_UNEXPLAINED_BLANK` | int | Cells with neither a value nor a NODI code |
 | 79 | `N_OUTFALL_BASIS_NEGATIVE` | int | Cells reporting a **negative** TSS value — physically impossible, kept as reported. **Condition on `== 0`** to exclude; 8 cells in FY2017. |
@@ -386,6 +386,14 @@ not (you cannot sum mg/L across outfalls 001 and 002). So the mass ratio pools n
 and denominator while the concentration ratio averages per-outfall ratios.
 `MASS_RATIO_AVG` is the explicit mass-side counterpart so the distinction is never
 implicit.
+
+**#74, #75 and #76 partition #61.** `N_OUTFALLS_ACTIVE + N_OUTFALLS_NO_DISCHARGE +
+N_OUTFALLS_UNDETERMINED == N_OUTFALLS_TOTAL`, asserted on every run. Only one NODI code is
+interpreted — `C`, whose EPA description is verbatim "No Discharge". Every other no-data
+code leaves the outfall-month in `UNDETERMINED` rather than being resolved by assumption;
+a hand-built classification that did resolve them was retired 2026-10-08. See
+[`READMEs/07_add_dmr.md`](../code/03_panel_building/READMEs/07_add_dmr.md),
+"Why only code `C`".
 
 **Two exceedance counts, kept separate.** `*_CALC` is our own `discharge > limit` test;
 `*_EPA` counts EPA's `E90`. FY2017: 272 vs 269 (mass), 451 vs 438 (concentration), with

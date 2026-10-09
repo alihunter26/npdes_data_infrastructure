@@ -117,19 +117,41 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
 #      E90 flag uses) and expose N_OUTFALLS_CENSORED_MASS / _CONC so the
 #      sensitivity is boundable rather than invisible.
 #
-#   8. NODI CODES COME FROM A REFERENCE TABLE, NOT FROM CODE. N_OUTFALLS_ACTIVE
-#      needs to know which "no data" reasons still imply a live outfall, so
-#      data/raw/reference/REF_NODI.csv carries all 33 EPA codes with a curated
-#      NODI_ACTIVITY_CLASS (active / no_discharge / inactive / no_data_admin /
-#      unclear), sourced from EPA's published DMR NODI code list. Six codes are
-#      genuine judgment calls (4, 7, I, J, K, W: discharging-but-elsewhere vs.
-#      not-operating) and are left 'unclear' -- they land in
-#      N_OUTFALLS_NODI_UNCLASSIFIED instead of being forced into or out of the
-#      active count. Change a classification by editing one cell of that CSV.
-#      The script STOPS if FY2017 contains a NODI code the reference lacks, so
-#      an unknown code can never be silently bucketed.
-#      Note B (Below Detection Limit) is classed ACTIVE, not no-discharge: the
-#      outfall is discharging, just below the measurable floor.
+#   8. ONLY ONE NODI CODE IS INTERPRETED, AND ONLY AS EPA WORDS IT.
+#      #21 and #22 ask whether an outfall discharged. The DMR answers that with
+#      a number in ~79% of in-scope cells; the rest carry a NODI (no-data
+#      indicator) code instead. Exactly ONE of those codes is read here:
+#        'C', whose EPA description is verbatim "No Discharge"
+#      That is a transcription, not an interpretation. Every other NODI code is
+#      treated as "we do not know what this outfall discharged" -- including
+#      ones that arguably imply activity ('B' below detection, '9' conditional
+#      monitoring not required, 'Q' not quantifiable, 'F' insufficient flow).
+#      Those land in N_OUTFALLS_UNDETERMINED (3,478 outfall-months, 5.0%)
+#      rather than being resolved by assumption.
+#
+#      HISTORY, AND WHY IT CHANGED (2026-10-08): an earlier version of this
+#      step carried a hand-built NODI_ACTIVITY_CLASS column in REF_NODI.csv
+#      that classified all 33 codes active / inactive / no_data_admin /
+#      no_discharge / unclear. EPA publishes no such classification -- it was
+#      our own judgment sitting in data/raw/reference/ where it read as source
+#      data, and it decided 2,431 outfall-months of N_OUTFALLS_ACTIVE on no
+#      documented basis. It was also named in direct collision with EPA's OWN
+#      "Status" column for these codes, which means something completely
+#      different (see below). Both problems are now gone: REF_NODI.csv is a
+#      pure EPA transcription and the single remaining judgment is this one
+#      commented line of code. See READMEs/07_add_dmr.md, "Why only code C".
+#
+#      EPA_CODE_STATUS in REF_NODI.csv IS NOT ABOUT DISCHARGE. Per EPA, it
+#      "indicates if the code can be used for new or updated DMR submissions" --
+#      a code-lifecycle flag about the CODE, not the outfall. 'Operation
+#      Shutdown' is EPA-Active (still fileable) while the plant is by
+#      definition not running. This step never reads it; it is carried for
+#      reference because 141 FY2017 rows (0.7%) use codes since retired, and a
+#      code disappearing between fiscal years is a reporting-convention change,
+#      not a behavioural one.
+#
+#      The script STOPS if the data contains a NODI code REF_NODI.csv lacks, so
+#      an unknown code can never pass through unnoticed.
 #
 #   9. MULTI-MONTH REPORTS ARE DATED TO THEIR PERIOD-END MONTH, NOT SPREAD.
 #      A row with NMBR_OF_REPORT > 1 summarises a quarter/half-year/year. Per
@@ -227,7 +249,7 @@ count_cols <- c(
   "N_CONC_EXCEED_CALC", "N_CONC_EXCEED_EPA",
   "N_OUTFALLS_CENSORED_MASS", "N_OUTFALLS_CENSORED_CONC",
   "N_OUTFALLS_NO_DISCHARGE", "N_OUTFALLS_ACTIVE",
-  "N_OUTFALLS_NODI_UNCLASSIFIED",
+  "N_OUTFALLS_UNDETERMINED",
   "N_OUTFALL_BASIS_MULTIMONTH", "N_OUTFALL_BASIS_UNEXPLAINED_BLANK",
   # Physically impossible reported values, counted but NOT corrected or dropped
   # (ASSUMPTION 13). Condition on this column to exclude them.
@@ -271,7 +293,7 @@ safe_ratio <- function(num, den) {
 #   basis                      -- "MASS" or "CONC"
 #   discharge, limit           -- numeric, standard units; NA when absent
 #   has_limit, exceeds, censored, reported  -- logical
-#   nodi_class                 -- from REF_NODI (ASSUMPTION 8)
+#   nodi_no_discharge          -- NODI_CODE == 'C' (ASSUMPTION 8)
 #   nmbr_of_report             -- integer
 #   e90                        -- logical, EPA's own exceedance flag
 #   nodi_blank                 -- logical, NODI_CODE empty
@@ -280,15 +302,16 @@ safe_ratio <- function(num, den) {
 summarise_dmr_outfall_basis <- function(obs) {
   stopifnot(all(c("facility_id", "YEAR", "MONTH", "outfall_uid", "basis",
                   "discharge", "limit", "has_limit", "exceeds", "censored",
-                  "reported", "nodi_class", "nmbr_of_report", "e90",
+                  "reported", "nodi_no_discharge", "nmbr_of_report", "e90",
                   "nodi_blank") %in% names(obs)))
 
   # --- Row level: is this outfall-basis a confirmed zero discharge? -----------
-  # Either a reported numeric zero, or NODI 'C' (No Discharge). A row that is
-  # merely missing for some other reason (lost sample, equipment failure) is
-  # NOT a zero -- we don't know what it discharged.
+  # Either a reported numeric zero, or NODI code 'C', whose EPA description is
+  # verbatim "No Discharge" (ASSUMPTION 8). A row missing for ANY other reason
+  # -- lost sample, equipment failure, below detection, monitoring waived --
+  # is NOT a zero and NOT a positive: we simply do not know what it discharged.
   obs <- copy(obs)
-  obs[, zero_discharge := (reported & discharge == 0) | nodi_class == "no_discharge"]
+  obs[, zero_discharge := (reported & discharge == 0) | nodi_no_discharge]
   obs[, positive_discharge := reported & discharge > 0]
 
   # --- STAGE A: collapse to one row per outfall -------------------------------
@@ -302,18 +325,18 @@ summarise_dmr_outfall_basis <- function(obs) {
     any_nolimit       = any(!has_limit),
     all_zero          = all(zero_discharge),
     any_positive      = any(positive_discharge),
-    any_active_nodi   = any(nodi_class == "active"),
-    any_unclear_nodi  = any(nodi_class == "unclear"),
+
     censored_mass     = any(basis == "MASS" & censored),
     censored_conc     = any(basis == "CONC" & censored)
   ), by = .(facility_id, YEAR, MONTH, outfall_uid)]
 
-  # #22: discharge > 0 on any basis, OR no discharge but a NODI code that says
-  # the outfall is still live (ASSUMPTION 8).
-  of[, active := any_positive | any_active_nodi]
-  # Outfalls we genuinely cannot classify: nothing positive, nothing that says
-  # "active", but at least one of the six unclear codes. Counted, not guessed.
-  of[, nodi_unclassified := !active & any_unclear_nodi]
+  # #22: a positive reported discharge on any basis. NOTHING ELSE counts --
+  # no NODI code is read as evidence of discharge (ASSUMPTION 8).
+  of[, active := any_positive]
+  # The honest residual: neither a confirmed discharge nor a confirmed zero.
+  # Every outfall-month where the data does not say, counted rather than
+  # resolved by assumption. 3,478 outfall-months (5.0%) in FY2017.
+  of[, undetermined := !active & !all_zero]
 
   outfall_lvl <- of[, .(
     N_OUTFALLS_TOTAL             = .N,          # `of` is one row per outfall
@@ -325,7 +348,7 @@ summarise_dmr_outfall_basis <- function(obs) {
     N_OUTFALLS_CENSORED_CONC     = sum(censored_conc),
     N_OUTFALLS_NO_DISCHARGE      = sum(all_zero),
     N_OUTFALLS_ACTIVE            = sum(active),
-    N_OUTFALLS_NODI_UNCLASSIFIED = sum(nodi_unclassified)
+    N_OUTFALLS_UNDETERMINED      = sum(undetermined)
   ), by = .(facility_id, YEAR, MONTH)]
 
   # --- STAGE B: sums, counts and averages over the outfall-basis rows ---------
@@ -391,7 +414,7 @@ fixture <- data.table(
   limit       = c(20, 10, 15, 5, 3, NA_real_),
   censored    = FALSE,
   reported    = TRUE,
-  nodi_class  = "none",
+  nodi_no_discharge = FALSE,
   nodi_blank  = TRUE,
   nmbr_of_report = 1L
 )
@@ -426,9 +449,10 @@ stopifnot(
   fx$N_OUTFALLS_CENSORED_CONC     == 0L,        # 20
   fx$N_OUTFALLS_NO_DISCHARGE      == 0L,        # 21
   fx$N_OUTFALLS_ACTIVE            == 3L,        # 22
+  fx$N_OUTFALLS_UNDETERMINED      == 0L,        #  honest residual
   fx$N_OUTFALL_BASIS_NEGATIVE     == 0L         #  data-quality counter
 )
-message("  all 25 expected values match the worked example.")
+message("  all 26 expected values match the worked example.")
 
 # ==============================================================================
 # STEP 2: Read the filtered FY DMR file and apply the three new filters.
@@ -584,10 +608,14 @@ unknown_nodi <- setdiff(unique(d[NODI_CODE != "", NODI_CODE]), nodi$NODI_CODE)
 if (length(unknown_nodi) > 0L)
   stop("FY", FY, " contains NODI codes absent from ", basename(NODI_PATH), ": ",
        paste(unknown_nodi, collapse = ", "),
-       "\n  Add them (with an explicit NODI_ACTIVITY_CLASS) rather than letting ",
-       "them fall through (see ASSUMPTION 8).")
-d <- nodi[, .(NODI_CODE, nodi_class = NODI_ACTIVITY_CLASS)][d, on = "NODI_CODE"]
-d[NODI_CODE == "", nodi_class := "none"]
+       "\n  Add them to that file (code, description, EPA status) rather than ",
+       "letting them fall through (see ASSUMPTION 8).")
+# REF_NODI.csv is a pure EPA transcription (code, description, status) -- it
+# carries no judgment column, so nothing is joined from it into the logic. The
+# ONE code this step reads is 'C', whose EPA description is verbatim
+# "No Discharge" (ASSUMPTION 8). EPA_CODE_STATUS is reference only: it says
+# whether a code may still be filed, NOT whether the outfall was discharging.
+d[, nodi_no_discharge := NODI_CODE == "C"]
 
 # ==============================================================================
 # STEP 5: Route permits to facilities, then compute the 20 variables.
@@ -612,7 +640,7 @@ fwrite(d[, .(facility_id, NPDES_ID, PERM_FEATURE_NMBR, outfall_uid, period_end,
              MONITORING_LOCATION_CODE,
              YEAR, MONTH, basis, VALUE_TYPE_CODE, LIMIT_SET_ID, LIMIT_SET_DESIGNATOR,
              discharge, limit, has_limit, reported, censored, exceeds, e90,
-             NODI_CODE, nodi_class, nmbr_of_report)], GRAIN_PATH)
+             NODI_CODE, nodi_no_discharge, nmbr_of_report)], GRAIN_PATH)
 
 summ <- summarise_dmr_outfall_basis(d)
 
@@ -667,8 +695,13 @@ panel[, c("in_fy", "covered_") := NULL]
 setcolorder(panel, c(setdiff(names(panel), all_new), all_new))
 setorder(panel, FACILITY_UIN, YEAR, MONTH)
 
+# ASSUMPTION 8's partition property, asserted rather than just documented:
+# every outfall is exactly one of discharging / confirmed-zero / undetermined.
 stopifnot(nrow(panel) == n_panel_rows_in,
           n_covered == nrow(panel[!is.na(N_OUTFALL_BASIS_TOTAL)]),
+          panel[!is.na(N_OUTFALL_BASIS_TOTAL),
+                all(N_OUTFALLS_ACTIVE + N_OUTFALLS_NO_DISCHARGE +
+                    N_OUTFALLS_UNDETERMINED == N_OUTFALLS_TOTAL)],
           !any(duplicated(panel, by = c("FACILITY_UIN", "YEAR", "MONTH"))))
 
 fwrite(panel, OUT_PATH)
@@ -743,10 +776,10 @@ message("Conc exceedances  (ours / EPA E90)        : ",
 message("Row-level exceedance disagreements        : ", nrow(disagree),
         " of ", format(nrow(d), big.mark = ","),
         if (!is.na(dis_path)) paste0("  -> ", basename(dis_path)) else "")
-message("Outfall-MONTHS: active / no-disch / unclear : ",
+message("Outfall-MONTHS: active / no-disch / undet.  : ",
         sum(as.integer(cov$N_OUTFALLS_ACTIVE), na.rm = TRUE), " / ",
         sum(as.integer(cov$N_OUTFALLS_NO_DISCHARGE), na.rm = TRUE), " / ",
-        sum(as.integer(cov$N_OUTFALLS_NODI_UNCLASSIFIED), na.rm = TRUE))
+        sum(as.integer(cov$N_OUTFALLS_UNDETERMINED), na.rm = TRUE))
 message("Outfall-basis cells with no numeric limit : ",
         sum(as.integer(cov$N_OUTFALL_BASIS_NOLIMIT), na.rm = TRUE), " of ",
         sum(as.integer(cov$N_OUTFALL_BASIS_TOTAL), na.rm = TRUE))

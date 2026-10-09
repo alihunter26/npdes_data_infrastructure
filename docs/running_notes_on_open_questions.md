@@ -308,13 +308,39 @@ facility-month runs well under its limit, with a long right tail (max 22.2× and
 `output/tables/dmr_fy2017_exceed_disagreements_*.csv`. Both counts are kept as separate
 columns — reported, not reconciled.
 
-**New reference table:** `data/raw/reference/REF_NODI.csv`, all 33 EPA NODI codes with a
-curated `NODI_ACTIVITY_CLASS`, needed to decide which "no data" reasons still imply a live
-outfall. Six codes (`4`, `7`, `I`, `J`, `K`, `W`) are genuine judgment calls —
-discharging-but-elsewhere vs. not-operating — and are left `unclear`, landing in
-`N_OUTFALLS_NODI_UNCLASSIFIED` rather than being forced either way (only 57 outfall-months
-affected, so the calls barely matter empirically). `B` (below detection) is classed
-**active**: the outfall is discharging, below the measurable floor.
+**NODI handling, revised 2026-10-08 — the one judgment call, and its removal.** #21/#22
+ask whether an outfall discharged; ~21% of in-scope cells carry a NODI code instead of a
+number. The first implementation added a hand-built `NODI_ACTIVITY_CLASS` to
+`data/raw/reference/REF_NODI.csv` classifying all 33 codes by whether they implied a live
+outfall. **EPA publishes no such mapping** — it was our judgment stored where it read as
+source data, and it decided 2,431 outfall-months (4.6%) of `N_OUTFALLS_ACTIVE` on no
+documented basis. It also collided with EPA's **own** `Status` column for these codes,
+which means *may this code still be filed* — unrelated to discharge, and contradictory in
+five cases (`2` Operation Shutdown is EPA-Active while the plant is shut; `5`/`S`/`V`
+weather codes are EPA-Inactive while the plant runs).
+
+Retired in favour of reading **exactly one code**: `C`, whose EPA description is verbatim
+"No Discharge". Transcription, not interpretation. Every other no-data code leaves the
+outfall-month in the new `N_OUTFALLS_UNDETERMINED`.
+
+| Column | Hand-classified | Code `C` only |
+|---|---|---|
+| `N_OUTFALLS_NO_DISCHARGE` | 15,151 | **15,151** (unchanged — `C` always did the work) |
+| `N_OUTFALLS_ACTIVE` | 52,410 | **49,999** |
+| residual | 57 | **3,369** |
+
+All 26 other columns byte-identical. Gained a property the old scheme lacked: the three
+**partition** `N_OUTFALLS_TOTAL` exactly, asserted each run. Also rejected a stricter
+numbers-only rule, which destroys 96.1% of #21 (only 597 outfall-months report a literal
+`0`) and strands 26.1% of outfall-months, 14,700 of them carrying a code EPA describes as
+"No Discharge".
+
+`REF_NODI.csv` is now a pure EPA transcription — code, description, `EPA_CODE_STATUS` —
+sourced from the [ICIS-NPDES DMR Data Element Dictionary](https://echo.epa.gov/node/206)
+and cross-checked against the Region 6 PDF; all 33 codes agree exactly. Nothing in it feeds
+the logic; it only validates that no unknown code appears. `EPA_CODE_STATUS` is reference
+only — 13 codes are retired and 141 FY2017 rows (0.7%) use them, so a code's frequency
+changing between fiscal years can be a reporting-convention change, not a behavioural one.
 
 **Column added beyond the requested list:** `N_OUTFALLS_TOTAL`. Discovered during
 verification that **33,789 of 69,737 outfall-months report only ONE basis**, so neither

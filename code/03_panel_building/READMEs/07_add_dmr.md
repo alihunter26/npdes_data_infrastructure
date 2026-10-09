@@ -26,9 +26,11 @@ filling more months, not renaming anything.
 ## Data Availability and Provenance Statements
 
 Derived from EPA ECHO / ICIS-NPDES public data (public domain). DMR zips downloaded
-2026-07-27 (see `data/raw/DMR/`). `REF_NODI.csv` transcribed from
-[EPA's published DMR NODI code list](https://www.epa.gov/system/files/documents/2022-10/EPA%20DMR%20NODI%20CODES.pdf)
-(Region 6 ECAD, 2022-10). ☒ All data publicly available.
+2026-07-27 (see `data/raw/DMR/`). `REF_NODI.csv` transcribed from EPA's
+[ICIS-NPDES DMR Data Element Dictionary](https://echo.epa.gov/node/206) (codes,
+descriptions and `Status`), cross-checked against the
+[Region 6 DMR NODI code list](https://www.epa.gov/system/files/documents/2022-10/EPA%20DMR%20NODI%20CODES.pdf)
+(2022-06) — all 33 codes, descriptions and statuses agree exactly between the two. ☒ All data publicly available.
 
 ### Details on each data source
 
@@ -36,7 +38,7 @@ Derived from EPA ECHO / ICIS-NPDES public data (public domain). DMR zips downloa
 |---|---|---|
 | `code/dmr/03_dmr_fy2017_00530_monloc1.csv` | `.csv` | `EXTERNAL_PERMIT_NMBR`, `PERM_FEATURE_NMBR`, `PERM_FEATURE_TYPE_CODE`, `LIMIT_SET_ID`, `VERSION_NMBR`, `MONITORING_PERIOD_END_DATE`, `STATISTICAL_BASE_CODE`, `VALUE_TYPE_CODE`, `NMBR_OF_REPORT`, `DMR_VALUE_STANDARD_UNITS`, `DMR_VALUE_QUALIFIER_CODE`, `LIMIT_VALUE_STANDARD_UNITS`, `LIMIT_VALUE_QUALIFIER_CODE`, `NODI_CODE`, `VIOLATION_CODE` |
 | `data/processed/06_..._effluent_2005_2025.csv` | `.csv` | step-06 panel (the spine) |
-| `data/raw/reference/REF_NODI.csv` | `.csv` | `NODI_CODE` → `NODI_ACTIVITY_CLASS` |
+| `data/raw/reference/REF_NODI.csv` | `.csv` | `NODI_CODE`, `NODI_DESC`, `EPA_CODE_STATUS` — validation only; no column of it feeds the logic |
 | `ICIS_FACILITIES.csv` | `.csv` | crosswalk via `build_facility_crosswalk()` |
 
 ## Dataset list
@@ -45,7 +47,7 @@ Derived from EPA ECHO / ICIS-NPDES public data (public domain). DMR zips downloa
 |---|---|---|---|
 | `code/dmr/03_dmr_fy2017_00530_monloc1.csv` | input (derived, pre-built) | DMR row | derived |
 | step-06 panel | input | facility × year × month | derived |
-| `data/raw/reference/REF_NODI.csv` | input (reference) | NODI code | **hand-curated** |
+| `data/raw/reference/REF_NODI.csv` | input (reference) | NODI code | transcribed from EPA |
 | `data/processed/dmr_fy2017_tss_effgross_mk_outfall_basis.csv` | output (intermediate) | permit × outfall × month × basis | derived |
 | `data/processed/07_..._dmr_tss_2005_2025.csv` | **output (panel)** | facility × year × month | derived |
 | `output/tables/dmr_fy2017_dropped_multiset_permits_<stamp>.csv` | output (diagnostic) | permit | derived |
@@ -173,18 +175,16 @@ every uncovered one is `NA` in all 28 variables. Filter covered rows with
    not the discharge, so `MASS_DISCHARGED_*` is an **upper bound** for those outfalls.
    We use the reported number as-is (EPA's own `E90` convention) and expose
    `N_OUTFALLS_CENSORED_MASS` / `_CONC` so the sensitivity is boundable.
-8. **NODI classes live in a reference table, not in code.** `N_OUTFALLS_ACTIVE` needs to
-   know which "no data" reasons still imply a live outfall, so
-   `data/raw/reference/REF_NODI.csv` carries all 33 EPA codes with a curated
-   `NODI_ACTIVITY_CLASS` (`active` / `no_discharge` / `inactive` / `no_data_admin` /
-   `unclear`). Six codes are genuine judgment calls — `4` (discharge to
-   lagoon/groundwater), `7` (no influent), `I` (land applied), `J` (recycled closed
-   system), `K` (natural disaster), `W` (dry well): discharging-but-elsewhere versus
-   not-operating. They are left `unclear` and counted in
-   `N_OUTFALLS_NODI_UNCLASSIFIED` rather than forced into or out of the active count.
-   Change a classification by editing one cell of that CSV. The script **stops** if the
-   data contains a code the reference lacks. Note `B` (Below Detection Limit) is classed
-   **active**, not no-discharge: the outfall is discharging, below the measurable floor.
+8. **Only one NODI code is interpreted, and only as EPA words it.** Items #21 and #22
+   ask whether an outfall discharged. The DMR answers with a number in ~79% of in-scope
+   cells; the rest carry a NODI (no-data indicator) code. Exactly **one** of those codes
+   is read: **`C`, whose EPA description is verbatim "No Discharge."** That is a
+   transcription, not an interpretation. Every other NODI code is treated as *we do not
+   know what this outfall discharged*, and those outfall-months are counted in
+   `N_OUTFALLS_UNDETERMINED` rather than resolved by assumption. Full reasoning and the
+   alternatives considered are in [Why only code `C`](#why-only-code-c) below.
+   `EPA_CODE_STATUS` is carried for reference and **never read by this step** — it is a
+   code-lifecycle flag, not a statement about discharge.
 9. **Multi-month reports are dated to their period-end month, not spread backwards**
    (`docs/panel_questions_for_pis.md`). `N_OUTFALL_BASIS_MULTIMONTH` makes their presence
    visible per facility-month rather than hidden.
@@ -215,6 +215,103 @@ every uncovered one is `NA` in all 28 variables. Filter covered rows with
     `CONC_RATIO_AVG` below zero in 8 facility-months; excluding them leaves the mass
     ratio in `[0, 22.155]` and the concentration ratio in `[0, 17.667]`.
 
+## Why only code `C`
+
+This is the one place in step 07 where the data does not answer the question directly, so
+the reasoning is recorded in full.
+
+### The problem
+
+`N_OUTFALLS_NO_DISCHARGE` (#21) and `N_OUTFALLS_ACTIVE` (#22) ask whether an outfall was
+discharging. For ~79% of in-scope cells the DMR gives a number and the question is settled.
+For the remaining ~21% there is no number, just a NODI code explaining why. Those codes
+range from decisive (`C` No Discharge, `N` Not Constructed) to silent on the matter
+(`M` Laboratory Error) to genuinely suggestive but not conclusive (`B` Below Detection
+Limit — something is being discharged, below the measurable floor).
+
+EPA publishes the codes and their descriptions. **EPA does not publish any mapping from
+code to "was the outfall discharging."** Nothing authoritative answers this.
+
+### What was tried first, and why it was wrong
+
+The original implementation (2026-10-07) added a hand-built `NODI_ACTIVITY_CLASS` column to
+`REF_NODI.csv`, classifying all 33 codes as `active` / `inactive` / `no_discharge` /
+`no_data_admin` / `unclear`. It was retired the next day for three reasons:
+
+1. **It was invented judgment stored as reference data.** The column sat in
+   `data/raw/reference/` alongside a genuine EPA transcription, with no marker
+   distinguishing the two. A reader would reasonably assume EPA published it. EPA did not.
+2. **It decided real results on no documented basis.** 2,431 outfall-months counted as
+   active *solely* because of that classification — 4.6% of the active count — driven
+   mainly by `B` (below detection), `9` (conditional monitoring not required), `Q` (not
+   quantifiable) and `F` (insufficient flow). Defensible readings, but readings.
+3. **It collided head-on with EPA's own vocabulary.** EPA publishes a `Status` column for
+   these same codes meaning *may this code still be filed* — unrelated to discharge. Five
+   codes contradicted outright: `2` Operation Shutdown is EPA-**Active** while the plant
+   is by definition not running; `5` Frozen, `S` Fire and `V` Weather are EPA-**Inactive**
+   (retired codes) while the plant was running.
+
+### The rule now
+
+```r
+zero_discharge := (reported & discharge == 0) | NODI_CODE == "C"
+active         := any(reported & discharge > 0)
+undetermined   := !active & !all_zero
+```
+
+Code `C` is read because its EPA description is literally "No Discharge" — using it is
+transcription. No other code is read at all.
+
+### What it costs, measured on FY2017
+
+| Column | Hand-classified | Code `C` only | Change |
+|---|---|---|---|
+| `N_OUTFALLS_NO_DISCHARGE` | 15,151 | **15,151** | none |
+| `N_OUTFALLS_ACTIVE` | 52,410 | **49,999** | −2,411 |
+| residual column | 57 (`unclear` codes only) | **3,369** (`UNDETERMINED`) | +3,312 |
+
+Every other column in the panel is **byte-identical** — mass discharged 9,831,349 kg/d,
+permitted 52,706,201 kg/d, exceedances 272/269 mass and 451/438 concentration, 47,394
+covered facility-months. The classification never touched anything but these three.
+
+`N_OUTFALLS_NO_DISCHARGE` is unchanged because code `C` was always doing all the work
+there: 14,700 of its outfall-months rest on `C` rather than on a reported numeric zero.
+Only 597 outfall-months in all of FY2017 report a literal `0`.
+
+### A rejected stricter option
+
+Reading **no** codes at all — requiring a literal reported `0` for #21 — was considered and
+rejected. It destroys 96.1% of #21 (15,151 → 597) and strands 26.1% of outfall-months in a
+void, 14,700 of which carry a code EPA describes as "No Discharge." Refusing to read EPA's
+own plain text is not neutrality; it is discarding data.
+
+### What you gain
+
+**The three columns now partition every outfall exactly:**
+
+```
+N_OUTFALLS_ACTIVE + N_OUTFALLS_NO_DISCHARGE + N_OUTFALLS_UNDETERMINED == N_OUTFALLS_TOTAL
+```
+
+Asserted on every run. The old scheme did not partition — outfall-months could fall
+through all three categories — because the classification resolved some cases and left
+others dangling. The residual is now explicit and complete: `N_OUTFALLS_UNDETERMINED`
+counts **every** outfall-month where the data does not say, 3,369 of them (5.0%), instead
+of the 57 the old `unclear` bucket admitted to.
+
+### If you want the stricter reading back
+
+Counting below-detection or waived-monitoring outfalls as active is a defensible research
+position. It is just not one the data documents, so it belongs in a script as an explicit,
+dated decision — not in a reference table. The rows are all preserved in
+`data/processed/dmr_fy2017_tss_effgross_mk_outfall_basis.csv`, which carries `NODI_CODE`
+per row, so any alternative rule can be applied without re-reading the DMR files:
+
+```r
+g <- fread("data/processed/dmr_fy2017_tss_effgross_mk_outfall_basis.csv")
+g[NODI_CODE %in% c("B", "9", "Q", "F"), .N, by = NODI_CODE]   # the 2,431-row question
+```
+
 ## Output columns (29)
 
 ### The 20 requested variables (23 columns)
@@ -243,8 +340,8 @@ every uncovered one is `NA` in all 28 variables. Filter covered rows with
 | 18 | `N_CONC_EXCEED_EPA` | `C2` rows with `VIOLATION_CODE == 'E90'` |
 | 19 | `N_OUTFALLS_CENSORED_MASS` | distinct outfalls with a censored (`<`) `Q1` row |
 | 20 | `N_OUTFALLS_CENSORED_CONC` | distinct outfalls with a censored (`<`) `C2` row |
-| 21 | `N_OUTFALLS_NO_DISCHARGE` | outfalls where **every** basis is a confirmed zero (reported `0`, or NODI `C`) |
-| 22 | `N_OUTFALLS_ACTIVE` | outfalls with discharge > 0 on any basis, **plus** no-discharge outfalls whose NODI class is `active` |
+| 21 | `N_OUTFALLS_NO_DISCHARGE` | outfalls where **every** basis is a confirmed zero: a reported `0`, or NODI `C` (EPA: "No Discharge") |
+| 22 | `N_OUTFALLS_ACTIVE` | outfalls reporting a **positive discharge** on any basis. No NODI code is read as evidence of discharge — see [Why only code `C`](#why-only-code-c) |
 
 > **Why #10 and #15 are asymmetric, on purpose.** Mass is additive across outfalls;
 > concentration is not (`docs/panel_questions_for_pis.md`, "Concentrations aren't additive
@@ -258,7 +355,7 @@ every uncovered one is `NA` in all 28 variables. Filter covered rows with
 | Column | Definition |
 |---|---|
 | `DMR_TSS_DROPPED_MULTISET` | `1` if ≥1 of the facility's in-scope permits was dropped under Assumption 4 |
-| `N_OUTFALLS_NODI_UNCLASSIFIED` | outfalls that cannot be classified active/inactive because their only signal is one of the six `unclear` NODI codes |
+| `N_OUTFALLS_UNDETERMINED` | outfalls that are neither a confirmed discharge nor a confirmed zero — the data does not say. With `ACTIVE` and `NO_DISCHARGE` this **partitions** `N_OUTFALLS_TOTAL` exactly (asserted each run). 3,369 outfall-months in FY2017. |
 | `N_OUTFALL_BASIS_MULTIMONTH` | cells whose `NMBR_OF_REPORT > 1` (Assumption 9) |
 | `N_OUTFALL_BASIS_UNEXPLAINED_BLANK` | cells with neither a value nor a NODI code — genuinely unexplained (599 in FY2017) |
 | `N_OUTFALL_BASIS_NEGATIVE` | cells reporting a **negative** TSS mass or concentration — physically impossible, kept as reported (Assumption 13). Condition on `== 0` to exclude. |
@@ -324,11 +421,14 @@ Measured results on the covered rows:
 - limit qualifiers on numeric limits: 91,274 `<=`, 2 `<` — no floors, so the
   Assumption-6 ceiling assertion holds for FY2017
 - censored outfall-months: 2,135 mass / 3,262 concentration (Assumption 7)
+- outfall-months: **49,999 active / 15,151 no-discharge / 3,369 undetermined**, which
+  partition `N_OUTFALLS_TOTAL` exactly
 - 599 unexplained blank cells; 1,796 multi-month cells; 8 negative values
+- 141 rows (0.7% of NODI rows) use codes EPA has since retired — see Assumption 8
 
 ### Independent verification performed
 
-- The hand-worked specification runs as a 25-value `stopifnot()` fixture on every run — passes.
+- The hand-worked specification runs as a 26-value `stopifnot()` fixture on every run — passes.
 - All 59 pre-existing panel columns are **byte-identical** to step 06's output.
 - Panel row count unchanged (1,897,560); facility-month keys unique.
 - No variable is populated where an uncovered facility-month; flagged facilities are never covered.
@@ -343,6 +443,9 @@ Measured results on the covered rows:
 - **One facility-month was independently re-derived by hand** from the grain
   intermediate across 16 variables — every value matches.
 - Every negative-driven ratio carries `N_OUTFALL_BASIS_NEGATIVE > 0`.
+- `ACTIVE + NO_DISCHARGE + UNDETERMINED == N_OUTFALLS_TOTAL` on every covered row.
+- Switching from the retired classification to code `C` alone changed **only** those
+  three columns; all 26 others are byte-identical (checked against the prior run).
 
 Further notes in `docs/running_notes_on_open_questions.md` under the dated entry.
 
