@@ -610,7 +610,10 @@ read_source <- function(src) {
           round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1), " min")
 
   if (!KEEP_GZ && file.exists(gz)) unlink(gz)
-  for (j in names(d)) d[[j]] <- trimws(d[[j]])
+  # DuckDB returns an empty CSV field as NA, not "". Every blank test below is
+  # written as == "" / != "" (as when the input was read with fread), and
+  # NA == "" is NA, so map NA -> "" here, once, for every column.
+  for (j in names(d)) d[[j]] <- trimws(fcoalesce(d[[j]], ""))
   d
 }
 
