@@ -238,7 +238,8 @@ RESTRICT_MONTHLY_ONLY <- FALSE
 # from raw ICIS_FACILITIES.csv and written to the output as STATE_CODE.
 # TRUE  -> (default) 48 states + DC, matching the facility-month panel built by
 #          code/03_panel_building/01_build_facility_month_panel_major_individual.R.
-#          In FY2017 it costs 2,504 rows / 111 permits (PR, AK, HI, VI, AS, GU, MP).
+#          In FY2017 it drops 111 permits (2,493 rows of the written file) in PR,
+#          AK, HI, VI, AS, GU and MP.
 # FALSE -> every state and territory; no ICIS state read, no STATE_CODE column.
 RESTRICT_CONTINENTAL <- TRUE
 
