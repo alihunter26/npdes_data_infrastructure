@@ -2,7 +2,9 @@
 # cleaning_helpers.R
 # ------------------------------------------------------------------------------
 # Shared "cleaning" building blocks used by every step of the facility-by-month
-# panel pipeline (code/03_panel_building/01 through 06).
+# panel pipeline (code/03_panel_building/01 through 06), and -- since
+# 2026-10-27 -- by the DMR scripts in code/dmr/ and code/clean_dmr/, which share
+# the same permit population (build_major_individual_permits(), at the bottom).
 #
 # WHY THIS FILE EXISTS: before this file was written, each of the six numbered
 # scripts in code/03_panel_building/ had its OWN copy-pasted version of these
@@ -201,4 +203,55 @@ coalesce_date_extreme <- function(dt, date_cols, which = c("min", "max")) {
   # blank candidate is skipped rather than making the whole row NA.
   extreme_fn <- if (which == "min") pmin else pmax
   do.call(extreme_fn, c(parsed_cols, list(na.rm = TRUE)))
+}
+
+
+# ------------------------------------------------------------------------------
+# build_major_individual_permits(): the project's DMR population -- permits that
+# are MAJOR under an INDIVIDUAL permit.
+# ------------------------------------------------------------------------------
+# BACKGROUND: every DMR script in this repo restricts to the same population as
+# the facility panels, and that restriction is two rules applied to EPA's own
+# permit registry (ICIS_PERMITS.csv):
+#
+#   INDIVIDUAL : PERMIT_TYPE_CODE == "NPD".
+#   EVER MAJOR : MAJOR_MINOR_STATUS_FLAG == "M" in AT LEAST ONE version row of
+#                the permit -- NOT "major in every version". A permit appears
+#                once per version in ICIS_PERMITS, and a facility that was ever
+#                big enough to be a major stays in the population.
+#
+# This lived inline in code/dmr/filter_dmr_major_individual.R until 2026-10-27,
+# when code/clean_dmr/build_dmr_clean_panel.R started reading the raw DMR files
+# directly and needed the same set. Two copies of the project's core population
+# definition is exactly the kind of thing that drifts, so it lives here instead,
+# and both scripts call it.
+#
+# A NOTE ON VINTAGE: ICIS_PERMITS.csv is a CURRENT-STATE extract, not a
+# per-fiscal-year snapshot. The eligible set is therefore the same whichever
+# FY's DMR file it is applied to -- convenient, but it also means a 2026
+# population definition is being applied to historical DMR rows, and permits
+# terminated before ICIS was populated are simply absent. That matters for
+# pre-2009 data; see ASSUMPTION 13 in build_dmr_clean_panel.R.
+#
+# ARGUMENTS:
+#   raw_dir -- passed straight through to rd(); defaults to RAW_DIR.
+#   verbose -- TRUE prints the two population counts, as the DMR filter scripts
+#              have always done in their run logs.
+#
+# RETURNS: a character vector of eligible EXTERNAL_PERMIT_NMBRs, trimmed and
+# unique, ready to use as a filter or join key.
+build_major_individual_permits <- function(raw_dir = RAW_DIR, verbose = TRUE) {
+  pm <- rd("ICIS_PERMITS.csv",
+           c("EXTERNAL_PERMIT_NMBR", "PERMIT_TYPE_CODE", "MAJOR_MINOR_STATUS_FLAG"),
+           raw_dir = raw_dir)
+  pm[, id   := trimws(EXTERNAL_PERMIT_NMBR)]
+  pm[, ptc  := trimws(PERMIT_TYPE_CODE)]
+  pm[, flag := trimws(MAJOR_MINOR_STATUS_FLAG)]
+  pm <- pm[ptc == "NPD"]
+  major_ind <- pm[, .(ever_major = any(flag == "M")), by = id][ever_major == TRUE, id]
+  if (verbose) {
+    message("Individual (NPD) permits in ICIS_PERMITS       : ", uniqueN(pm$id))
+    message("...ever major (eligible permit set)            : ", length(major_ind))
+  }
+  major_ind
 }

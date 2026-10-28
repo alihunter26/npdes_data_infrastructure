@@ -46,6 +46,9 @@ suppressPackageStartupMessages({
   library(duckdb)
 })
 
+# build_major_individual_permits() -- the shared population definition.
+source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))
+
 ## ---- FY from command line ----
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 1 || is.na(suppressWarnings(as.integer(args[1]))))
@@ -56,7 +59,7 @@ FY <- as.integer(args[1])
 ZIP_NAME   <- sprintf("npdes_dmrs_fy%d.zip", FY)
 CSV_MEMBER <- sprintf("NPDES_DMRS_FY%d.csv", FY)
 ZIP_PATH   <- file.path(DMR_DIR, ZIP_NAME)
-PERMITS    <- file.path(RAW_DIR, "ICIS_PERMITS.csv")
+# (ICIS_PERMITS.csv is read by build_major_individual_permits(), not here.)
 
 DMR_FILTER_DIR <- file.path(CWA_ROOT, "code", "dmr")
 OUT_PATH   <- file.path(DMR_FILTER_DIR, sprintf("01_dmr_fy%d.csv", FY))
@@ -79,16 +82,13 @@ message("FY: ", FY)
 message("DMR zip: ", ZIP_PATH)
 
 # ---- 1. Ever-major INDIVIDUAL permit set from ICIS_PERMITS -------------------
-pm <- fread(PERMITS, select = c("EXTERNAL_PERMIT_NMBR", "PERMIT_TYPE_CODE",
-                                "MAJOR_MINOR_STATUS_FLAG"),
-            colClasses = "character", showProgress = FALSE)
-pm[, id   := trimws(EXTERNAL_PERMIT_NMBR)]
-pm[, ptc  := trimws(PERMIT_TYPE_CODE)]
-pm[, flag := trimws(MAJOR_MINOR_STATUS_FLAG)]
-pm <- pm[ptc == "NPD"]
-major_ind <- pm[, .(ever_major = any(flag == "M")), by = id][ever_major == TRUE, id]
-message("Individual (NPD) permits in ICIS_PERMITS       : ", uniqueN(pm$id))
-message("...ever major (eligible permit set)            : ", length(major_ind))
+# The two rules (PERMIT_TYPE_CODE 'NPD'; MAJOR_MINOR_STATUS_FLAG 'M' in at least
+# one version row) moved to build_major_individual_permits() in
+# code/02_cleaning/cleaning_helpers.R on 2026-10-27, when
+# code/clean_dmr/build_dmr_clean_panel.R began reading the raw DMR files and
+# needed the same set. Same logic, same counts -- verified identical (7,804
+# permits) before the switch; it is now defined in one place instead of two.
+major_ind <- build_major_individual_permits(raw_dir = RAW_DIR)
 
 fwrite(data.table(EXTERNAL_PERMIT_NMBR = major_ind), ELIGIBLE_TMP)
 
