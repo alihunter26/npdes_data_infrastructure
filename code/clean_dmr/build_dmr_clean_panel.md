@@ -2,16 +2,17 @@
 
 *Builds a CLEANED DMR panel straight from the **raw** per-fiscal-year DMR zips.
 Input: `data/raw/DMR/npdes_dmrs_fy<FY>.zip` (and `npdes_dmrs_prefy2009.zip`).
-Output: one `data/processed/clean_dmr_<year>.csv` per fiscal year built, where
-`<year>` is read off the data, never off a toggle.*
+Output: one `data/processed/clean_dmr_<year>.csv` (TSS) or `clean_dmr_bod_<year>.csv`
+(BOD) per fiscal year built, where `<year>` is read off the data, never off a toggle.*
 
 ## Overview
 
 Takes the raw DMR file for one or many fiscal years and reduces it to the
 variables worth keeping, applying the whole restriction itself — majors under an
-individual permit, TSS, Effluent Gross, external outfalls, monthly-average
-statistical bases, the continental US. `YEARS` says which years to build: one, a
-vector, or `"all"`. Every judgment call is a named toggle in the CONFIG block,
+individual permit, one parameter set (TSS, or BOD5 + CBOD5), Effluent Gross,
+external outfalls, monthly-average statistical bases, the continental US.
+`PARAM_SET` says which parameter set (see "Which parameter(s) get built") and
+`YEARS` which years: one, a vector, or `"all"`. Every judgment call is a named toggle in the CONFIG block,
 and the run log reports, per year, what each choice cost in rows, permits and
 outfalls.
 
@@ -73,7 +74,7 @@ substitution rather than a rewrite of `KEEP_COLS`.
 | `data/raw/npdes_downloads/ICIS_FACILITIES.csv` | input (**raw, immutable**) | one row per NPDES_ID | ECHO download |
 | `data/raw/reference/REF_STATISTICAL_BASE.csv` | input (**raw**, reference) | one row per statistical base code | manual download, see `data/raw/README.md` |
 | `data/raw/reference/REF_NODI.csv` | input (**raw**, reference) | one row per NODI code (33) | transcribed from EPA, see `REF_NODI_PROVENANCE.md` |
-| `data/processed/clean_dmr_<year>.csv` | **output**, one per FY | permit × outfall × month × value type × limit set × statistical base × monitoring location × `LIMIT_ID` (unique, asserted), continental US only | derived (git-ignored) |
+| `data/processed/clean_dmr_<year>.csv` (TSS), `clean_dmr_bod_<year>.csv` (BOD) | **output**, one per FY and parameter set | permit × outfall × month × parameter code × value type × limit set × statistical base × monitoring location × `LIMIT_ID` (unique, asserted), continental US only | derived (git-ignored) |
 
 ## Computational Requirements
 
@@ -265,15 +266,16 @@ populated are simply absent — which matters for pre-2009 data (ASSUMPTION 13).
    facility crosswalk.
 3. **STEP 2, per source** — extracts the CSV member to a gzip temp on scratch,
    then has **DuckDB** (out-of-core) return the rows matching the eligible
-   permits and `PARAMETER_CODE 00530`, projecting 22 of the 57 columns. Dates are
+   permits and the `PARAMETER_CODE`s of `PARAM_SET` (`00530` for TSS), projecting
+   22 of the 57 columns. Dates are
    parsed, the fiscal year of each row derived, and the result **split by FY**.
 4. **STEPS 3–7, per fiscal year** — on each FY group, in order: Effluent Gross,
    `EXO`, monthly-average statistical bases minus `EXCLUDE_STAT_BASES`,
    `VALUE_TYPES`, then the **continental-US filter** (joining `STATE_CODE` and
    counting every dropped code); reporting-period handling
    (`RESTRICT_MONTHLY_ONLY`); the violation fan-out collapse to one row per
-   `ROW_KEY` and `FLAG_MULTI_LIMIT_ID`; `FACILITY_ID`, `YEAR`/`MONTH` and
-   `NODI_DESC`; the trim to output columns and the `SORT_KEY` sort; the
+   `ROW_KEY` and `FLAG_MULTI_LIMIT_ID`; `FACILITY_ID`, `YEAR`/`MONTH`,
+   `FLAG_MULTI_LIMIT_SET` and `NODI_DESC`; the trim to output columns and the `SORT_KEY` sort; the
    verification `stopifnot()`s; the write; and that year's run log.
 5. **Summary** — lists every year built and every year skipped with its reason,
    and **exits non-zero** if anything was skipped.
@@ -391,9 +393,10 @@ monthly observations that happen to be filed in quarterly batches.
 ### 6. One row per `ROW_KEY`
 
 `EXTERNAL_PERMIT_NMBR` × `PERM_FEATURE_NMBR` × `MONITORING_PERIOD_END_DATE` ×
-`VALUE_TYPE_CODE` × `LIMIT_SET_ID` × `STATISTICAL_BASE_CODE` ×
+`PARAMETER_CODE` × `VALUE_TYPE_CODE` × `LIMIT_SET_ID` × `STATISTICAL_BASE_CODE` ×
 `MONITORING_LOCATION_CODE` × `LIMIT_ID` — asserted unique before writing, per
-fiscal year.
+fiscal year. `PARAMETER_CODE` is constant for TSS; for BOD it keeps a BOD5 row and
+a CBOD5 row for the same outfall-month apart (added 2026-11-09).
 
 Every part is needed in FY2017: a limit set can report one statistic in two
 concentration slots (C2 with C1 or C3), under both `1` and `EG`, or under two
@@ -415,10 +418,21 @@ continental-US filter runs first and 11 of these values were at territory
 facilities.
 
 **(b) Two `LIMIT_ID`s in one limit set** for the same statistic, slot, location
-and month. FY2017: 21 cells in 3 permits; 18 carry the same value and limit under
-both IDs (a possible duplicate), 3 conflict. Both rows are **kept** and marked
+and month. FY2017 TSS: 21 cells in 3 permits; 18 carry the same value and limit under
+both IDs (a possible duplicate), 3 conflict. FY2017 BOD: 132 cells in 11 permits;
+2 possible duplicates, 130 conflict (2,630 BOD rows over FY2009–FY2025, against
+838 TSS; cause unchecked). Both rows are **kept** and marked
 `FLAG_MULTI_LIMIT_ID = TRUE`. Summing across `LIMIT_ID` within a flagged cell may
 double-count.
+
+**(c) Rows that differ only by limit set** (PI request, 2026-10-29): more than one
+limit set in the same permit × year-month × outfall × parameter code × value type ×
+statistical base × monitoring location. Every row in such a cell is marked
+`FLAG_MULTI_LIMIT_SET = TRUE`; 5.84% of TSS rows and 4.50% of BOD rows across
+FY2009–FY2025. A BOD5 and a CBOD5 limit set in the same cell are not flagged. Limit sets
+already told apart by value type, statistical base or location are not flagged.
+It never marks a row that (b) marks: (b) is two `LIMIT_ID`s *inside one* limit
+set, (c) is several limit sets.
 
 `VERSION_NMBR` is not used. EPA: "The current permit is VERSION_NMBR = 0. The
 oldest permit version is VERSION_NMBR = 1" — it is the permit version, not a DMR
@@ -431,7 +445,8 @@ Every column is read **and** written as character — DuckDB reads the raw CSV w
 casting is left to whoever uses the file.
 
 The only written columns not read from the input are `FACILITY_ID`,
-`YEAR`/`MONTH`, `STATE_CODE`, `NODI_DESC` and `FLAG_MULTI_LIMIT_ID` — all derived
+`YEAR`/`MONTH`, `STATE_CODE`, `NODI_DESC`, `FLAG_MULTI_LIMIT_ID` and
+`FLAG_MULTI_LIMIT_SET` — all derived
 or joined, none a restatement of a reported number.
 
 Always compare the `*_STANDARD_UNITS` fields, never the permit-specific `*_NMBR`
@@ -468,7 +483,7 @@ extract step exists; it is the same `tar | gzip -1` approach
 `code/dmr/filter_dmr_major_individual.R` uses.
 
 **Nothing is ever deleted or overwritten in `data/raw/`.** The script reads the
-zips and writes only `data/processed/clean_dmr_<FY>.csv`.
+zips and writes only `data/processed/clean_dmr_<FY>.csv` (or `clean_dmr_bod_<FY>.csv`).
 
 ### 11. Continental US = the 48 states + DC, by facility location
 
@@ -526,6 +541,34 @@ Separately, a per-FY zip is held to its own year — rows in
 dropped, exactly as before, rather than silently creating a second year's file
 out of a handful of stray rows. Only `prefy2009` is allowed to emit many years.
 
+## Which parameter(s) get built
+
+`PARAM_SET` names one entry of `PARAM_SETS` in the CONFIG block (default `"tss"`),
+and can be given as the first command-line argument instead:
+
+| Set | `PARAMETER_CODE`s | Output name |
+|---|---|---|
+| `tss` | `00530` TSS | `clean_dmr_<FY>.csv` (unchanged, so `build_permit_month_panels.R` still reads it) |
+| `bod` | `00310` BOD, 5-day, 20 deg. C; `80082` BOD, carbonaceous [5 day, 20 C] | `clean_dmr_bod_<FY>.csv` |
+
+Each set has its own `file_tag` in the output name, so two sets never write the
+same file; the script refuses two sets with the same tag. Every code of a set is
+kept, and each row keeps its own `PARAMETER_CODE`.
+
+**Why these two BOD codes.** In raw FY2017 (all permits) `00310` has 719,869 rows
+and `80082` 587,891; the next are percent removal (`81010`, 43,747; `80091`,
+17,563; `81383`, 6,974), which are in % rather than mg/L or kg/d, and ultimate
+oxygen demand (`00181`, 5,680). Every other BOD code has at most about 2,500 rows
+(e.g. `00318` "BOD, 5-day", 617; `85002` "Biochemical oxygen demand-5", 658).
+`00320` has no rows. None of those are in the set.
+
+**BOD5 and CBOD5 are different measurements** (CBOD5 suppresses nitrification),
+so do not pool them without a rule. Over FY2009–FY2025 the mix shifts: permits
+reporting `00310` fall from 2,790 to 2,483 and `80082` rise from 2,490 to 2,750,
+so a one-code series trends for reporting reasons. 222–263 permits a year report
+both codes, and outfall-months with both rise from 354 to 584. Per-year counts,
+BOD beside TSS: `code/summary/summarize_clean_dmr_by_year.R`.
+
 ## Which years get built
 
 `YEARS` takes a single fiscal year, a vector, a range, or `"all"`:
@@ -568,22 +611,22 @@ re-fetched with `code/01_data_download/01_download_echo_bulk_files.R`.
 
 ## Output columns
 
-25 columns with the default `VIOLATION_COLS`, in this order. `FACILITY_ID` and
+26 columns with the default `VIOLATION_COLS`, in this order. `FACILITY_ID` and
 `STATE_CODE` are constructed (above); `YEAR`/`MONTH` are derived from
 `MONITORING_PERIOD_END_DATE`; `NODI_DESC` is EPA reference text joined on
-`NODI_CODE`; `FLAG_MULTI_LIMIT_ID` is derived; everything else is EPA's own
+`NODI_CODE`; `FLAG_MULTI_LIMIT_ID` and `FLAG_MULTI_LIMIT_SET` are derived; everything else is EPA's own
 column, copied verbatim as character except that collapsed rows hold
 `;`-joined violation fields.
 
 **Row order is part of what the file promises** and is asserted before writing
-(`SORT_KEY`): `FACILITY_ID`, `YEAR`, `MONTH`, then period-end date, then the rest
-of the row key (permit, outfall, value type, statistical base, monitoring
-location, limit-set designator, `LIMIT_SET_ID`, `LIMIT_ID`). Facility first
-because the file is read and merged facility-by-facility; the period-end date
+(`SORT_KEY`): permit (`EXTERNAL_PERMIT_NMBR`), `YEAR`, `MONTH`, then period-end
+date, then the rest of the row key (outfall, parameter code, value type, statistical
+base, monitoring location, limit-set designator, `LIMIT_SET_ID`, `LIMIT_ID`). Permit
+first so each permit's history reads chronologically in one block (PI request,
+2026-10-29; it replaced an earlier facility-first order); the period-end date
 breaks ties inside a `YEAR` × `MONTH`, since one month can hold more than one
 period-end day; the remaining key parts make the order **total**, so the same
-input always writes the same rows in the same sequence. With
-`ADD_FACILITY_ID = FALSE` the first key is `EXTERNAL_PERMIT_NMBR` instead.
+input always writes the same rows in the same sequence.
 
 | # | Column | Source |
 |---|---|---|
@@ -593,13 +636,14 @@ input always writes the same rows in the same sequence. With
 | 5–6 | `YEAR`, `MONTH` | derived from `MONITORING_PERIOD_END_DATE` |
 | 7 | `MONITORING_PERIOD_END_DATE` | EPA, verbatim string |
 | 8–11 | `PERM_FEATURE_TYPE_CODE`, `PARAMETER_CODE`, `MONITORING_LOCATION_CODE`, `STATISTICAL_BASE_CODE` | EPA — scope; the last two are also row-key parts |
-| 12–15 | `VALUE_TYPE_CODE`, `LIMIT_SET_DESIGNATOR`, `LIMIT_SET_ID`, `LIMIT_ID` | EPA — grain + limit set. Within a month designator and `LIMIT_SET_ID` identify the same limit set; a permit modification keeps the designator and issues a new ID. |
+| 12–15 | `VALUE_TYPE_CODE`, `LIMIT_SET_DESIGNATOR`, `LIMIT_SET_ID`, `LIMIT_ID` | EPA — grain + limit set. Within a month designator and `LIMIT_SET_ID` identify the same limit set (one exception in FY2009–FY2025: `WV0000086` outfall `0`, designator `A` under two IDs in 12 months of FY2009 and 5 of FY2010); a permit modification keeps the designator and issues a new ID. |
 | 16–20 | `LIMIT_VALUE_STANDARD_UNITS`, `DMR_VALUE_STANDARD_UNITS`, `STANDARD_UNIT_DESC`, `DMR_VALUE_QUALIFIER_CODE`, `NODI_CODE` | EPA — measurement |
 | 21 | `NODI_DESC` | EPA reference text, joined on `NODI_CODE` from `REF_NODI.csv`; blank where the code is blank (omitted if `ADD_NODI_DESC = FALSE`) |
 | 22 | `EXCEEDENCE_PCT` | EPA — compliance |
 | 23 | `VIOLATION_CODE` (+ any other `VIOLATION_COLS`) | EPA — compliance; `D90;E90` when one value carried two violations |
 | 24 | `NMBR_OF_REPORT` | EPA — reporting-period integrity |
 | 25 | `FLAG_MULTI_LIMIT_ID` | derived — `TRUE` if the limit-set cell has >1 `LIMIT_ID`; summing across them may double-count |
+| 26 | `FLAG_MULTI_LIMIT_SET` | derived — `TRUE` if the permit × year-month × outfall × parameter code × value type × statistical base × location has >1 `LIMIT_SET_ID` |
 
 ### Columns read or derived but deliberately NOT written
 
@@ -633,6 +677,13 @@ Rscript code/clean_dmr/build_dmr_clean_panel.R 2016 2017 2019
 
 ```bash
 Rscript code/clean_dmr/build_dmr_clean_panel.R all
+```
+
+A parameter set, if given, comes first; without one the `PARAM_SET` toggle
+(default `tss`) applies. BOD for FY2009–FY2025 took 38.6 min on 2026-11-09:
+
+```bash
+Rscript code/clean_dmr/build_dmr_clean_panel.R bod $(seq 2009 2025) > output/build_dmr_clean_panel_bod_fy2009_2025.log 2>&1
 ```
 
 Runs from any working directory — paths anchor to the repo root via `_paths.R`.
@@ -691,6 +742,16 @@ overnight job; run it in the background and keep the log.
 
 ## History
 
+- **2026-11-09** — added parameter sets (`PARAM_SETS` / `PARAM_SET`, or the first
+  command-line argument): `tss` (`00530`) and `bod` (`00310` + `80082`), with a
+  per-set file tag so BOD writes `clean_dmr_bod_<FY>.csv`. `PARAMETER_CODE` joined
+  `ROW_KEY`, `SORT_KEY` and the `FLAG_MULTI_LIMIT_SET` grouping; the run log gained
+  a per-code table. TSS output unchanged: FY2017 rebuilt byte-identical (md5).
+  Built BOD FY2009–FY2025 (2,146,429 rows).
+- **2026-10-29** — sort order switched to permit → year → month (was facility
+  first). Fixed the crash on the raw read: DuckDB returns an empty field as `NA`,
+  not `""`, so every column is now coalesced to `""` right after the read. Added
+  `FLAG_MULTI_LIMIT_SET`. Built FY2009–FY2025.
 - **2026-10-27** — switched from the `code/dmr/` pipeline's `03_` file to the raw
   DMR zips, added the `YEARS` toggle and all-years mode, moved the population
   rule into `build_major_individual_permits()`, and retired `INPUT_PATH`,

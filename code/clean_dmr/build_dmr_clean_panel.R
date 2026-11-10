@@ -25,7 +25,7 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))   # rd(), bui
 # build_dmr_clean_panel.R
 # ------------------------------------------------------------------------------
 # Build a CLEANED DMR panel carrying only the variables we concluded are worth
-# keeping, restricted to major individual permits / TSS / Effluent Gross /
+# keeping, restricted to major individual permits / one parameter set (TSS or BOD) / Effluent Gross /
 # external outfalls / monthly-average measurements / the continental US.
 #
 # Reads the RAW per-fiscal-year DMR zips directly and writes one cleaned file
@@ -43,7 +43,7 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))   # rd(), bui
 #            data/raw/npdes_downloads/ICIS_FACILITIES.csv (FACILITY_ID, STATE_CODE)
 #            data/raw/reference/REF_STATISTICAL_BASE.csv  (monthly-average bases)
 #            data/raw/reference/REF_NODI.csv              (NODI descriptions)
-#   Output : data/processed/clean_dmr_<FY>.csv, one per fiscal year built. The
+#   Output : data/processed/clean_dmr_<FY>.csv (TSS) or clean_dmr_bod_<FY>.csv (BOD), one per fiscal year built. The
 #            <FY> in the name is always read off the rows' own
 #            MONITORING_PERIOD_END_DATEs, never from a toggle.
 #
@@ -54,7 +54,7 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))   # rd(), bui
 # before using results; these lines are reminders, not the argument.
 #
 #   1. The script applies the whole restriction itself, from raw -- population
-#      (shared rule), TSS, Effluent Gross, EXO, statistical base, value type,
+#      (shared rule), parameter set, Effluent Gross, EXO, statistical base, value type,
 #      continental US. Equivalence to the old pipeline route is a CHECK TO RUN.
 #   2. Both '1' and 'EG' are Effluent Gross; '1' alone would drop 1,101 FY2017
 #      rows and two permits entirely.
@@ -66,7 +66,9 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))   # rd(), bui
 #      row covers. Multi-month rows are kept -- weight by it before summing.
 #   6. One row per ROW_KEY, asserted. Multiple limit sets kept, never
 #      tie-broken; violation fan-out collapsed with ';'; two LIMIT_IDs in one
-#      cell both kept and flagged FLAG_MULTI_LIMIT_ID. VERSION_NMBR unused.
+#      cell both kept and flagged FLAG_MULTI_LIMIT_ID. Rows that differ from
+#      another row only by limit set are flagged FLAG_MULTI_LIMIT_SET.
+#      VERSION_NMBR unused.
 #   7. Values are copied verbatim as character; compare *_STANDARD_UNITS, never
 #      the permit-specific *_NMBR fields.
 #   8. EXCEEDENCE_PCT carries a >= 99999 sentinel (5 FY2017 rows) -- filter it
@@ -132,6 +134,17 @@ validate_config <- function() {
       stop("VALUE_TYPES repeats a code: ",
            paste(unique(VALUE_TYPES[duplicated(VALUE_TYPES)]), collapse = ", "))
   }
+  if (!is.character(PARAM_SET) || length(PARAM_SET) != 1L || !PARAM_SET %in% names(PARAM_SETS))
+    stop("PARAM_SET must be one of: ", paste(names(PARAM_SETS), collapse = ", "),
+         "; got: ", deparse(PARAM_SET))
+  for (s in names(PARAM_SETS)) {
+    cd <- PARAM_SETS[[s]]$codes
+    if (!is.character(cd) || length(cd) == 0L || anyNA(cd) || any(!nzchar(cd)) || anyDuplicated(cd))
+      stop("PARAM_SETS$", s, "$codes must be a non-empty character vector without repeats.")
+  }
+  tags <- vapply(PARAM_SETS, function(s) s$file_tag, "")
+  if (anyDuplicated(tags))
+    stop("Two PARAM_SETS share a file_tag, so they would write the same files.")
   for (nm in c("RESTRICT_MONTHLY_ONLY", "ADD_FACILITY_ID",
                "RESTRICT_CONTINENTAL", "ADD_NODI_DESC", "KEEP_GZ", "REUSE_GZ")) {
     v <- get(nm)
@@ -189,11 +202,11 @@ FY_CEILING <- 2025L
 # Where the cleaned files go. The year in each name is read off that year's own
 # MONITORING_PERIOD_END_DATEs, so a filename cannot misreport its contents.
 OUTPUT_DIR      <- PROC_DIR
-OUTPUT_NAME_FMT <- "clean_dmr_%d.csv"
+OUTPUT_NAME_FMT <- "clean_dmr_%s%d.csv"   # %s = the PARAM_SET's file_tag
 
 ## Engine (the raw members are 3.7-22 GB; this machine has 8 GB of RAM) --------
 # DuckDB streams the raw CSV out-of-core and spills to disk. Only the permit +
-# TSS filter runs there; what returns to R is small (~160k rows for a normal
+# parameter filter runs there; what returns to R is small (~160k rows for a normal
 # year), and every other filter runs in R exactly as it always has.
 # 8 GB of RAM total, and R holds the returned rows on top of whatever DuckDB
 # takes, so DuckDB cannot be given most of the machine. At 5GB the OS killed
@@ -276,8 +289,23 @@ ADD_FACILITY_ID  <- TRUE    # FACILITY_ID via build_facility_crosswalk()
 # reads the description, and a blank code keeps a blank description.
 ADD_NODI_DESC    <- TRUE
 
+## WHICH PARAMETER(S) ----------------------------------------------------------
+# A named set of PARAMETER_CODEs. Every code in the set is kept; each row keeps
+# its own PARAMETER_CODE, which is part of ROW_KEY, so two codes in one set are
+# never merged or summed together. `file_tag` goes into every output name, so
+# two sets never write the same file. TSS has an empty tag so its files keep
+# the names build_permit_month_panels.R reads (clean_dmr_<FY>.csv).
+# bod: BOD5 (00310) and carbonaceous BOD5 (80082). Not included: the percent-
+# removal codes (81010, 80091) and the small BOD codes (e.g. 00318, 85002).
+# Overridable from the command line, as the first argument:
+#   Rscript code/clean_dmr/build_dmr_clean_panel.R bod 2017
+PARAM_SETS <- list(
+  tss = list(codes = "00530",             file_tag = ""),
+  bod = list(codes = c("00310", "80082"), file_tag = "bod_")
+)
+PARAM_SET <- "tss"
+
 ## Fixed scope (change only with a reason) -------------------------------------
-F_PARAM     <- "00530"        # TSS
 F_MONLOC    <- c("1", "EG")   # both = Effluent Gross (ASSUMPTION 2)
 F_FEATURE   <- "EXO"          # external outfall      (ASSUMPTION 3)
 # Monthly average = every code EPA flags as one (ASSUMPTION 4).
@@ -300,7 +328,7 @@ F_STATES <- c("AL", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "ID",
 
 ## The variables to keep, in output order --------------------------------------
 # VIOLATION_COLS (above) are written after EXCEEDENCE_PCT; FLAG_MULTI_LIMIT_ID
-# is appended last.
+# and FLAG_MULTI_LIMIT_SET are appended last.
 KEEP_COLS <- c(
   # keys
   "EXTERNAL_PERMIT_NMBR", "PERM_FEATURE_NMBR", "MONITORING_PERIOD_END_DATE",
@@ -325,8 +353,10 @@ KEEP_COLS <- c(
 INTERNAL_COLS <- c("LIMIT_VALUE_QUALIFIER_CODE")
 
 # The row key (ASSUMPTION 6). `period_end` is the parsed MONITORING_PERIOD_END_DATE.
+# PARAMETER_CODE is constant for a one-code set (TSS) and separates the codes of
+# a multi-code set (BOD5 vs CBOD5).
 ROW_KEY <- c("EXTERNAL_PERMIT_NMBR", "PERM_FEATURE_NMBR", "period_end",
-             "VALUE_TYPE_CODE", "LIMIT_SET_ID", "STATISTICAL_BASE_CODE",
+             "PARAMETER_CODE", "VALUE_TYPE_CODE", "LIMIT_SET_ID", "STATISTICAL_BASE_CODE",
              "MONITORING_LOCATION_CODE", "LIMIT_ID")
 
 # Derived columns used for work INSIDE the script but deliberately NOT written:
@@ -344,6 +374,9 @@ INTERNAL_DERIVED <- "period_end"
 # Command-line override of YEARS (see the YEARS comment above).
 local({
   args <- commandArgs(trailingOnly = TRUE)
+  if (length(args) && tolower(args[1]) %in% names(PARAM_SETS)) {
+    PARAM_SET <<- tolower(args[1]); args <- args[-1]
+  }
   if (length(args) == 0L) return(invisible(NULL))
   if (length(args) == 1L && tolower(args[1]) == "all") {
     YEARS <<- "all"; return(invisible(NULL))
@@ -351,11 +384,16 @@ local({
   yr <- suppressWarnings(as.integer(args))
   if (anyNA(yr))
     stop("Unparseable YEARS argument(s): ", paste(args[is.na(yr)], collapse = ", "),
-         '\n  Usage: Rscript build_dmr_clean_panel.R [all | <FY> [<FY> ...]]')
+         '\n  Usage: Rscript build_dmr_clean_panel.R [', paste(names(PARAM_SETS), collapse = " | "),
+         '] [all | <FY> [<FY> ...]]')
   YEARS <<- yr
 })
 
 validate_config()
+
+# Resolved after the command line, which may have changed PARAM_SET.
+F_PARAM  <- PARAM_SETS[[PARAM_SET]]$codes
+out_name <- function(fy) sprintf(OUTPUT_NAME_FMT, PARAM_SETS[[PARAM_SET]]$file_tag, fy)
 
 # ==============================================================================
 # STEP 0: resolve YEARS -> source zips, and pre-flight them (ASSUMPTION 10)
@@ -556,7 +594,7 @@ fy_of <- function(x) year(x) + (month(x) >= 10L)
 # ==============================================================================
 # STEP 2: per source -- extract the member, then filter it in DuckDB
 # ==============================================================================
-# Returns a data.table of population + TSS rows for the whole member, with every
+# Returns a data.table of population + PARAM_SET rows for the whole member, with every
 # column character and trimmed. Every other filter runs in R, per fiscal year,
 # in process_fy() below -- same order and same counts as before (ASSUMPTION 1).
 read_source <- function(src) {
@@ -599,12 +637,14 @@ read_source <- function(src) {
   sql <- sprintf("
     SELECT %s
     FROM read_csv('%s', all_varchar=true, header=true, sample_size=-1) d
-    WHERE trim(d.\"PARAMETER_CODE\") = '%s'
+    WHERE trim(d.\"PARAMETER_CODE\") IN (%s)
       AND trim(d.\"EXTERNAL_PERMIT_NMBR\") IN
           (SELECT \"EXTERNAL_PERMIT_NMBR\" FROM eligible_permits)",
-    paste(sprintf("d.\"%s\"", want_cols), collapse = ", "), gz, F_PARAM)
+    paste(sprintf("d.\"%s\"", want_cols), collapse = ", "), gz,
+    paste(sprintf("'%s'", F_PARAM), collapse = ", "))
 
-  message("  DuckDB: eligible permits + PARAMETER_CODE ", F_PARAM, " ...")
+  message("  DuckDB: eligible permits + PARAMETER_CODE ", paste(F_PARAM, collapse = "/"),
+          " (", PARAM_SET, ") ...")
   t0 <- Sys.time()
   d <- setDT(dbGetQuery(con, sql))
   message("    returned ", format(nrow(d), big.mark = ","), " rows in ",
@@ -619,13 +659,13 @@ read_source <- function(src) {
 }
 
 # ==============================================================================
-# STEP 3-7 for ONE fiscal year, on rows already restricted to population + TSS
+# STEP 3-7 for ONE fiscal year, on rows already restricted to population + PARAM_SET
 # ==============================================================================
 # Writes data/processed/clean_dmr_<fy_data>.csv and prints that year's run log.
 # Returns a one-row data.table for the closing summary.
 process_fy <- function(d, fy_data, src, n_src_rows) {
 
-  OUTPUT_PATH <- file.path(OUTPUT_DIR, sprintf(OUTPUT_NAME_FMT, fy_data))
+  OUTPUT_PATH <- file.path(OUTPUT_DIR, out_name(fy_data))
   n_in <- nrow(d)
 
   # ---- the scope filters, in the order the funnel reports them ---------------
@@ -762,6 +802,17 @@ process_fy <- function(d, fy_data, src, n_src_rows) {
   # facility-by-month panel; the original date string is retained alongside.
   d[, `:=`(YEAR = year(period_end), MONTH = month(period_end))]
 
+  # Rows that differ from another row ONLY by limit set: more than one limit set
+  # in the same permit x year-month x outfall x value type x statistical base x
+  # monitoring location (PI request, 2026-10-29). Limit sets that are already
+  # told apart by value type, statistical base or location are not flagged.
+  # Different from FLAG_MULTI_LIMIT_ID, which marks two LIMIT_IDs inside ONE
+  # limit set; the two flags mark no common row in FY2009-FY2025 (TSS).
+  # Within one PARAMETER_CODE: a BOD5 and a CBOD5 limit set are not "multi".
+  d[, FLAG_MULTI_LIMIT_SET := uniqueN(LIMIT_SET_ID) > 1L,
+    by = .(EXTERNAL_PERMIT_NMBR, YEAR, MONTH, PERM_FEATURE_NMBR, PARAMETER_CODE,
+           VALUE_TYPE_CODE, STATISTICAL_BASE_CODE, MONITORING_LOCATION_CODE)]
+
   # ASSUMPTION 12: EPA's own NODI text beside the code. Readability only.
   if (ADD_NODI_DESC) {
     # An undocumented code stops this year rather than being written with a
@@ -790,17 +841,17 @@ process_fy <- function(d, fy_data, src, n_src_rows) {
                 "EXTERNAL_PERMIT_NMBR", "PERM_FEATURE_NMBR",
                 if (RESTRICT_CONTINENTAL) "STATE_CODE",
                 INTERNAL_DERIVED, "YEAR", "MONTH",
-                rest_cols, "FLAG_MULTI_LIMIT_ID")
+                rest_cols, "FLAG_MULTI_LIMIT_ID", "FLAG_MULTI_LIMIT_SET")
   out <- d[, ..out_cols]
 
-  # Row order: facility, then time, then the full row key. Facility first because
-  # the file is read and merged facility-by-facility; period_end breaks ties
-  # within a YEAR x MONTH (a month can hold more than one period-end day); the
-  # remaining key parts make the order TOTAL, so the same input always writes
-  # byte-identical rows in the same sequence.
-  SORT_KEY <- c(if (ADD_FACILITY_ID) "FACILITY_ID" else "EXTERNAL_PERMIT_NMBR",
-                "YEAR", "MONTH", "period_end",
-                "EXTERNAL_PERMIT_NMBR", "PERM_FEATURE_NMBR", "VALUE_TYPE_CODE",
+  # Row order: permit, then time, then the rest of the row key, so each permit's
+  # history reads chronologically in one block (PI request, 2026-10-29). A
+  # facility with several permits therefore shows one permit's months, then the
+  # next's. period_end breaks ties within a YEAR x MONTH (a month can hold more
+  # than one period-end day); the remaining key parts make the order TOTAL, so
+  # the same input always writes byte-identical rows in the same sequence.
+  SORT_KEY <- c("EXTERNAL_PERMIT_NMBR", "YEAR", "MONTH", "period_end",
+                "PERM_FEATURE_NMBR", "PARAMETER_CODE", "VALUE_TYPE_CODE",
                 "STATISTICAL_BASE_CODE", "MONITORING_LOCATION_CODE",
                 "LIMIT_SET_DESIGNATOR", "LIMIT_SET_ID", "LIMIT_ID")
   setorderv(out, SORT_KEY)
@@ -813,7 +864,7 @@ process_fy <- function(d, fy_data, src, n_src_rows) {
   stopifnot(nrow(out) == n_pre_join)
   stopifnot(all(KEEP_COLS %in% names(out)), all(VIOLATION_COLS %in% names(out)))
   stopifnot(all(out$PERM_FEATURE_TYPE_CODE == F_FEATURE),
-            all(out$PARAMETER_CODE == F_PARAM),
+            all(out$PARAMETER_CODE %in% F_PARAM),
             all(out$MONITORING_LOCATION_CODE %in% F_MONLOC),
             all(out$STATISTICAL_BASE_CODE %in% F_STAT_BASES),
             all(out$VALUE_TYPE_CODE %in% vt_wanted))
@@ -845,7 +896,7 @@ process_fy <- function(d, fy_data, src, n_src_rows) {
   # STEP 7: run log (sanity checks)
   # ----------------------------------------------------------------------------
   per_cell <- out[, .N, by = c("EXTERNAL_PERMIT_NMBR", "PERM_FEATURE_NMBR",
-                               "period_end", "VALUE_TYPE_CODE")]
+                               "period_end", "PARAMETER_CODE", "VALUE_TYPE_CODE")]
   num <- function(x) suppressWarnings(as.numeric(x))
   reported <- out$DMR_VALUE_STANDARD_UNITS != ""
   limited  <- out$LIMIT_VALUE_STANDARD_UNITS != ""
@@ -853,6 +904,7 @@ process_fy <- function(d, fy_data, src, n_src_rows) {
   message("\n=== build_dmr_clean_panel: FY", fy_data, " ===")
   message("Source                       : ", basename(src$zip),
           "  (member ", src$member, ")")
+  message("Parameter set                : ", PARAM_SET, " (", paste(F_PARAM, collapse = "/"), ")")
   message("Toggles                      : RESTRICT_MONTHLY_ONLY=", RESTRICT_MONTHLY_ONLY,
           " | VALUE_TYPES=", paste(if (identical(VALUE_TYPES, "all")) "all" else VALUE_TYPES, collapse = "/"),
           " | EXCLUDE_STAT_BASES=",
@@ -865,7 +917,7 @@ process_fy <- function(d, fy_data, src, n_src_rows) {
   message("\n-- filter funnel --")
   message("Eligible permits (population): ", format(length(ELIGIBLE_PERMITS), big.mark = ","),
           "   (ASSUMPTION 1, shared with code/dmr/filter_dmr_major_individual.R)")
-  message("Rows from source, population + TSS: ", format(n_src_rows, big.mark = ","),
+  message("Rows from source, population + ", PARAM_SET, ": ", format(n_src_rows, big.mark = ","),
           "   (DuckDB, whole member)")
   message("  ...of which FY", fy_data, "      : ", format(n_in, big.mark = ","))
   message("  dropped, not Effluent Gross: ", format(n_not_monloc, big.mark = ","),
@@ -905,7 +957,7 @@ process_fy <- function(d, fy_data, src, n_src_rows) {
             else "")
   if (ADD_FACILITY_ID && !is.na(n_unrouted))
     message("Rows with no facility match     : ", format(n_unrouted, big.mark = ","))
-  message("Cells (outfall x month x value type): ", format(nrow(per_cell), big.mark = ","))
+  message("Cells (outfall x month x parameter x value type): ", format(nrow(per_cell), big.mark = ","))
   message("  ...cells with >1 row (limit sets / bases / locations / LIMIT_IDs, all kept): ",
           format(sum(per_cell$N > 1L), big.mark = ","),
           sprintf(" (%.2f%%)", 100 * sum(per_cell$N > 1L) / nrow(per_cell)),
@@ -921,6 +973,27 @@ process_fy <- function(d, fy_data, src, n_src_rows) {
   if (nrow(flag_tab))
     print(flag_tab[, .(cells = .N, possible_duplicate = sum(flag_same),
                        conflict = sum(!flag_same)), by = permit])
+
+  message("\n-- FLAG_MULTI_LIMIT_SET --")
+  message("Permit x ym x outfall x value type x base x location with >1 limit set: ",
+          uniqueN(out[FLAG_MULTI_LIMIT_SET == TRUE],
+                  by = c("EXTERNAL_PERMIT_NMBR", "YEAR", "MONTH", "PERM_FEATURE_NMBR", "PARAMETER_CODE",
+                         "VALUE_TYPE_CODE", "STATISTICAL_BASE_CODE", "MONITORING_LOCATION_CODE")),
+          " (", sum(out$FLAG_MULTI_LIMIT_SET), " rows, ",
+          sprintf("%.2f%%", 100 * mean(out$FLAG_MULTI_LIMIT_SET)), " of rows)")
+
+  message("\n-- parameter codes --")
+  print(out[, .(rows = .N, permits = uniqueN(EXTERNAL_PERMIT_NMBR),
+                outfalls = uniqueN(paste(EXTERNAL_PERMIT_NMBR, PERM_FEATURE_NMBR))),
+            by = PARAMETER_CODE][order(PARAMETER_CODE)])
+  if (length(F_PARAM) > 1L) {
+    po <- unique(out[, .(EXTERNAL_PERMIT_NMBR, PERM_FEATURE_NMBR, period_end, PARAMETER_CODE)])
+    po <- po[, .(n_codes = .N), by = .(EXTERNAL_PERMIT_NMBR, PERM_FEATURE_NMBR, period_end)]
+    message("Outfall-periods reporting more than one code of the set: ",
+            format(sum(po$n_codes > 1L), big.mark = ","), " of ", format(nrow(po), big.mark = ","),
+            " | permits with more than one code in the year: ",
+            sum(out[, uniqueN(PARAMETER_CODE), by = EXTERNAL_PERMIT_NMBR]$V1 > 1L))
+  }
 
   message("\n-- value types --")
   print(out[, .N, by = VALUE_TYPE_CODE][order(-N)])
@@ -1072,7 +1145,7 @@ for (si in seq_along(SOURCES)) {
     # ASSUMPTION 14: two sources must not write the same file in one run.
     if (!is.na(claimed_by[key]))
       stop("FY", this_fy, " is produced by two sources in this run: ", claimed_by[key],
-           " and ", src$key, ".\n  ", sprintf(OUTPUT_NAME_FMT, this_fy),
+           " and ", src$key, ".\n  ", out_name(this_fy),
            " would be written twice. Narrow YEARS, or investigate the overlap",
            "\n  (see ASSUMPTION 14).")
     claimed_by[key] <- src$key
