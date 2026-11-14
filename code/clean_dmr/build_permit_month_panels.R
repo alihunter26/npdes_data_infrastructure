@@ -22,17 +22,26 @@ source(local({
 # build_permit_month_panels.R
 # ------------------------------------------------------------------------------
 # Permit-month panels built from the cleaned intermediate DMR panel, following
-# CWA_Data_shared/Cleaned_Intermediate_DMR_TSS.docx.
+# CWA_Data_shared/DMR_TSS_panel_building.docx (panels I-VIII; written as pm1-pm8).
 #
-#   1  permits that only ever have one row per month        -> all their rows
-#   2  permits that only ever have one Q row per month      -> their Q rows only
-#   3  permits that only ever have one C row per month      -> their C rows only
-#      (1-3 balanced: each panel's permits x every month of the window; a month
-#      without a row in the panel has blank row columns)
-#   4  every permit x every month of the window (balanced) -> the one row with
-#      the max value/limit ratio; a month with no rows has N_ROWS = 0
-#   5  every permit x every month of the window (balanced) -> one aggregated row
-#      (counts, ratios, flags, Q/C totals); a month with no rows has N_ROWS = 0
+#   0    baseline: every permit x every month, no data columns, RAW_DATA only
+#   I    permits that only ever have one row per month      -> all their rows
+#   II   permit-months with exactly one row (any permit)    -> that row
+#   III  permits that only ever have one Q row per month    -> their Q rows only
+#   IV   permit-months with exactly one Q row               -> that Q row
+#   V    permits that only ever have one C row per month    -> their C rows only
+#   VI   permit-months with exactly one C row               -> that C row
+#   VII  every permit-month -> the one row with the max value/limit ratio
+#   VIII every permit-month -> one aggregated row (counts, ratios, flags, Q/C totals)
+#
+# Every panel is balanced over the same grid: every permit in the cleaned panel
+# over the window x every month of the window (FY2009-FY2025: 6,520 x 204).
+# A permit-month the panel does not populate has blank row columns.
+# RAW_DATA = TRUE if the permit-month has at least one row in the cleaned panel
+# (any basis), the same in every panel; so a blank row with RAW_DATA TRUE was
+# dropped by the panel's rule, and one with RAW_DATA FALSE had no data.
+# A month inside a multi-month report's period, but not the month it is dated
+# to, has RAW_DATA FALSE and FLAG_MULTI_MONTH_COVERED TRUE.
 #
 # Each output is one row per permit x YEAR x MONTH by construction (asserted).
 #
@@ -41,13 +50,16 @@ source(local({
 #     window, so one month with two rows anywhere excludes the permit.
 #   - Month = YEAR/MONTH of MONITORING_PERIOD_END_DATE. Every row counts,
 #     NODI-only rows included.
-#   - Q = VALUE_TYPE_CODE Q1/Q2; C = C1/C2/C3. Panel 2 needs at least one Q row
-#     (permits with no Q row ever are not in it); likewise panel 3 for C.
-#     A month where a panel-2 permit has only C rows has a blank row in panel 2
-#     with N_ROWS > 0.
+#   - Q = VALUE_TYPE_CODE Q1/Q2; C = C1/C2/C3. Panel III needs at least one Q
+#     row (a permit with no Q row ever populates nothing); likewise V for C.
+#     Panels III-VI drop the other basis before selecting, so a month with one
+#     Q row and any number of C rows is populated in IV (with the Q row).
+#   - Panel II populates a permit-month with exactly one row, whatever the
+#     permit's other months look like; so I is inside II, III inside IV and V
+#     inside VI (asserted).
 #   - Facility = FACILITY_ID (FRS FACILITY_UIN, else the permit number).
 #
-# Panels 4 and 5 (Philip, 2026-11-09):
+# Panels VII and VIII, written as pm7 and pm8 (Philip, 2026-11-09):
 #   - Each row gets one STATUS: discharged (value other than 0; the few
 #     negative values are kept at face value, see section 5); no_discharge (value = 0,
 #     or blank value with NODI C); below_dl (blank value with NODI B, "Below
@@ -58,7 +70,7 @@ source(local({
 #     (and below_dl rows while B_AS_ZERO is TRUE) with a limit > 0. A blank
 #     limit always gives NA. A limit of 0 is left out of every ratio, total and
 #     average, and a discharge on one sets FLAG_ZERO_LIMIT_DISCHARGE.
-#   - Panel 4 keeps the row with the max all-points ratio (ties: first row in
+#   - Panel VII keeps the row with the max all-points ratio (ties: first row in
 #     the cleaned panel's sort order). With no ratio in the month it keeps the
 #     max Q value, else the max C value, else the first Q row, else the first C
 #     row. SELECTED_BY says which rule picked the row.
@@ -69,36 +81,43 @@ source(local({
 #     both. Averages of discharge over rows with a value; of limit over limits > 0.
 #   - Permit-month flags = any row in the month carries the row flag.
 #
-# All five panels are balanced (Philip, 2026-11-09):
-#   - Panels 1-3: every permit in the panel gets every month of the requested
-#     FYs. A month without a row in the panel has blank row columns (its two
-#     row flags FALSE). N_ROWS = the cleaned panel's rows for the permit-month,
-#     all bases, as in panels 4 and 5: 0 = nothing in the cleaned panel; > 0 on
-#     a blank row = rows of the other basis only (panels 2 and 3).
-#   - Panels 4 and 5: every permit in the window gets every month of the requested FYs
-#     (FY2009-FY2025: 204 months), whether or not it existed then. A month with
-#     no rows has N_ROWS = 0, every count 0, blank strings, NA ratios, totals and
-#     averages, and FALSE flags. FY, FACILITY_ID and STATE_CODE come from the
-#     permit (one value per permit, asserted), YEAR and MONTH from the month.
-#     In panel 4 every other cleaned-panel column is blank (its two row flags
-#     FALSE), and so are SELECTED_BY and ROW_STATUS.
+# Balancing (Philip, 2026-11-09; all panels over all permits, 2026-11-13):
+#   - Every panel: every permit in the window gets every month of the requested
+#     FYs (FY2009-FY2025: 204 months), whether or not it existed then, and
+#     whether or not the panel's rule ever selects it. FY, FACILITY_ID and
+#     STATE_CODE come from the permit (one value per permit, asserted), YEAR
+#     and MONTH from the month.
+#   - Panels I-VI: a month without a row in the panel has blank row columns
+#     (its two row flags FALSE). N_ROWS = the cleaned panel's rows for the
+#     permit-month, all bases, as in VII and VIII.
+#   - Panels VII and VIII: a month with no rows has N_ROWS = 0, every count 0,
+#     blank strings, NA ratios, totals and averages, and FALSE flags. In VII
+#     every other cleaned-panel column is blank (its two row flags FALSE), and
+#     so are SELECTED_BY and ROW_STATUS.
+#   - RAW_DATA = N_ROWS > 0.
 #   - FLAG_MULTI_MONTH_COVERED: N_ROWS = 0, and the month lies inside the
 #     monitoring period of a multi-month report (NMBR_OF_REPORT > 1, the number
 #     of months the period covers) that the cleaned panel dates to a later month.
-#   - Panel 5's row counts (Philip, 2026-11-09): N_DISCHARGED (value other
+#   - Panel VIII's row counts (Philip, 2026-11-09): N_DISCHARGED (value other
 #     than 0), N_NO_DISCHARGE (value 0, or blank value with NODI C),
 #     N_OTHER_NODI (blank value, any other NODI code, B included), N_NO_NODI
 #     (blank value, no NODI code). The four add up to N_ROWS. N_BELOW_DL still
 #     counts the below_dl rows on their own.
 #
-#   Input  : data/processed/clean_dmr_<FY>.csv for the years requested
-#   Output : data/processed/dmr_pm{1_one_row,2_one_q,3_one_c}_fy<first>_<last>.csv
-#            (balanced: FY column first, then the cleaned panel's 26 columns, all
-#            text, then N_ROWS and FLAG_MULTI_MONTH_COVERED)
-#            data/processed/dmr_pm4_max_ratio_fy<first>_<last>.csv  (balanced: the
-#            same 27 columns for the selected row, then RATIO ... FLAG_MULTI_MONTH_COVERED)
-#            data/processed/dmr_pm5_aggregate_fy<first>_<last>.csv  (balanced:
-#            permits x months, 35 columns)
+#   Input  : data/processed/clean_dmr_tss_<FY>.csv for the years requested
+#   Output : data/processed/, every file balanced (permits x months), <span> = fy<first>_<last>
+#            dmr_pm0_baseline_<span>.csv  (FY, FACILITY_ID, EXTERNAL_PERMIT_NMBR,
+#              STATE_CODE, YEAR, MONTH, RAW_DATA, FLAG_MULTI_MONTH_COVERED)
+#            dmr_pm{1_one_row,2_one_row_month,3_one_q,4_one_q_month,5_one_c,
+#              6_one_c_month}_<span>.csv  (panels I-VI: FY column first, then the
+#              cleaned panel's 26 columns, all text, then N_ROWS, RAW_DATA and
+#              FLAG_MULTI_MONTH_COVERED)
+#            dmr_pm7_max_ratio_<span>.csv  (panel VII: the same 27 columns for the
+#              selected row, then RATIO ... FLAG_MULTI_MONTH_COVERED)
+#            dmr_pm8_aggregate_<span>.csv  (panel VIII: 36 columns)
+#   The log ends with the four summary stats of the panel-building doc for
+#   every panel: permits with >= 1 populated row, permits with every row
+#   populated, permit-months populated, cleaned-panel rows used.
 #   Run   : Rscript code/clean_dmr/build_permit_month_panels.R            # FY2009-FY2025
 #            Rscript code/clean_dmr/build_permit_month_panels.R 2017       # any list of FYs
 # ==============================================================================
@@ -117,7 +136,7 @@ KEY <- c("EXTERNAL_PERMIT_NMBR", "yr", "mo")
 # ------------------------------------------------------------------------------
 # 1. Load the cleaned panel
 # ------------------------------------------------------------------------------
-files <- file.path(PROC_DIR, sprintf("clean_dmr_%d.csv", YEARS))
+files <- file.path(PROC_DIR, sprintf("clean_dmr_tss_%d.csv", YEARS))
 if (any(!file.exists(files))) stop("Missing: ", paste(basename(files[!file.exists(files)]), collapse = ", "))
 d <- rbindlist(lapply(seq_along(YEARS), function(i) {
   x <- fread(files[i], colClasses = "character")
@@ -132,7 +151,7 @@ d[, `:=`(yr = as.integer(YEAR), mo = as.integer(MONTH), QC = substr(VALUE_TYPE_C
 stopifnot(all(d$QC %in% c("Q", "C")))
 
 say("==============================================================================")
-say("Permit-month panels 1-5, ", SPAN, "  (", format(Sys.time(), "%Y-%m-%d %H:%M"), ")")
+say("Permit-month panels I-VIII, ", SPAN, "  (", format(Sys.time(), "%Y-%m-%d %H:%M"), ")")
 say("==============================================================================")
 
 # ------------------------------------------------------------------------------
@@ -183,19 +202,31 @@ if (nrow(both))
                  VALUE_TYPE_CODE, DMR_VALUE_STANDARD_UNITS, NODI_CODE, LIMIT_VALUE_STANDARD_UNITS)])
 
 # ------------------------------------------------------------------------------
-# 3. Qualifying permits and the three panels
+# 3. Panels I-VI: the rows each one keeps
 # ------------------------------------------------------------------------------
 pp <- pm[, .(max_n = max(n), max_Q = max(nQ), max_C = max(nC)), by = EXTERNAL_PERMIT_NMBR]
+dQ <- d[QC == "Q"]; dC <- d[QC == "C"]
 P <- list(
-  p1 = d[EXTERNAL_PERMIT_NMBR %in% pp[max_n == 1L, EXTERNAL_PERMIT_NMBR]],
-  p2 = d[QC == "Q" & EXTERNAL_PERMIT_NMBR %in% pp[max_Q == 1L, EXTERNAL_PERMIT_NMBR]],   # max 1 => has Q, never 2+
-  p3 = d[QC == "C" & EXTERNAL_PERMIT_NMBR %in% pp[max_C == 1L, EXTERNAL_PERMIT_NMBR]]
+  I   = d [EXTERNAL_PERMIT_NMBR %in% pp[max_n == 1L, EXTERNAL_PERMIT_NMBR]],
+  II  = d [pm[n  == 1L, ..KEY], on = KEY, nomatch = NULL],
+  III = dQ[EXTERNAL_PERMIT_NMBR %in% pp[max_Q == 1L, EXTERNAL_PERMIT_NMBR]],   # max 1 => has Q, never 2+
+  IV  = dQ[pm[nQ == 1L, ..KEY], on = KEY, nomatch = NULL],
+  V   = dC[EXTERNAL_PERMIT_NMBR %in% pp[max_C == 1L, EXTERNAL_PERMIT_NMBR]],
+  VI  = dC[pm[nC == 1L, ..KEY], on = KEY, nomatch = NULL]
 )
+rm(dQ, dC)
 for (p in P) stopifnot(!anyDuplicated(p, by = KEY))
+stopifnot(nrow(P$II) == sum(pm$n == 1L), nrow(P$IV) == sum(pm$nQ == 1L), nrow(P$VI) == sum(pm$nC == 1L))
+for (s in list(c("I", "II"), c("III", "IV"), c("V", "VI")))           # I inside II, III inside IV, V inside VI
+  stopifnot(nrow(P[[s[1]]][!P[[s[2]]], on = KEY]) == 0L)
 
-LAB <- c(p1 = "Panel 1: permits with only ever one row per month (all rows)",
-         p2 = "Panel 2: permits with only ever one Q row per month (Q rows only)",
-         p3 = "Panel 3: permits with only ever one C row per month (C rows only)")
+LAB <- c(I   = "Panel I: permits with only ever one row per month (all rows)",
+         II  = "Panel II: permit-months with exactly one row",
+         III = "Panel III: permits with only ever one Q row per month (Q rows only)",
+         IV  = "Panel IV: permit-months with exactly one Q row (Q rows only)",
+         V   = "Panel V: permits with only ever one C row per month (C rows only)",
+         VI  = "Panel VI: permit-months with exactly one C row (C rows only)")
+BASIS <- c(I = "", II = "", III = "Q", IV = "Q", V = "C", VI = "C")
 
 report <- function(k) {
   p  <- P[[k]]; N <- nrow(p); np <- uniqueN(p$EXTERNAL_PERMIT_NMBR)
@@ -203,15 +234,15 @@ report <- function(k) {
   say(LAB[[k]])
   say("==============================================================================")
   say("permits recovered        ", of(np, U$perm, "permits in the cleaned panel"))
-  if (k == "p2") say("                         ", of(np, U$permQ, "permits with any Q row"))
-  if (k == "p3") say("                         ", of(np, U$permC, "permits with any C row"))
+  if (BASIS[[k]] == "Q") say("                         ", of(np, U$permQ, "permits with any Q row"))
+  if (BASIS[[k]] == "C") say("                         ", of(np, U$permC, "permits with any C row"))
   say("observations recovered   ", of(N, U$rows, "cleaned-panel rows"))
   say("  (1 row = 1 permit-month) ", of(N, U$pm, "cleaned-panel permit-months"))
-  if (k == "p2") say("                         ", of(N, U$rowsQ, "Q rows in the cleaned panel"))
-  if (k == "p3") say("                         ", of(N, U$rowsC, "C rows in the cleaned panel"))
-  if (k == "p1") {
+  if (BASIS[[k]] == "Q") say("                         ", of(N, U$rowsQ, "Q rows in the cleaned panel"))
+  if (BASIS[[k]] == "C") say("                         ", of(N, U$rowsC, "C rows in the cleaned panel"))
+  if (BASIS[[k]] == "") {
     sw <- p[, uniqueN(QC), by = EXTERNAL_PERMIT_NMBR][V1 > 1L, .N]
-    say("permits whose single row is Q in some months and C in others: ", of(sw, np, "panel-1 permits"))
+    say("permits whose single row is Q in some months and C in others: ", of(sw, np, paste("panel", k, "permits")))
   }
 
   mf <- multi_fac(p)
@@ -234,13 +265,14 @@ report <- function(k) {
 for (k in names(P)) report(k)
 
 # ------------------------------------------------------------------------------
-# Balancing, shared by all five panels: every permit x every month of the
+# Balancing, shared by all panels: every permit x every month of the
 # requested FYs (FY y = Oct y-1 .. Sep y). zk = the months with no rows.
 # ------------------------------------------------------------------------------
 pa   <- unique(d[, .(EXTERNAL_PERMIT_NMBR, FACILITY_ID, STATE_CODE)])
 stopifnot(!anyDuplicated(pa$EXTERNAL_PERMIT_NMBR))                 # one facility and state per permit
 mons <- rbindlist(lapply(YEARS, function(y) data.table(yr = c(rep(y - 1L, 3L), rep(y, 9L)), mo = c(10:12, 1:9))))
-grid <- CJ(EXTERNAL_PERMIT_NMBR = pa$EXTERNAL_PERMIT_NMBR, i = seq_len(nrow(mons)))
+NM   <- nrow(mons)
+grid <- CJ(EXTERNAL_PERMIT_NMBR = pa$EXTERNAL_PERMIT_NMBR, i = seq_len(NM))
 grid[, `:=`(yr = mons$yr[i], mo = mons$mo[i])][, i := NULL]
 stopifnot(nrow(pm[!grid, on = KEY]) == 0L)                         # every observed month is in the grid
 zk <- pa[grid[!pm, on = KEY], on = "EXTERNAL_PERMIT_NMBR"]
@@ -250,19 +282,60 @@ cv <- unique(d[as.integer(NMBR_OF_REPORT) > 1L, .(EXTERNAL_PERMIT_NMBR, m = yr *
 cv <- unique(cv[, .(cm = m - seq_len(nrep - 1L)), by = .(EXTERNAL_PERMIT_NMBR, m, nrep)][
   , .(EXTERNAL_PERMIT_NMBR, yr = cm %/% 12L, mo = cm %% 12L + 1L)])
 zk[cv, FLAG_MULTI_MONTH_COVERED := TRUE, on = KEY]
-stopifnot(nrow(zk) + U$pm == U$perm * nrow(mons))
-rm(grid, cv)
+stopifnot(nrow(zk) + U$pm == U$perm * NM)
+rm(cv)
+
+# Summary stats of the panel-building doc, one row per panel, printed per panel
+# and again as a table at the end. popd = the permit-month is populated.
+ST <- list()
+panel_stats <- function(id, b, popd, used) {
+  pc <- data.table(p = b$EXTERNAL_PERMIT_NMBR, popd = popd)[, .(k = sum(popd)), by = p]
+  stopifnot(nrow(pc) == U$perm, nrow(b) == U$perm * NM, !any(popd & !b$RAW_DATA))
+  s <- data.table(panel = id, perm_any = sum(pc$k > 0L), perm_all = sum(pc$k == NM), pm_pop = sum(popd),
+                  rows_used = used, blank_raw = sum(!popd & b$RAW_DATA), blank_noraw = sum(!popd & !b$RAW_DATA))
+  ST[[id]] <<- s
+  say("summary stats")
+  say("  permits with >= 1 populated row   ", of(s$perm_any, U$perm, "permits"))
+  say("  permits with every row populated  ", of(s$perm_all, U$perm, "permits"), "  (all ", NM, " months)")
+  say("  permit-months populated           ", of(s$pm_pop, nrow(b), "permit-months"), "; ",
+      of(s$pm_pop, U$pm, "permit-months with RAW_DATA"))
+  say("  cleaned-panel rows used           ", of(used, U$rows, "cleaned-panel rows"))
+  say("  blank, RAW_DATA TRUE (dropped by the panel's rule) ", of(s$blank_raw, nrow(b), "permit-months"))
+  say("  blank, RAW_DATA FALSE (no data)                    ", of(s$blank_noraw, nrow(b), "permit-months"),
+      "; of which FLAG_MULTI_MONTH_COVERED ", fmt(sum(!popd & b$FLAG_MULTI_MONTH_COVERED)))
+}
+outfile <- function(stem) file.path(PROC_DIR, sprintf("dmr_pm%s_%s.csv", stem, SPAN))
+wrote   <- function(n, f) say("wrote ", fmt(n), " rows -> ", sub(paste0(CWA_ROOT, "/"), "", f))
 
 # ------------------------------------------------------------------------------
-# 4. Balance panels 1-3 (each over its own permits) and write
+# 4. The baseline and panels I-VI, balanced over every permit, and write
 # ------------------------------------------------------------------------------
-P13_COLS <- c(OUT_COLS, "N_ROWS", "FLAG_MULTI_MONTH_COVERED")
-balance13 <- function(p) {
-  perm <- unique(p$EXTERNAL_PERMIT_NMBR)
-  g <- CJ(EXTERNAL_PERMIT_NMBR = perm, i = seq_len(nrow(mons)))
-  g[, `:=`(yr = mons$yr[i], mo = mons$mo[i])][, i := NULL]
-  stopifnot(nrow(p[!g, on = KEY]) == 0L, all(p$YEAR == as.character(p$yr)), all(p$MONTH == as.character(p$mo)))
-  e <- pa[g[!p, on = KEY], on = "EXTERNAL_PERMIT_NMBR"]
+b0 <- pa[grid, on = "EXTERNAL_PERMIT_NMBR"]
+b0[, `:=`(FY = as.character(yr + (mo >= 10L)), YEAR = yr, MONTH = mo, RAW_DATA = FALSE, FLAG_MULTI_MONTH_COVERED = FALSE)]
+b0[pm, RAW_DATA := TRUE, on = KEY]
+b0[zk[FLAG_MULTI_MONTH_COVERED == TRUE], FLAG_MULTI_MONTH_COVERED := TRUE, on = KEY]
+setorderv(b0, KEY)
+stopifnot(nrow(b0) == U$perm * NM, !anyDuplicated(b0, by = KEY), sum(b0$RAW_DATA) == U$pm,
+          !any(b0$RAW_DATA & b0$FLAG_MULTI_MONTH_COVERED))
+pc0 <- b0[, .(k = sum(RAW_DATA)), by = EXTERNAL_PERMIT_NMBR]
+BASE <- list(perm = U$perm, months = NM, rows = nrow(b0), raw = sum(b0$RAW_DATA),
+             cov = sum(b0$FLAG_MULTI_MONTH_COVERED), perm_all = sum(pc0$k == NM))
+say("\n==============================================================================")
+say("Baseline: every permit x every month, no data columns")
+say("==============================================================================")
+say("permit-months            ", fmt(BASE$rows), " = ", fmt(BASE$perm), " permits x ", NM, " months")
+say("RAW_DATA TRUE            ", of(BASE$raw, BASE$rows, "permit-months"))
+say("RAW_DATA FALSE           ", of(BASE$rows - BASE$raw, BASE$rows, "permit-months"),
+    "; of which FLAG_MULTI_MONTH_COVERED ", fmt(BASE$cov))
+say("permits with RAW_DATA in every month ", of(BASE$perm_all, BASE$perm, "permits"))
+B0_COLS <- c("FY", "FACILITY_ID", "EXTERNAL_PERMIT_NMBR", "STATE_CODE", "YEAR", "MONTH", "RAW_DATA", "FLAG_MULTI_MONTH_COVERED")
+f <- outfile("0_baseline"); fwrite(b0[, ..B0_COLS], f); wrote(nrow(b0), f)
+rm(b0, pc0)
+
+SEL_COLS <- c(OUT_COLS, "N_ROWS", "RAW_DATA", "FLAG_MULTI_MONTH_COVERED")
+balance_sel <- function(p) {
+  stopifnot(all(p$YEAR == as.character(p$yr)), all(p$MONTH == as.character(p$mo)))
+  e <- pa[grid[!p, on = KEY], on = "EXTERNAL_PERMIT_NMBR"]
   e[, `:=`(FY = as.character(yr + (mo >= 10L)), YEAR = as.character(yr), MONTH = as.character(mo))]
   for (v in setdiff(OUT_COLS, names(e))) set(e, j = v, value = "")
   e[, `:=`(FLAG_MULTI_LIMIT_ID = "FALSE", FLAG_MULTI_LIMIT_SET = "FALSE")]
@@ -270,37 +343,30 @@ balance13 <- function(p) {
   b <- rbind(p[, ..cols], e[, ..cols])
   b <- pm[, .(EXTERNAL_PERMIT_NMBR, yr, mo, N_ROWS = n)][b, on = KEY]      # rows in the cleaned panel, all bases
   b[is.na(N_ROWS), N_ROWS := 0L]
+  b[, RAW_DATA := N_ROWS > 0L]
   b[, FLAG_MULTI_MONTH_COVERED := FALSE][zk[FLAG_MULTI_MONTH_COVERED == TRUE], FLAG_MULTI_MONTH_COVERED := TRUE, on = KEY]
   setorderv(b, KEY)
-  stopifnot(nrow(b) == length(perm) * nrow(mons), !anyDuplicated(b, by = KEY),
-            sum(b$VALUE_TYPE_CODE != "") == nrow(p), all(b[VALUE_TYPE_CODE != ""]$N_ROWS >= 1L))
+  stopifnot(nrow(b) == U$perm * NM, !anyDuplicated(b, by = KEY), sum(b$RAW_DATA) == U$pm,
+            sum(b$VALUE_TYPE_CODE != "") == nrow(p), all(b[VALUE_TYPE_CODE != ""]$RAW_DATA))
   b
 }
-NAMES <- c(p1 = "1_one_row", p2 = "2_one_q", p3 = "3_one_c")
-say("\n==============================================================================")
-say("Panels 1-3 balanced: each panel's permits x ", nrow(mons), " months")
-say("==============================================================================")
+NAMES <- c(I = "1_one_row", II = "2_one_row_month", III = "3_one_q", IV = "4_one_q_month",
+           V = "5_one_c", VI = "6_one_c_month")
 for (k in names(P)) {
-  b <- balance13(P[[k]])
-  n <- nrow(b); row <- b$VALUE_TYPE_CODE != ""
-  say(k, ": ", fmt(n), " permit-months = ", fmt(uniqueN(b$EXTERNAL_PERMIT_NMBR)), " permits x ", nrow(mons),
-      "; with a row ", of(sum(row), n, "permit-months"))
-  say("    no row, N_ROWS = 0 (nothing in the cleaned panel) ", of(sum(!row & b$N_ROWS == 0L), n, "permit-months"),
-      "; of which FLAG_MULTI_MONTH_COVERED ", fmt(sum(b$FLAG_MULTI_MONTH_COVERED)))
-  say("    no row, N_ROWS > 0 (rows of the other basis only)  ", of(sum(!row & b$N_ROWS > 0L), n, "permit-months"),
-      " in ", fmt(uniqueN(b[!row & N_ROWS > 0L]$EXTERNAL_PERMIT_NMBR)), " permits")
-  f <- file.path(PROC_DIR, sprintf("dmr_pm%s_%s.csv", NAMES[[k]], SPAN))
-  fwrite(b[, ..P13_COLS], f)
-  say("    wrote ", fmt(n), " rows -> ", sub(paste0(CWA_ROOT, "/"), "", f))
+  b <- balance_sel(P[[k]])
+  say("\n-- ", LAB[[k]], ", balanced: ", fmt(nrow(b)), " permit-months = ", fmt(U$perm), " permits x ", NM, " months --")
+  popd <- b$VALUE_TYPE_CODE != ""
+  panel_stats(k, b, popd, used = sum(popd))                         # one cleaned row per populated month
+  f <- outfile(NAMES[[k]]); fwrite(b[, ..SEL_COLS], f); wrote(nrow(b), f)
 }
-rm(P, b)
+rm(P, b, popd, grid)
 
 # ==============================================================================
-# 5. Row classification shared by panels 4 and 5
+# 5. Row classification shared by panels VII and VIII
 # ==============================================================================
 # Toggle: NODI B rows take ratio 0, like no_discharge rows, in the all-points
-# ratio, in panel 4's selection and in TOTAL_DISCHARGED_Q. Whatever this is
-# set to, they keep STATUS "below_dl", and panel 5 counts them in
+# ratio, in panel VII's selection and in TOTAL_DISCHARGED_Q. Whatever this is
+# set to, they keep STATUS "below_dl", and panel VIII counts them in
 # N_OTHER_NODI and on their own in N_BELOW_DL.
 B_AS_ZERO <- TRUE
 
@@ -336,7 +402,7 @@ d[, `:=`(is_dis = as.integer(STATUS == "discharged"), is_nd = as.integer(STATUS 
          is_mls = as.integer(FLAG_MULTI_LIMIT_SET == "TRUE"), is_mli = as.integer(FLAG_MULTI_LIMIT_ID == "TRUE"))]
 
 say("\n==============================================================================")
-say("Row status, used by panels 4 and 5 (B_AS_ZERO = ", B_AS_ZERO, ")")
+say("Row status, used by panels VII and VIII (B_AS_ZERO = ", B_AS_ZERO, ")")
 say("==============================================================================")
 for (s in c("discharged", "no_discharge", "below_dl", "no_report"))
   say(sprintf("  %-13s ", s), of(sum(d$STATUS == s), U$rows, "cleaned-panel rows"))
@@ -379,7 +445,7 @@ rm(pieces)
 
 
 # ==============================================================================
-# 6. Panel 4: one selected row per permit-month
+# 6. Panel VII: one selected row per permit-month
 # ==============================================================================
 SEL <- c("max_ratio", "max_Q_value", "max_C_value", "no_value_first_Q", "no_value_first_C")
 d[, tier  := fcase(!is.na(r_all), 1L, QC == "Q" & !is.na(val), 2L, QC == "C" & !is.na(val), 3L,
@@ -390,14 +456,14 @@ stopifnot(nrow(p4) == U$pm)
 p4[, `:=`(RATIO = r_all, SELECTED_BY = SEL[tier], ROW_STATUS = STATUS)]
 p4 <- agg[, .(EXTERNAL_PERMIT_NMBR, yr, mo, N_ROWS, ANY_DISCHARGED = N_DISCHARGED > 0L,
               NODI_STRING_MONTH = NODI_STRING, FLAG_ZERO_LIMIT_DISCHARGE = zld == 1L)][p4, on = KEY]
-P4_COLS <- c(OUT_COLS, "RATIO", "SELECTED_BY", "ROW_STATUS", "N_ROWS", "ANY_DISCHARGED",
+P4_COLS <- c(OUT_COLS, "RATIO", "SELECTED_BY", "ROW_STATUS", "N_ROWS", "RAW_DATA", "ANY_DISCHARGED",
              "NODI_STRING_MONTH", "FLAG_ZERO_LIMIT_DISCHARGE", "FLAG_MULTI_MONTH_COVERED")
-p4[, FLAG_MULTI_MONTH_COVERED := FALSE]
+p4[, `:=`(RAW_DATA = TRUE, FLAG_MULTI_MONTH_COVERED = FALSE)]
 stopifnot(all(p4$YEAR == as.character(p4$yr)), all(p4$MONTH == as.character(p4$mo)))
 
 M <- U$pm
 say("\n==============================================================================")
-say("Panel 4: one row per permit-month, the max value/limit ratio")
+say("Panel VII: one row per permit-month, the max value/limit ratio")
 say("==============================================================================")
 say("permit-months            ", fmt(nrow(p4)), " (all of the cleaned panel's ", fmt(M), "); permits ",
     fmt(uniqueN(p4$EXTERNAL_PERMIT_NMBR)))
@@ -421,11 +487,11 @@ say("  limit > 0 ", of(sum(p4$limpos), M, "permit-months"), "; limit = 0 ",
     of(sum(!is.na(p4$lim) & p4$lim == 0), M, "permit-months"), "; limit blank ", of(sum(is.na(p4$lim)), M, "permit-months"))
 say("FLAG_ZERO_LIMIT_DISCHARGE ", of(sum(p4$FLAG_ZERO_LIMIT_DISCHARGE), M, "permit-months"))
 
-# Balance panel 4: one row per zero month, the selected-row columns blank
+# Balance panel VII: one row per zero month, the selected-row columns blank
 z4 <- copy(zk)[, `:=`(YEAR = as.character(yr), MONTH = as.character(mo))]
 for (v in setdiff(OUT_COLS, names(z4))) set(z4, j = v, value = "")
 z4[, `:=`(FLAG_MULTI_LIMIT_ID = "FALSE", FLAG_MULTI_LIMIT_SET = "FALSE", RATIO = NA_real_, SELECTED_BY = "",
-          ROW_STATUS = "", N_ROWS = 0L, ANY_DISCHARGED = FALSE, NODI_STRING_MONTH = "", FLAG_ZERO_LIMIT_DISCHARGE = FALSE)]
+          ROW_STATUS = "", N_ROWS = 0L, RAW_DATA = FALSE, ANY_DISCHARGED = FALSE, NODI_STRING_MONTH = "", FLAG_ZERO_LIMIT_DISCHARGE = FALSE)]
 p4w <- rbind(p4[, unique(c(KEY, P4_COLS)), with = FALSE], z4[, unique(c(KEY, P4_COLS)), with = FALSE])
 setorderv(p4w, KEY)
 stopifnot(nrow(p4w) == U$perm * nrow(mons), !anyDuplicated(p4w, by = KEY), sum(p4w$N_ROWS > 0L) == U$pm)
@@ -433,9 +499,11 @@ say("balanced: ", fmt(nrow(p4w)), " permit-months = ", fmt(U$perm), " permits x 
     of(nrow(z4), nrow(p4w), "permit-months"), "; FLAG_MULTI_MONTH_COVERED ", fmt(sum(z4$FLAG_MULTI_MONTH_COVERED)))
 say("  (every line above counts the ", fmt(M), " permit-months with rows)")
 rm(z4)
+stopifnot(identical(p4w$VALUE_TYPE_CODE != "", p4w$RAW_DATA))
+panel_stats("VII", p4w, p4w$RAW_DATA, used = sum(p4w$RAW_DATA))    # one cleaned row per populated month
 
 # ==============================================================================
-# 7. Panel 5: one aggregated row per permit-month
+# 7. Panel VIII: one aggregated row per permit-month
 # ==============================================================================
 p5 <- p4[, .(EXTERNAL_PERMIT_NMBR, yr, mo, FY, FACILITY_ID, STATE_CODE)][agg, on = KEY]
 p5[, `:=`(FLAG_MULTI_LIMIT_SET = mls == 1L, FLAG_MULTI_LIMIT_ID = mli == 1L, FLAG_ZERO_LIMIT_DISCHARGE = zld == 1L,
@@ -449,12 +517,13 @@ for (v in c("N_ROWS", "N_DISCHARGED", "N_NO_DISCHARGE", "N_OTHER_NODI", "N_NO_NO
 z[, `:=`(NODI_STRING = "", VIOLATION_STRING = "", FLAG_MULTI_LIMIT_SET = FALSE, FLAG_MULTI_LIMIT_ID = FALSE,
          FLAG_ZERO_LIMIT_DISCHARGE = FALSE)]
 p5 <- rbind(p5, z, fill = TRUE)
+p5[, RAW_DATA := N_ROWS > 0L]
 setorderv(p5, KEY)
 rm(z)
 
 setnames(p5, c("yr", "mo"), c("YEAR", "MONTH"))
 P5_COLS <- c("FY", "FACILITY_ID", "EXTERNAL_PERMIT_NMBR", "STATE_CODE", "YEAR", "MONTH",
-             "N_ROWS", "N_DISCHARGED", "N_NO_DISCHARGE", "N_OTHER_NODI", "N_NO_NODI", "N_BELOW_DL", "N_LIMITED",
+             "N_ROWS", "RAW_DATA", "N_DISCHARGED", "N_NO_DISCHARGE", "N_OTHER_NODI", "N_NO_NODI", "N_BELOW_DL", "N_LIMITED",
              "NODI_STRING", "MAX_RATIO_DISCH", "MEAN_RATIO_DISCH", "MAX_RATIO_ALL", "MEAN_RATIO_ALL",
              "N_VIOLATIONS", "VIOLATION_STRING", "N_EXCEEDANCES", "AVG_EXCEEDANCE_PCT",
              "FLAG_MULTI_LIMIT_SET", "FLAG_MULTI_LIMIT_ID", "FLAG_ZERO_LIMIT_DISCHARGE", "FLAG_MULTI_MONTH_COVERED",
@@ -467,8 +536,9 @@ po <- p5[N_ROWS > 0L]                                              # the observe
 perm_ever <- function(flag) uniqueN(po[get(flag) == TRUE, EXTERNAL_PERMIT_NMBR])
 BN <- nrow(p5)
 say("\n==============================================================================")
-say("Panel 5: one aggregated row per permit x month, balanced")
+say("Panel VIII: one aggregated row per permit x month, balanced")
 say("==============================================================================")
+panel_stats("VIII", p5, p5$RAW_DATA, used = sum(p5$N_ROWS))      # every cleaned row
 say("permit-months            ", fmt(BN), " = ", fmt(U$perm), " permits x ", nrow(mons), " months")
 say("  with rows (observed)   ", of(nrow(po), BN, "permit-months"))
 say("  N_ROWS = 0             ", of(BN - nrow(po), BN, "permit-months"))
@@ -516,12 +586,32 @@ say("  vs EPA EXCEEDENCE_PCT filled (", fmt(sum(d$EXCEEDENCE_PCT != "")), " rows
 say("violation codes: ", fmt(sum(po$N_VIOLATIONS)), " in ", fmt(sum(po$N_VIOLATIONS > 0L)), " permit-months")
 
 # ------------------------------------------------------------------------------
-# 8. Write panels 4 and 5
+# 8. Write panels VII and VIII
 # ------------------------------------------------------------------------------
 say("")
-f4 <- file.path(PROC_DIR, sprintf("dmr_pm4_max_ratio_%s.csv", SPAN))
+f4 <- outfile("7_max_ratio")
 fwrite(p4w[, ..P4_COLS], f4)
 say("wrote ", fmt(nrow(p4w)), " rows -> ", sub(paste0(CWA_ROOT, "/"), "", f4))
-f5 <- file.path(PROC_DIR, sprintf("dmr_pm5_aggregate_%s.csv", SPAN))
+f5 <- outfile("8_aggregate")
 fwrite(p5[, ..P5_COLS], f5)
 say("wrote ", fmt(nrow(p5)), " rows -> ", sub(paste0(CWA_ROOT, "/"), "", f5))
+
+# ------------------------------------------------------------------------------
+# 9. Summary stats of the panel-building doc, every panel
+# ------------------------------------------------------------------------------
+st <- rbindlist(ST)
+stopifnot(identical(st$panel, c("I", "II", "III", "IV", "V", "VI", "VII", "VIII")),
+          st[panel == "VIII", rows_used] == U$rows, all(st$blank_noraw == U$perm * NM - U$pm))
+pc <- function(a, b) sprintf("%s (%.1f%%)", fmt(a), 100 * a / b)
+row_fmt <- "%-6s %-17s %-17s %-20s %-20s"
+say("\n==============================================================================")
+say("Summary stats: every panel balanced over ", fmt(U$perm), " permits x ", NM, " months = ",
+    fmt(U$perm * NM), " permit-months")
+say("==============================================================================")
+say("baseline: RAW_DATA TRUE ", of(BASE$raw, BASE$rows, "permit-months"),
+    "; permits with RAW_DATA in every month ", of(BASE$perm_all, BASE$perm, "permits"))
+say(sprintf(row_fmt, "panel", "permits, >=1 row", "permits, all rows", "permit-months", "cleaned rows used"))
+for (i in seq_len(nrow(st))) with(st[i], say(sprintf(row_fmt, panel, pc(perm_any, U$perm), pc(perm_all, U$perm),
+                                                     pc(pm_pop, U$perm * NM), pc(rows_used, U$rows))))
+say("(shares of ", fmt(U$perm), " permits, ", fmt(U$perm * NM), " permit-months and ", fmt(U$rows),
+    " cleaned-panel rows; 'rows' = populated rows)")
