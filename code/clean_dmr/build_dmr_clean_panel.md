@@ -2,7 +2,7 @@
 
 *Builds a CLEANED DMR panel straight from the **raw** per-fiscal-year DMR zips.
 Input: `data/raw/DMR/npdes_dmrs_fy<FY>.zip` (and `npdes_dmrs_prefy2009.zip`).
-Output: one `data/processed/clean_dmr_<year>.csv` (TSS) or `clean_dmr_bod_<year>.csv`
+Output: one `data/processed/clean_dmr_tss_<year>.csv` (TSS) or `clean_dmr_bod_<year>.csv`
 (BOD) per fiscal year built, where `<year>` is read off the data, never off a toggle.*
 
 ## Overview
@@ -74,7 +74,7 @@ substitution rather than a rewrite of `KEEP_COLS`.
 | `data/raw/npdes_downloads/ICIS_FACILITIES.csv` | input (**raw, immutable**) | one row per NPDES_ID | ECHO download |
 | `data/raw/reference/REF_STATISTICAL_BASE.csv` | input (**raw**, reference) | one row per statistical base code | manual download, see `data/raw/README.md` |
 | `data/raw/reference/REF_NODI.csv` | input (**raw**, reference) | one row per NODI code (33) | transcribed from EPA, see `REF_NODI_PROVENANCE.md` |
-| `data/processed/clean_dmr_<year>.csv` (TSS), `clean_dmr_bod_<year>.csv` (BOD) | **output**, one per FY and parameter set | permit × outfall × month × parameter code × value type × limit set × statistical base × monitoring location × `LIMIT_ID` (unique, asserted), continental US only | derived (git-ignored) |
+| `data/processed/clean_dmr_tss_<year>.csv` (TSS), `clean_dmr_bod_<year>.csv` (BOD) | **output**, one per FY and parameter set | permit × outfall × month × parameter code × value type × limit set × statistical base × monitoring location × `LIMIT_ID` (unique, asserted), continental US only | derived (git-ignored) |
 
 ## Computational Requirements
 
@@ -134,7 +134,7 @@ it is constructed. The chain, end to end:
    and the rename happens *here*, not in the helper, because other scripts share
    `build_facility_crosswalk()` and expect the lower-case name. Values and rule
    are untouched by the rename — it is cosmetic, so that every column in
-   `clean_dmr_<year>.csv` reads in EPA's own ALL-CAPS style.
+   `clean_dmr_<set>_<year>.csv` reads in EPA's own ALL-CAPS style.
 
 In the FY2017 output: 5,858 permits map to 5,831 facilities (27 sites hold more
 than one permit), 0 rows fall back to `NPDES_ID`, and 0 rows fail to match — the run log
@@ -483,7 +483,7 @@ extract step exists; it is the same `tar | gzip -1` approach
 `code/dmr/filter_dmr_major_individual.R` uses.
 
 **Nothing is ever deleted or overwritten in `data/raw/`.** The script reads the
-zips and writes only `data/processed/clean_dmr_<FY>.csv` (or `clean_dmr_bod_<FY>.csv`).
+zips and writes only `data/processed/clean_dmr_<set>_<FY>.csv` (`tss` or `bod`).
 
 ### 11. Continental US = the 48 states + DC, by facility location
 
@@ -533,7 +533,7 @@ between early years, without accounting for all of this.
 
 Sampling found no FY2009 rows in `prefy2009` and no pre-2009 rows in `fy2009`,
 but only ~1% of the 22 GB member was read, so the script checks rather than
-trusts: if two sources would write the same `clean_dmr_<FY>.csv` in one run it
+trusts: if two sources would write the same `clean_dmr_<set>_<FY>.csv` in one run it
 **stops** and names both.
 
 Separately, a per-FY zip is held to its own year — rows in
@@ -548,8 +548,9 @@ and can be given as the first command-line argument instead:
 
 | Set | `PARAMETER_CODE`s | Output name |
 |---|---|---|
-| `tss` | `00530` TSS | `clean_dmr_<FY>.csv` (unchanged, so `build_permit_month_panels.R` still reads it) |
+| `tss` | `00530` TSS | `clean_dmr_tss_<FY>.csv` (was `clean_dmr_<FY>.csv` until 2026-11-10) |
 | `bod` | `00310` BOD, 5-day, 20 deg. C; `80082` BOD, carbonaceous [5 day, 20 C] | `clean_dmr_bod_<FY>.csv` |
+| `ammonia` | `00610` Nitrogen, ammonia total [as N]; `34726` Nitrogen, ammonia, total [as NH3] | `clean_dmr_ammonia_<FY>.csv` |
 
 Each set has its own `file_tag` in the output name, so two sets never write the
 same file; the script refuses two sets with the same tag. Every code of a set is
@@ -568,6 +569,19 @@ reporting `00310` fall from 2,790 to 2,483 and `80082` rise from 2,490 to 2,750,
 so a one-code series trends for reporting reasons. 222–263 permits a year report
 both codes, and outfall-months with both rise from 354 to 584. Per-year counts,
 BOD beside TSS: `code/summary/summarize_clean_dmr_by_year.R`.
+
+**Why these two ammonia codes** (Philip, 2026-11-12). In raw FY2017 (all permits)
+`00610` has 698,737 rows and 23,044 permits, `34726` 12,891 rows and 723 permits,
+and every other ammonia code at most 5,244 rows. In roughly this script's scope
+(ever-major individual permits, EXO, Effluent Gross, monthly-average bases, no
+state filter), 4,343 permits report some ammonia code in FY2017, 4,170 of them
+`00610`; 173 never report `00610`, and 123 of those report `34726`. Left out:
+`61574` (as N + unionized, 22 such permits), the unionized codes (`00612`, `00619`),
+`00609` (30-day), `71845` (as NH4), and the sludge and bottom-deposit codes.
+
+**The two ammonia codes are on different chemical bases.** `34726` is reported as
+NH3, `00610` as N; the same ammonia reads 1.216 times higher as NH3
+(17.03/14.01). Never pool their values without converting.
 
 ## Which years get built
 
@@ -696,7 +710,7 @@ overnight job; run it in the background and keep the log.
   year is derived from each row's own `MONITORING_PERIOD_END_DATE` (Oct–Dec roll
   into the next FY) and is what names the file, so a file cannot misreport its
   contents. The script asserts this before writing: every row in
-  `clean_dmr_<FY>.csv` has `fy_of(period_end) == <FY>`.
+  `clean_dmr_<set>_<FY>.csv` has `fy_of(period_end) == <FY>`.
 - **A truncated zip is caught in the first second, not hours in.** Pre-flight
   runs `unzip -l` on every needed zip before any work starts. `tar` will happily
   begin streaming a truncated archive — FY2018's local header still claims an
@@ -707,7 +721,7 @@ overnight job; run it in the background and keep the log.
   much faster if you kept it. Scratch goes to `$CWA_SCRATCH` if set, else the
   session temp dir — on this machine that shares the same physical disk as the
   output, which had ~23 GB free.
-- **`clean_dmr_<year>.csv` does not encode its toggles** (`VALUE_TYPES`,
+- **`clean_dmr_<set>_<year>.csv` does not encode its toggles** (`VALUE_TYPES`,
   `EXCLUDE_STAT_BASES`, `RESTRICT_MONTHLY_ONLY`, `VIOLATION_COLS`,
   `RESTRICT_CONTINENTAL`, `ADD_NODI_DESC`). Two runs for the same year with
   different toggles write to the same path, and the second overwrites the first.
@@ -736,12 +750,16 @@ overnight job; run it in the background and keep the log.
 - **Read-only with respect to `data/raw/`, non-destructive** (writes new files in
   `data/processed/`), deterministic, safe to re-run.
 - **Re-running overwrites only the years you asked for.** Years not in `YEARS`
-  keep whatever `clean_dmr_<FY>.csv` is already on disk, which is convenient for
+  keep whatever `clean_dmr_<set>_<FY>.csv` is already on disk, which is convenient for
   rebuilding one year — and a trap if toggles changed in between, since the
   untouched files were built under the old ones (see the toggle note above).
 
 ## History
 
+- **2026-11-10** — TSS gets the file tag `tss_`, so its output is now
+  `clean_dmr_tss_<FY>.csv` (was `clean_dmr_<FY>.csv`). The 39 existing files in
+  `data/processed/` were renamed, not rebuilt (md5 unchanged), and every reader
+  (`build_permit_month_panels.R`, `code/summary/`) points at the new name.
 - **2026-11-09** — added parameter sets (`PARAM_SETS` / `PARAM_SET`, or the first
   command-line argument): `tss` (`00530`) and `bod` (`00310` + `80082`), with a
   per-set file tag so BOD writes `clean_dmr_bod_<FY>.csv`. `PARAMETER_CODE` joined

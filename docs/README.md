@@ -10,7 +10,7 @@ the code in `code/` and `code/03_panel_building/`.
 |---|---|
 | `data_dictionary.md` | Key fields across the ICIS-NPDES tables and how they join. |
 | `codebook.md` | Full column-by-column variable definitions for the current facility-by-month panel (`06_facility_month_panel_major_individual_effluent_2005_2025.csv`). |
-| `codebook_clean_dmr.md` | Variable definitions for the cleaned DMR panel (`data/processed/clean_dmr_<FY>.csv`, built by `code/clean_dmr/build_dmr_clean_panel.R`). |
+| `codebook_clean_dmr.md` | Variable definitions for the cleaned DMR panel (`data/processed/clean_dmr_tss_<FY>.csv`, built by `code/clean_dmr/build_dmr_clean_panel.R`). |
 | `npdes_data_overview.md` | High-level tour of the NPDES/ECHO data and what each file covers. |
 | `time_varying_vs_snapshot.md` | Which fields are time-varying vs. one-snapshot-per-facility (drives the panel's broadcast-vs-monthly logic). |
 | `data_issues.md` | Catalogue of known data anomalies and caveats (duplicate rows, non-ASCII filenames, blank-vs-zero, etc.). |

@@ -43,7 +43,7 @@ source(file.path(CWA_ROOT, "code/02_cleaning/cleaning_helpers.R"))   # rd(), bui
 #            data/raw/npdes_downloads/ICIS_FACILITIES.csv (FACILITY_ID, STATE_CODE)
 #            data/raw/reference/REF_STATISTICAL_BASE.csv  (monthly-average bases)
 #            data/raw/reference/REF_NODI.csv              (NODI descriptions)
-#   Output : data/processed/clean_dmr_<FY>.csv (TSS) or clean_dmr_bod_<FY>.csv (BOD), one per fiscal year built. The
+#   Output : data/processed/clean_dmr_tss_<FY>.csv (TSS) or clean_dmr_bod_<FY>.csv (BOD), one per fiscal year built. The
 #            <FY> in the name is always read off the rows' own
 #            MONITORING_PERIOD_END_DATEs, never from a toggle.
 #
@@ -292,16 +292,23 @@ ADD_NODI_DESC    <- TRUE
 ## WHICH PARAMETER(S) ----------------------------------------------------------
 # A named set of PARAMETER_CODEs. Every code in the set is kept; each row keeps
 # its own PARAMETER_CODE, which is part of ROW_KEY, so two codes in one set are
-# never merged or summed together. `file_tag` goes into every output name, so
-# two sets never write the same file. TSS has an empty tag so its files keep
-# the names build_permit_month_panels.R reads (clean_dmr_<FY>.csv).
+# never merged or summed together. `file_tag` goes into every output name
+# (clean_dmr_tss_<FY>.csv, clean_dmr_bod_<FY>.csv), so two sets never write the
+# same file. TSS files were clean_dmr_<FY>.csv until 2026-11-10.
 # bod: BOD5 (00310) and carbonaceous BOD5 (80082). Not included: the percent-
-# removal codes (81010, 80091) and the small BOD codes (e.g. 00318, 85002).
+# removal codes (81010, 80091, 81383), ultimate oxygen demand (00181) and the
+# small BOD codes (e.g. 00318, 85002).
+# ammonia: total ammonia as N (00610) and as NH3 (34726). The two are on
+# different chemical bases (as NH3 = as N x 17.03/14.01), so never pool their
+# values without converting. In FY2017, 123 permits report 34726 but never 00610.
+# Not included: 61574 (as N + unionized), the unionized codes (00612, 00619),
+# 00609 (30-day), 71845 (as NH4), sludge and bottom-deposit codes.
 # Overridable from the command line, as the first argument:
 #   Rscript code/clean_dmr/build_dmr_clean_panel.R bod 2017
 PARAM_SETS <- list(
-  tss = list(codes = "00530",             file_tag = ""),
-  bod = list(codes = c("00310", "80082"), file_tag = "bod_")
+  tss     = list(codes = "00530",             file_tag = "tss_"),
+  bod     = list(codes = c("00310", "80082"), file_tag = "bod_"),
+  ammonia = list(codes = c("00610", "34726"), file_tag = "ammonia_")
 )
 PARAM_SET <- "tss"
 
@@ -661,7 +668,7 @@ read_source <- function(src) {
 # ==============================================================================
 # STEP 3-7 for ONE fiscal year, on rows already restricted to population + PARAM_SET
 # ==============================================================================
-# Writes data/processed/clean_dmr_<fy_data>.csv and prints that year's run log.
+# Writes data/processed/clean_dmr_<tag><fy_data>.csv and prints that year's run log.
 # Returns a one-row data.table for the closing summary.
 process_fy <- function(d, fy_data, src, n_src_rows) {
 
